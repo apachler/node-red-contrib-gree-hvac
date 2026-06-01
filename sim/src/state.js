@@ -11,7 +11,7 @@ const DEFAULT_STATE = {
     TemSen: 65, // current temp; vendor encodes +40, so 25°C => 65
     WdSpd: 0,
     Air: 0,
-    Blo: 0,
+    Blo: 1,
     Health: 0,
     SwhSlp: 0,
     Lig: 1,

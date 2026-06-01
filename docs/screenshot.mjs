@@ -18,6 +18,24 @@ const SHOTS = [
         viewport: { width: 1180, height: 980 },
         settleMs: 1500,
     },
+    {
+        name: 'nodered-home.png',
+        url: 'http://localhost:1880/dashboard/home',
+        viewport: { width: 1180, height: 980 },
+        settleMs: 3500,
+    },
+    {
+        name: 'nodered-config.png',
+        url: 'http://localhost:1880/dashboard/config',
+        viewport: { width: 1500, height: 1250 },
+        settleMs: 4000,
+    },
+    {
+        name: 'nodered-sim-sensors.png',
+        url: 'http://localhost:1880/dashboard/sim-sensors',
+        viewport: { width: 1180, height: 980 },
+        settleMs: 3500,
+    },
 ];
 
 const main = async () => {
