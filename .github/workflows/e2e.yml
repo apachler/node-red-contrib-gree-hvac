@@ -1,0 +1,46 @@
+name: E2E
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  sim-unit:
+    name: Simulator unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "18.x"
+          cache: "npm"
+      - name: Install repo deps (for gree-hvac-client in roundtrip test)
+        run: npm ci
+      - name: Run sim unit tests
+        run: npm run test:sim
+
+  e2e:
+    name: Docker compose e2e
+    runs-on: ubuntu-latest
+    needs: sim-unit
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "18.x"
+          cache: "npm"
+      - name: Install repo deps (gree-hvac-client + dev tools for tests)
+        run: npm ci
+      - name: Build and run e2e
+        run: npm run test:e2e
+        env:
+          # GitHub runners have docker compose v2 built in
+          E2E_SKIP_BUILD: "0"
+      - name: Dump container logs on failure
+        if: failure()
+        run: docker compose logs --tail=500 || true
+      - name: Tear down
+        if: always()
+        run: docker compose down -v --remove-orphans || true
