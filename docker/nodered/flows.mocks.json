@@ -1,0 +1,85 @@
+[
+    {
+        "id": "mocks-tab",
+        "type": "tab",
+        "label": "🧪 Mocks (sim only)",
+        "disabled": false,
+        "info": "Pumps mock Victron + Ruuvi sensor values from the simulator container into the 'Daten sammeln' function in the main flow. This tab replaces the role of the Victron + Ruuvi input nodes when there is no Venus OS / dbus available.\n\nReads values from the simulator's HTTP API:\n  GET http://gree.lan:8080/api/sensors\n\nFor the dashboard / control logic to react, set values on the simulator dashboard at http://localhost:8080/."
+    },
+    {
+        "id": "mock-tick",
+        "type": "inject",
+        "z": "mocks-tab",
+        "name": "Every 5s",
+        "props": [
+            { "p": "payload" }
+        ],
+        "repeat": "5",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "1",
+        "topic": "",
+        "payload": "",
+        "payloadType": "str",
+        "x": 130,
+        "y": 100,
+        "wires": [
+            ["mock-fetch"]
+        ]
+    },
+    {
+        "id": "mock-fetch",
+        "type": "http request",
+        "z": "mocks-tab",
+        "name": "GET /api/sensors",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://gree.lan:8080/api/sensors",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 330,
+        "y": 100,
+        "wires": [
+            ["mock-fanout"]
+        ]
+    },
+    {
+        "id": "mock-fanout",
+        "type": "function",
+        "z": "mocks-tab",
+        "name": "Fan out to Daten sammeln",
+        "func": "// Receives { soc, batteryVoltage, batterySystemStateNum, insideC, outsideC }\n// from the simulator's /api/sensors endpoint and emits one message per\n// sensor with a `path` field that matches the dispatch logic in the\n// 'Daten sammeln' function (which keys off substring matches in msg.path).\nvar s = msg.payload || {};\nif (typeof s !== 'object') {\n    node.warn('expected object payload from /api/sensors, got ' + typeof s);\n    return null;\n}\n\nif (typeof s.soc === 'number') {\n    node.send({ path: 'Battery SOC', payload: s.soc });\n}\nif (typeof s.batterySystemStateNum === 'number') {\n    node.send({ path: 'Battery State', payload: s.batterySystemStateNum });\n}\nif (typeof s.batteryVoltage === 'number') {\n    node.send({ path: 'Battery Voltage', payload: s.batteryVoltage });\n}\nif (typeof s.insideC === 'number') {\n    node.send({ path: 'Ruuvi Innen', payload: s.insideC });\n}\nif (typeof s.outsideC === 'number') {\n    node.send({ path: 'Ruuvi Außen', payload: s.outsideC });\n}\nnode.status({ fill: 'green', shape: 'dot', text: 'pumped ' + new Date().toISOString().slice(11,19) });\nreturn null;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 580,
+        "y": 100,
+        "wires": [
+            ["bc74c3718f91fdaa"]
+        ]
+    },
+    {
+        "id": "mock-debug",
+        "type": "debug",
+        "z": "mocks-tab",
+        "name": "sensor payload",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "x": 580,
+        "y": 160,
+        "wires": []
+    }
+]
