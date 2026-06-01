@@ -56,6 +56,13 @@ Example
 -------
 ![example](https://raw.githubusercontent.com/inwaar/node-red-contrib-gree-hvac/master/images/example.png)
 
+Development setup
+-----------------
+
+After cloning, run `npm install` once — the `prepare` script wires up `core.hooksPath` to `./.githooks/` so the pre-push hook runs `eslint --fix` against the whole repo before every push. Pushes are refused if eslint reports errors it couldn't auto-fix, or if `--fix` produced changes that haven't been staged + committed (so the fix lands in a reviewable commit, not silently on the remote).
+
+Skip the hook for an emergency push with `GREE_SKIP_LINT=1 git push ...`. CI sets `CI=true` so the hook is a no-op in workflows (CI runs `npm run lint` itself anyway).
+
 Development with the simulator
 ------------------------------
 

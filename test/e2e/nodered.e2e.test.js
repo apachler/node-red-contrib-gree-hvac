@@ -46,7 +46,11 @@ test('mocks flow drives sim state via the dashboard', async () => {
     // /api/set endpoint; then verify the dashboard sees it. This decouples
     // this test from the control logic in the user flow (which is
     // time-of-day dependent) while still exercising the dashboard surface.
-    const upd = await postJson(`${SIM}/api/set`, { Pow: 0, Mod: 0, SetTem: 24 });
+    const upd = await postJson(`${SIM}/api/set`, {
+        Pow: 0,
+        Mod: 0,
+        SetTem: 24,
+    });
     assert.equal(upd.status, 200);
 
     const r = await get(`${SIM}/api/state`);
@@ -81,7 +85,10 @@ test('manual switch + button in user flow drives the gree node end-to-end', asyn
     );
 
     // 4. press "Klima AUS"
-    await injectViaNode('7349dcb0f80c476b', { payload: 'off', topic: 'manual' });
+    await injectViaNode('7349dcb0f80c476b', {
+        payload: 'off',
+        topic: 'manual',
+    });
     await waitFor(
         async () => {
             const r = await get(`${SIM}/api/state`);
@@ -101,6 +108,8 @@ test('manual switch + button in user flow drives the gree node end-to-end', asyn
  * inject/button. Uses the documented /inject/:id endpoint, falling back to
  * a POST against the node's input via /eval is not needed because inject
  * and ui-button both expose /inject.
+ * @param nodeId
+ * @param msg
  */
 async function injectViaNode(nodeId, msg) {
     const url = `${NR}/inject/${encodeURIComponent(nodeId)}`;

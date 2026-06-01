@@ -5,11 +5,19 @@ const { Simulator } = require('../src/simulator');
 const { Dashboard } = require('../src/dashboard');
 const { MockSensors } = require('../src/sensors');
 
+/**
+ * @param value
+ * @param fallback
+ * @returns {number}
+ */
 function num(value, fallback) {
     const n = Number(value);
     return Number.isFinite(n) ? n : fallback;
 }
 
+/**
+ * @returns {Promise<void>}
+ */
 async function main() {
     const sim = new Simulator({
         port: num(process.env.GREE_SIM_UDP_PORT, 7000),

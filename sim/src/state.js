@@ -34,7 +34,9 @@ class DeviceState extends EventEmitter {
     }
 
     getCols(cols) {
-        return cols.map(c => (this._state[c] !== undefined ? this._state[c] : 0));
+        return cols.map(c =>
+            this._state[c] !== undefined ? this._state[c] : 0
+        );
     }
 
     apply(opts, values) {

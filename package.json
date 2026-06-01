@@ -21,7 +21,9 @@
     }
   },
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks || true",
     "lint": "eslint ./",
+    "lint:fix": "eslint --fix ./",
     "test": "node --test test/*.test.js",
     "test:sim": "node --test sim/test/*.test.js",
     "test:e2e": "node --test --test-timeout=600000 test/e2e/*.e2e.test.js",

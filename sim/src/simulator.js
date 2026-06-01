@@ -318,6 +318,9 @@ class Simulator extends EventEmitter {
     }
 }
 
+/**
+ * @returns {string} hex-encoded 6-byte mac-style id.
+ */
 function generateCid() {
     // 12 hex chars (mac-ish)
     const bytes = require('crypto').randomBytes(6);

@@ -78,6 +78,10 @@ const reverseValues = Object.fromEntries(
     ])
 );
 
+/**
+ * @param vendorObj
+ * @returns {{[key: string]: unknown}}
+ */
 function fromVendor(vendorObj) {
     const out = {};
     for (const [k, v] of Object.entries(vendorObj)) {

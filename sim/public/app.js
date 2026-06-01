@@ -2,6 +2,10 @@
 
 const $ = sel => document.querySelector(sel);
 
+/**
+ *
+ * @param s
+ */
 function renderState(s) {
     $('#dev-name').textContent = s.name;
     $('#dev-cid').textContent = s.cid;
@@ -15,7 +19,9 @@ function renderState(s) {
     $('#setpoint-val').textContent =
         typeof f.temperature === 'number' ? f.temperature : '--';
     $('#current-val').textContent =
-        s.currentTemperatureC === null ? '--' : s.currentTemperatureC.toFixed(1);
+        s.currentTemperatureC === null
+            ? '--'
+            : s.currentTemperatureC.toFixed(1);
     $('#mode-val').textContent = f.mode || '--';
     $('#fan-val').textContent = f.fanSpeed || '--';
     $('#swingH-val').textContent = f.swingHor || '--';
@@ -30,15 +36,28 @@ function renderState(s) {
     toggleBadge('badge-powersave', f.powerSave === 'on');
 }
 
+/**
+ *
+ * @param id
+ * @param on
+ */
 function toggleBadge(id, on) {
     const el = document.getElementById(id);
     if (el) el.classList.toggle('on', !!on);
 }
 
+/**
+ *
+ * @param stats
+ */
 function renderStats(stats) {
     $('#stats').textContent = JSON.stringify(stats, null, 2);
 }
 
+/**
+ *
+ * @param f
+ */
 function renderFaults(f) {
     $('#dropProb').value = f.dropProbability;
     $('#dropEvery').value = f.dropEvery;
@@ -46,6 +65,10 @@ function renderFaults(f) {
     $('#jitter').value = f.jitterMs;
 }
 
+/**
+ *
+ * @param s
+ */
 function renderSensors(s) {
     if (!s) return;
     $('#s-soc').value = s.soc;
@@ -55,12 +78,20 @@ function renderSensors(s) {
     $('#s-outside').value = s.outsideC;
 }
 
+/**
+ * @param url
+ * @param opts
+ * @returns {Promise<any>}
+ */
 async function fetchJson(url, opts) {
     const r = await fetch(url, opts);
     if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
     return r.json();
 }
 
+/**
+ *
+ */
 async function init() {
     try {
         const [state, stats, faults, sensors] = await Promise.all([
@@ -81,7 +112,9 @@ async function init() {
     es.addEventListener('state', e => {
         const payload = JSON.parse(e.data);
         // payload from sim is {changed, state}; refetch the snapshot to keep render simple
-        fetchJson('/api/state').then(renderState).catch(() => {});
+        fetchJson('/api/state')
+            .then(renderState)
+            .catch(() => {});
     });
     es.addEventListener('stats', e => renderStats(JSON.parse(e.data)));
     es.addEventListener('sensors', e => renderSensors(JSON.parse(e.data)));

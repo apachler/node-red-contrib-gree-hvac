@@ -66,6 +66,9 @@ class GcmCipher {
     }
 }
 
+/**
+ * @returns {string} 16-char ASCII key suitable for AES-128.
+ */
 function randomDeviceKey() {
     const alphabet =
         'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';

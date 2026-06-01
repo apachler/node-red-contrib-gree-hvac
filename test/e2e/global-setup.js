@@ -11,6 +11,11 @@ const {
 
 let started = false;
 
+/**
+ *
+ * @param root0
+ * @param root0.skipBuild
+ */
 async function ensureStack({ skipBuild = false } = {}) {
     if (!dockerCliAvailable()) {
         throw new Error(
@@ -30,6 +35,9 @@ async function ensureStack({ skipBuild = false } = {}) {
     started = true;
 }
 
+/**
+ *
+ */
 async function teardownStack() {
     if (!started) return;
     started = false;

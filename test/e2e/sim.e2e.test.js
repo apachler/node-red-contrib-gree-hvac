@@ -89,6 +89,12 @@ test('gree-hvac-client can drive the sim end-to-end over UDP', async t => {
     assert.equal(state.friendly.temperature, 20);
 });
 
+/**
+ * @param emitter
+ * @param event
+ * @param ms
+ * @returns {Promise<any>}
+ */
 function onceWithTimeout(emitter, event, ms) {
     return new Promise((resolve, reject) => {
         const t = setTimeout(

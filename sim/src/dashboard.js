@@ -19,7 +19,9 @@ class Dashboard extends EventEmitter {
         this._server = null;
         this._sseClients = new Set();
 
-        simulator.on('state-change', payload => this._broadcast('state', payload));
+        simulator.on('state-change', payload =>
+            this._broadcast('state', payload)
+        );
         simulator.on('packet-dropped', () =>
             this._broadcast('stats', simulator.stats)
         );
@@ -74,7 +76,8 @@ class Dashboard extends EventEmitter {
             const route = `${req.method} ${url.pathname}`;
 
             if (route === 'GET /') return this._serveStatic('index.html', res);
-            if (route === 'GET /app.js') return this._serveStatic('app.js', res);
+            if (route === 'GET /app.js')
+                return this._serveStatic('app.js', res);
             if (route === 'GET /styles.css')
                 return this._serveStatic('styles.css', res);
 
@@ -112,10 +115,10 @@ class Dashboard extends EventEmitter {
                 ext === '.html'
                     ? 'text/html; charset=utf-8'
                     : ext === '.js'
-                      ? 'application/javascript; charset=utf-8'
-                      : ext === '.css'
-                        ? 'text/css; charset=utf-8'
-                        : 'application/octet-stream';
+                    ? 'application/javascript; charset=utf-8'
+                    : ext === '.css'
+                    ? 'text/css; charset=utf-8'
+                    : 'application/octet-stream';
             res.writeHead(200, { 'Content-Type': type });
             res.end(data);
         });
@@ -153,7 +156,9 @@ class Dashboard extends EventEmitter {
         this._readJson(req)
             .then(body => {
                 if (!body || typeof body !== 'object') {
-                    throw new Error('expected JSON object of {prop: value, ...}');
+                    throw new Error(
+                        'expected JSON object of {prop: value, ...}'
+                    );
                 }
                 const keys = Object.keys(body);
                 const opts = [];
@@ -294,8 +299,7 @@ class Dashboard extends EventEmitter {
             vendor: raw,
             friendly,
             // Decode current temperature for display
-            currentTemperatureC:
-                raw.TemSen === 0 ? null : raw.TemSen - 40,
+            currentTemperatureC: raw.TemSen === 0 ? null : raw.TemSen - 40,
         };
     }
 }

@@ -49,6 +49,10 @@ class FaultInjector {
     }
 }
 
+/**
+ * @param n
+ * @returns {number}
+ */
 function clamp01(n) {
     n = Number(n);
     if (!Number.isFinite(n)) return 0;
