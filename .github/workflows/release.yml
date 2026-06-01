@@ -32,10 +32,13 @@ jobs:
       - name: Pack tarball
         run: npm pack
 
-      - name: Publish to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish
+      # Publish to npm is currently disabled. Re-enable once the NPM_TOKEN
+      # secret is configured for the release environment and the package
+      # owner is set on npmjs.com.
+      # - name: Publish to npm
+      #   env:
+      #     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      #   run: npm publish
 
       - name: Create GitHub Release
         env:
