@@ -99,16 +99,33 @@ function renderControls(s) {
         powerBtn.textContent = power ? 'Turn off' : 'Turn on';
         powerBtn.classList.toggle('ctl-power', power);
     }
-    setSelect('#ac-mode', v.Mod);
-    setSelect('#ac-fan', v.WdSpd);
-    setSelect('#ac-swingv', v.SwUpDn);
-    setSelect('#ac-lights', v.Lig);
+    for (const [sel, code] of Object.entries(AC_SELECTS)) {
+        setSelect('#' + sel, v[code]);
+    }
     const temp = $('#ac-temp-val');
     if (temp) {
         temp.textContent =
             typeof v.SetTem === 'number' ? `${v.SetTem}°C` : '--°C';
     }
 }
+
+// Maps each direct-control <select> to its Gree vendor property code.
+const AC_SELECTS = {
+    'ac-mode': 'Mod',
+    'ac-fan': 'WdSpd',
+    'ac-tempunit': 'TemUn',
+    'ac-air': 'Air',
+    'ac-swingh': 'SwingLfRig',
+    'ac-swingv': 'SwUpDn',
+    'ac-quiet': 'Quiet',
+    'ac-lights': 'Lig',
+    'ac-blow': 'Blo',
+    'ac-health': 'Health',
+    'ac-sleep': 'SwhSlp',
+    'ac-turbo': 'Tur',
+    'ac-powersave': 'SvSt',
+    'ac-safety': 'StHt',
+};
 
 /**
  * @param sel
@@ -149,19 +166,6 @@ function renderFaults(f) {
 }
 
 /**
- *
- * @param s
- */
-function renderSensors(s) {
-    if (!s) return;
-    $('#s-soc').value = s.soc;
-    $('#s-volt').value = s.batteryVoltage;
-    $('#s-bstate').value = s.batterySystemStateNum;
-    $('#s-inside').value = s.insideC;
-    $('#s-outside').value = s.outsideC;
-}
-
-/**
  * @param url
  * @param opts
  * @returns {Promise<any>}
@@ -177,30 +181,26 @@ async function fetchJson(url, opts) {
  */
 async function init() {
     try {
-        const [state, stats, faults, sensors] = await Promise.all([
+        const [state, stats, faults] = await Promise.all([
             fetchJson('/api/state'),
             fetchJson('/api/stats'),
             fetchJson('/api/faults'),
-            fetchJson('/api/sensors').catch(() => null),
         ]);
         renderState(state);
         renderStats(stats);
         renderFaults(faults);
-        renderSensors(sensors);
     } catch (e) {
         console.error('initial load failed', e);
     }
 
     const es = new EventSource('/api/events');
-    es.addEventListener('state', e => {
-        const payload = JSON.parse(e.data);
+    es.addEventListener('state', () => {
         // payload from sim is {changed, state}; refetch the snapshot to keep render simple
         fetchJson('/api/state')
             .then(renderState)
             .catch(() => {});
     });
     es.addEventListener('stats', e => renderStats(JSON.parse(e.data)));
-    es.addEventListener('sensors', e => renderSensors(JSON.parse(e.data)));
     es.onerror = () => {
         // EventSource auto-reconnects; nothing to do
     };
@@ -215,26 +215,6 @@ async function init() {
                 body: JSON.stringify({ celsius: c }),
             });
             renderState(s);
-        } catch (e) {
-            alert('failed: ' + e.message);
-        }
-    });
-
-    $('#sensorsBtn').addEventListener('click', async () => {
-        const body = {
-            soc: Number($('#s-soc').value),
-            batteryVoltage: Number($('#s-volt').value),
-            batterySystemStateNum: Number($('#s-bstate').value),
-            insideC: Number($('#s-inside').value),
-            outsideC: Number($('#s-outside').value),
-        };
-        try {
-            const s = await fetchJson('/api/sensors', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body),
-            });
-            renderSensors(s);
         } catch (e) {
             alert('failed: ' + e.message);
         }
@@ -267,18 +247,14 @@ async function init() {
     });
     $('#ac-temp-up').addEventListener('click', () => stepTemp(1));
     $('#ac-temp-down').addEventListener('click', () => stepTemp(-1));
-    $('#ac-mode').addEventListener('change', e =>
-        setAc({ Mod: Number(e.target.value) })
-    );
-    $('#ac-fan').addEventListener('change', e =>
-        setAc({ WdSpd: Number(e.target.value) })
-    );
-    $('#ac-swingv').addEventListener('change', e =>
-        setAc({ SwUpDn: Number(e.target.value) })
-    );
-    $('#ac-lights').addEventListener('change', e =>
-        setAc({ Lig: Number(e.target.value) })
-    );
+    for (const [sel, code] of Object.entries(AC_SELECTS)) {
+        const el = $('#' + sel);
+        if (el) {
+            el.addEventListener('change', e =>
+                setAc({ [code]: Number(e.target.value) })
+            );
+        }
+    }
 }
 
 /**

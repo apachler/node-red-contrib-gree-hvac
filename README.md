@@ -74,6 +74,13 @@ After cloning, run `npm install` once — the `prepare` script wires up `core.ho
 
 Skip the hook for an emergency push with `GREE_SKIP_LINT=1 git push ...`. CI sets `CI=true` so the hook is a no-op in workflows (CI runs `npm run lint` itself anyway).
 
+Example flow for real hardware
+------------------------------
+
+[`docker/nodered/flows.user.json`](docker/nodered/flows.user.json) is the **production** flow — the one to import into a real Node-RED (e.g. on a Victron Venus OS) controlling real Gree hardware. It contains only the control logic and dashboards; it has no simulator dependencies. After importing, point the `gree-hvac-config` node at your AC's host/IP and wire your real Victron/Ruuvi input nodes into the `Collect Data` function (named `Battery SOC`, `Battery State`, `Battery Voltage`, `Ruuvi Inside`, `Ruuvi Outside`).
+
+The simulator-only `flows.mocks.json` (the Sim Sensors / Sim Clock pages and mock sensor feed) is merged in **only** for the docker stack and must not be deployed to hardware.
+
 Development with the simulator
 ------------------------------
 

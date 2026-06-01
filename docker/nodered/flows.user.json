@@ -58,7 +58,37 @@
         "y": 160,
         "wires": [
             [
-                "668ee033d6c3e896"
+                "668ee033d6c3e896",
+                "hint-init"
+            ]
+        ]
+    },
+    {
+        "id": "hint-init",
+        "type": "function",
+        "z": "556b70d1e6fd3dde",
+        "name": "Dashboard hints",
+        "func": "// Static help texts. Dashboard 2.0 ui-text renders msg.payload, so the\n// hint strings are pushed as payloads to ui-text widgets whose format is\n// {{msg.payload}} (one output per widget).\nnode.send([\n    { payload: '⚠️ These settings protect the battery and compressor. Wrong values can deep-discharge the battery or damage the AC. Unlock to change.' },\n    { payload: '🎯 Target = setpoint while cooling. 🌡️ Turn-on = inside temp that starts cooling. ⏰ From/until = daily operating window. Mode/Fan = AC mode & fan speed. X-Fan dries the coil after shutdown. Outside-temp knobs shift the turn-on threshold: cooler outside raises it (venting gets a chance), hotter lowers it.' },\n    { payload: '🔋 SOC on/off = battery charge to start / stop (protects the battery). 🔌 Voltage gate = battery voltage required before starting. ⏱️ On/off-delay = how long conditions must hold before switching. 🛡️ Min on/off-time = compressor protection — never cycle faster than this.' },\n    { payload: 'ℹ️ Buttons only active when Manual mode is on.' }\n]);\nreturn null;",
+        "outputs": 4,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 320,
+        "y": 200,
+        "wires": [
+            [
+                "cfg-warning"
+            ],
+            [
+                "cfg-comfort-help"
+            ],
+            [
+                "cfg-critical-help"
+            ],
+            [
+                "b53de9b45acbf61b"
             ]
         ]
     },
@@ -658,12 +688,10 @@
         "y": 680,
         "wires": [
             [
-                "d13970f74dda9f8d",
-                "6480247c8bd81785"
+                "d13970f74dda9f8d"
             ],
             [
-                "d13970f74dda9f8d",
-                "6480247c8bd81785"
+                "d13970f74dda9f8d"
             ]
         ]
     },
@@ -837,7 +865,7 @@
         "height": "1",
         "name": "Manual Hint",
         "label": "",
-        "format": "ℹ️ Buttons only active when Manual mode is on",
+        "format": "{{msg.payload}}",
         "layout": "row-center",
         "style": false,
         "font": "",
@@ -872,25 +900,63 @@
         "x": 150,
         "y": 1240,
         "wires": [
-            ["4643398f1ff1b947"],
-            ["37d9c50fc4d28ecc"],
-            ["2d25cb97d5c3dcce"],
-            ["daaec76772e3cfe6"],
-            ["cfg-mode"],
-            ["cfg-fan"],
-            ["cfg-blow"],
-            ["cfg-ventmargin"],
-            ["cfg-coldbelow"],
-            ["cfg-coldadjust"],
-            ["cfg-hotabove"],
-            ["cfg-hotadjust"],
-            ["6378c71ecdb0f36e"],
-            ["2ce06dc559769b19"],
-            ["cfg-voltage"],
-            ["cfg-ondelay"],
-            ["cfg-offdelay"],
-            ["cfg-minon"],
-            ["cfg-minoff"]
+            [
+                "4643398f1ff1b947"
+            ],
+            [
+                "37d9c50fc4d28ecc"
+            ],
+            [
+                "2d25cb97d5c3dcce"
+            ],
+            [
+                "daaec76772e3cfe6"
+            ],
+            [
+                "cfg-mode"
+            ],
+            [
+                "cfg-fan"
+            ],
+            [
+                "cfg-blow"
+            ],
+            [
+                "cfg-ventmargin"
+            ],
+            [
+                "cfg-coldbelow"
+            ],
+            [
+                "cfg-coldadjust"
+            ],
+            [
+                "cfg-hotabove"
+            ],
+            [
+                "cfg-hotadjust"
+            ],
+            [
+                "6378c71ecdb0f36e"
+            ],
+            [
+                "2ce06dc559769b19"
+            ],
+            [
+                "cfg-voltage"
+            ],
+            [
+                "cfg-ondelay"
+            ],
+            [
+                "cfg-offdelay"
+            ],
+            [
+                "cfg-minon"
+            ],
+            [
+                "cfg-minoff"
+            ]
         ]
     },
     {
@@ -913,30 +979,31 @@
     },
     {
         "id": "4643398f1ff1b947",
-        "type": "ui-slider",
+        "type": "ui-number-input",
         "z": "556b70d1e6fd3dde",
-        "group": "db-group-config",
         "name": "Target temperature",
         "label": "🎯 Target temperature (°C)",
+        "group": "db-group-config",
         "order": 1,
-        "width": "6",
-        "height": "1",
-        "passthru": false,
-        "outs": "all",
+        "width": 6,
+        "height": 1,
         "topic": "targetTemp",
         "topicType": "str",
-        "thumbLabel": "true",
-        "showTicks": "false",
-        "min": "18",
-        "max": "30",
-        "step": "1",
+        "min": 16,
+        "max": 30,
+        "step": 0.5,
+        "tooltip": "The setpoint the AC cools toward while running.",
+        "delay": 300,
+        "passthru": false,
+        "sendOnDelay": false,
+        "sendOnBlur": true,
+        "sendOnEnter": true,
         "className": "",
-        "iconPrepend": "",
-        "iconAppend": "",
-        "color": "#0094ce",
-        "colorTrack": "#eeeeee",
-        "colorThumb": "#0094ce",
-        "showTextField": true,
+        "clearable": false,
+        "icon": "",
+        "iconPosition": "left",
+        "iconInnerPosition": "inside",
+        "spinner": "default",
         "x": 400,
         "y": 1220,
         "wires": [
@@ -947,30 +1014,31 @@
     },
     {
         "id": "37d9c50fc4d28ecc",
-        "type": "ui-slider",
+        "type": "ui-number-input",
         "z": "556b70d1e6fd3dde",
-        "group": "db-group-config",
         "name": "Switch-on temperature",
         "label": "🌡️ Turn on above inside (°C)",
+        "group": "db-group-config",
         "order": 2,
-        "width": "6",
-        "height": "1",
-        "passthru": false,
-        "outs": "all",
+        "width": 6,
+        "height": 1,
         "topic": "tempOnThreshold",
         "topicType": "str",
-        "thumbLabel": "true",
-        "showTicks": "false",
-        "min": "15",
-        "max": "35",
-        "step": "1",
+        "min": 15,
+        "max": 35,
+        "step": 0.5,
+        "tooltip": "Start cooling once the inside temperature rises to this.",
+        "delay": 300,
+        "passthru": false,
+        "sendOnDelay": false,
+        "sendOnBlur": true,
+        "sendOnEnter": true,
         "className": "",
-        "iconPrepend": "",
-        "iconAppend": "",
-        "color": "#0094ce",
-        "colorTrack": "#eeeeee",
-        "colorThumb": "#0094ce",
-        "showTextField": true,
+        "clearable": false,
+        "icon": "",
+        "iconPosition": "left",
+        "iconInnerPosition": "inside",
+        "spinner": "default",
         "x": 420,
         "y": 1260,
         "wires": [
@@ -981,30 +1049,31 @@
     },
     {
         "id": "2d25cb97d5c3dcce",
-        "type": "ui-slider",
+        "type": "ui-number-input",
         "z": "556b70d1e6fd3dde",
-        "group": "db-group-config",
         "name": "Operate from",
         "label": "⏰ Operate from (hour)",
+        "group": "db-group-config",
         "order": 3,
-        "width": "6",
-        "height": "1",
-        "passthru": false,
-        "outs": "all",
+        "width": 6,
+        "height": 1,
         "topic": "timeOnHour",
         "topicType": "str",
-        "thumbLabel": "true",
-        "showTicks": "false",
-        "min": "0",
-        "max": "12",
-        "step": "1",
+        "min": 0,
+        "max": 23,
+        "step": 1,
+        "tooltip": "Start of the daily operating window (24h clock).",
+        "delay": 300,
+        "passthru": false,
+        "sendOnDelay": false,
+        "sendOnBlur": true,
+        "sendOnEnter": true,
         "className": "",
-        "iconPrepend": "",
-        "iconAppend": "",
-        "color": "#0094ce",
-        "colorTrack": "#eeeeee",
-        "colorThumb": "#0094ce",
-        "showTextField": true,
+        "clearable": false,
+        "icon": "",
+        "iconPosition": "left",
+        "iconInnerPosition": "inside",
+        "spinner": "default",
         "x": 390,
         "y": 1300,
         "wires": [
@@ -1015,30 +1084,31 @@
     },
     {
         "id": "daaec76772e3cfe6",
-        "type": "ui-slider",
+        "type": "ui-number-input",
         "z": "556b70d1e6fd3dde",
-        "group": "db-group-config",
         "name": "Operate until",
         "label": "⏰ Operate until (hour)",
+        "group": "db-group-config",
         "order": 4,
-        "width": "6",
-        "height": "1",
-        "passthru": false,
-        "outs": "all",
+        "width": 6,
+        "height": 1,
         "topic": "timeOffHour",
         "topicType": "str",
-        "thumbLabel": "true",
-        "showTicks": "false",
-        "min": "17",
-        "max": "23",
-        "step": "1",
+        "min": 0,
+        "max": 23,
+        "step": 1,
+        "tooltip": "End of the daily operating window (24h clock).",
+        "delay": 300,
+        "passthru": false,
+        "sendOnDelay": false,
+        "sendOnBlur": true,
+        "sendOnEnter": true,
         "className": "",
-        "iconPrepend": "",
-        "iconAppend": "",
-        "color": "#0094ce",
-        "colorTrack": "#eeeeee",
-        "colorThumb": "#0094ce",
-        "showTextField": true,
+        "clearable": false,
+        "icon": "",
+        "iconPosition": "left",
+        "iconInnerPosition": "inside",
+        "spinner": "default",
         "x": 390,
         "y": 1340,
         "wires": [
@@ -1049,30 +1119,31 @@
     },
     {
         "id": "6378c71ecdb0f36e",
-        "type": "ui-slider",
+        "type": "ui-number-input",
         "z": "556b70d1e6fd3dde",
-        "group": "db-group-advanced",
         "name": "SOC turn on",
         "label": "🔋 SOC turn on (%)",
+        "group": "db-group-advanced",
         "order": 3,
-        "width": "6",
-        "height": "1",
-        "passthru": false,
-        "outs": "all",
+        "width": 6,
+        "height": 1,
         "topic": "socOnThreshold",
         "topicType": "str",
-        "thumbLabel": "true",
-        "showTicks": "false",
-        "min": "50",
-        "max": "95",
-        "step": "5",
+        "min": 50,
+        "max": 95,
+        "step": 1,
+        "tooltip": "Only start the AC above this battery state-of-charge.",
+        "delay": 300,
+        "passthru": false,
+        "sendOnDelay": false,
+        "sendOnBlur": true,
+        "sendOnEnter": true,
         "className": "",
-        "iconPrepend": "",
-        "iconAppend": "",
-        "color": "#ff9800",
-        "colorTrack": "#eeeeee",
-        "colorThumb": "#ff9800",
-        "showTextField": true,
+        "clearable": false,
+        "icon": "",
+        "iconPosition": "left",
+        "iconInnerPosition": "inside",
+        "spinner": "default",
         "x": 410,
         "y": 1380,
         "wires": [
@@ -1083,30 +1154,31 @@
     },
     {
         "id": "2ce06dc559769b19",
-        "type": "ui-slider",
+        "type": "ui-number-input",
         "z": "556b70d1e6fd3dde",
-        "group": "db-group-advanced",
         "name": "SOC turn off",
         "label": "🔋 SOC turn off (%)",
+        "group": "db-group-advanced",
         "order": 4,
-        "width": "6",
-        "height": "1",
-        "passthru": false,
-        "outs": "all",
+        "width": 6,
+        "height": 1,
         "topic": "socOffThreshold",
         "topicType": "str",
-        "thumbLabel": "true",
-        "showTicks": "false",
-        "min": "40",
-        "max": "90",
-        "step": "5",
+        "min": 40,
+        "max": 90,
+        "step": 1,
+        "tooltip": "Stop the AC below this state-of-charge to protect the battery.",
+        "delay": 300,
+        "passthru": false,
+        "sendOnDelay": false,
+        "sendOnBlur": true,
+        "sendOnEnter": true,
         "className": "",
-        "iconPrepend": "",
-        "iconAppend": "",
-        "color": "#ff9800",
-        "colorTrack": "#eeeeee",
-        "colorThumb": "#ff9800",
-        "showTextField": true,
+        "clearable": false,
+        "icon": "",
+        "iconPosition": "left",
+        "iconInnerPosition": "inside",
+        "spinner": "default",
         "x": 410,
         "y": 1420,
         "wires": [
@@ -1131,11 +1203,26 @@
         "chips": false,
         "clearable": false,
         "options": [
-            { "value": "auto", "label": "auto" },
-            { "value": "cool", "label": "cool" },
-            { "value": "dry", "label": "dry" },
-            { "value": "fan_only", "label": "fan only" },
-            { "value": "heat", "label": "heat" }
+            {
+                "value": "auto",
+                "label": "auto"
+            },
+            {
+                "value": "cool",
+                "label": "cool"
+            },
+            {
+                "value": "dry",
+                "label": "dry"
+            },
+            {
+                "value": "fan_only",
+                "label": "fan only"
+            },
+            {
+                "value": "heat",
+                "label": "heat"
+            }
         ],
         "payload": "",
         "topic": "mode",
@@ -1145,7 +1232,11 @@
         "msgTrigger": "onChange",
         "x": 400,
         "y": 1460,
-        "wires": [["6132d49b22644866"]]
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
     },
     {
         "id": "cfg-fan",
@@ -1163,12 +1254,30 @@
         "chips": false,
         "clearable": false,
         "options": [
-            { "value": "auto", "label": "auto" },
-            { "value": "low", "label": "low" },
-            { "value": "mediumLow", "label": "medium low" },
-            { "value": "medium", "label": "medium" },
-            { "value": "mediumHigh", "label": "medium high" },
-            { "value": "high", "label": "high" }
+            {
+                "value": "auto",
+                "label": "auto"
+            },
+            {
+                "value": "low",
+                "label": "low"
+            },
+            {
+                "value": "mediumLow",
+                "label": "medium low"
+            },
+            {
+                "value": "medium",
+                "label": "medium"
+            },
+            {
+                "value": "mediumHigh",
+                "label": "medium high"
+            },
+            {
+                "value": "high",
+                "label": "high"
+            }
         ],
         "payload": "",
         "topic": "fanSpeed",
@@ -1178,7 +1287,11 @@
         "msgTrigger": "onChange",
         "x": 400,
         "y": 1500,
-        "wires": [["6132d49b22644866"]]
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
     },
     {
         "id": "cfg-blow",
@@ -1208,7 +1321,11 @@
         "offcolor": "",
         "x": 400,
         "y": 1540,
-        "wires": [["6132d49b22644866"]]
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
     },
     {
         "id": "cfg-ventmargin",
@@ -1239,7 +1356,11 @@
         "spinner": "default",
         "x": 410,
         "y": 1580,
-        "wires": [["6132d49b22644866"]]
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
     },
     {
         "id": "cfg-coldbelow",
@@ -1270,7 +1391,11 @@
         "spinner": "default",
         "x": 410,
         "y": 1620,
-        "wires": [["6132d49b22644866"]]
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
     },
     {
         "id": "cfg-coldadjust",
@@ -1301,7 +1426,11 @@
         "spinner": "default",
         "x": 410,
         "y": 1660,
-        "wires": [["6132d49b22644866"]]
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
     },
     {
         "id": "cfg-hotabove",
@@ -1332,7 +1461,11 @@
         "spinner": "default",
         "x": 410,
         "y": 1700,
-        "wires": [["6132d49b22644866"]]
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
     },
     {
         "id": "cfg-hotadjust",
@@ -1363,7 +1496,11 @@
         "spinner": "default",
         "x": 410,
         "y": 1740,
-        "wires": [["6132d49b22644866"]]
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
     },
     {
         "id": "cfg-warning",
@@ -1375,7 +1512,7 @@
         "height": 1,
         "name": "Critical warning",
         "label": "",
-        "format": "⚠️ These settings protect the battery and compressor. Wrong values can deep-discharge the battery or damage the AC. Unlock to change.",
+        "format": "{{msg.payload}}",
         "layout": "row-left",
         "style": false,
         "font": "",
@@ -1414,7 +1551,11 @@
         "offcolor": "#4caf50",
         "x": 410,
         "y": 1840,
-        "wires": [["crit-lock-handler"]]
+        "wires": [
+            [
+                "crit-lock-handler"
+            ]
+        ]
     },
     {
         "id": "crit-lock-handler",
@@ -1461,7 +1602,11 @@
         "spinner": "default",
         "x": 420,
         "y": 1880,
-        "wires": [["6132d49b22644866"]]
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
     },
     {
         "id": "cfg-ondelay",
@@ -1492,7 +1637,11 @@
         "spinner": "default",
         "x": 410,
         "y": 1920,
-        "wires": [["6132d49b22644866"]]
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
     },
     {
         "id": "cfg-offdelay",
@@ -1523,7 +1672,11 @@
         "spinner": "default",
         "x": 410,
         "y": 1960,
-        "wires": [["6132d49b22644866"]]
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
     },
     {
         "id": "cfg-minon",
@@ -1554,7 +1707,11 @@
         "spinner": "default",
         "x": 410,
         "y": 2000,
-        "wires": [["6132d49b22644866"]]
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
     },
     {
         "id": "cfg-minoff",
@@ -1585,121 +1742,53 @@
         "spinner": "default",
         "x": 410,
         "y": 2040,
-        "wires": [["6132d49b22644866"]]
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
     },
     {
-        "id": "a179fde950f174e4",
-        "type": "comment",
+        "id": "cfg-comfort-help",
+        "type": "ui-text",
         "z": "556b70d1e6fd3dde",
-        "name": "═══════════════════ 🐕 GREE WATCHDOG ═══════════════════",
-        "info": "",
-        "x": 320,
-        "y": 1520,
+        "group": "db-group-config",
+        "order": 13,
+        "width": 6,
+        "height": 2,
+        "name": "Comfort help",
+        "label": "",
+        "format": "{{msg.payload}}",
+        "layout": "row-left",
+        "style": false,
+        "font": "",
+        "fontSize": 11,
+        "color": "#8a93a6",
+        "className": "",
+        "x": 410,
+        "y": 1780,
         "wires": []
     },
     {
-        "id": "6480247c8bd81785",
-        "type": "function",
+        "id": "cfg-critical-help",
+        "type": "ui-text",
         "z": "556b70d1e6fd3dde",
-        "name": "Gree Alive + Reconnect",
-        "func": "// Detects Gree reconnection and triggers a resync\nvar now = Date.now();\nvar lastOutput = flow.get('lastGreeOutput') || 0;\nvar wasAlive   = flow.get('greeWasAlive') || false;\n\n// Detect reconnect:\n//   - lastOutput=0  → very first output at all\n//   - lastOutput >5min old → was offline and is back now\n//   - wasAlive=false → was marked as not alive\nvar ageMin = lastOutput > 0 ? (now - lastOutput)/1000/60 : 999;\nvar reconnect = (!wasAlive) || (ageMin > 5);\n\nflow.set('lastGreeOutput', now);\nflow.set('greeWasAlive', true);\nflow.set('greeErrorCount', 0);\n\nif (reconnect) {\n    node.status({fill:'blue', shape:'dot',\n        text: 'Reconnect detected -> triggering resync'});\n    return {payload: 'resync'};\n}\n\nnode.status({fill:'green', shape:'dot', text: new Date().toLocaleTimeString()});\nreturn null;",
-        "outputs": 1,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 910,
-        "y": 740,
-        "wires": [
-            [
-                "e00e95715627875c"
-            ]
-        ]
-    },
-    {
-        "id": "ef7147d0241c8125",
-        "type": "inject",
-        "z": "556b70d1e6fd3dde",
-        "name": "Watchdog 10min",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
-        "repeat": "600",
-        "crontab": "",
-        "once": true,
-        "onceDelay": "30",
-        "payload": "watchdog",
-        "payloadType": "str",
-        "x": 150,
-        "y": 1560,
-        "wires": [
-            [
-                "bbdb9283c0d50c95"
-            ]
-        ]
-    },
-    {
-        "id": "bbdb9283c0d50c95",
-        "type": "function",
-        "z": "556b70d1e6fd3dde",
-        "name": "Watchdog Logic",
-        "func": "var last = flow.get('lastGreeOutput') || 0;\nvar now  = Date.now();\n\n// First run after start: initialize the timer with now\n// so the 20-min deadline also runs even if a connection never came\nif (last === 0) {\n    flow.set('lastGreeOutput', now);\n    node.status({fill:'yellow', shape:'ring', text: 'Watchdog started, waiting for contact'});\n    return null;\n}\n\nvar age = (now - last) / 1000 / 60;  // minutes\n\nif (age > 20) {\n    node.status({fill:'red', shape:'dot',\n        text: 'No output for ' + Math.round(age) + 'min -> restart'});\n    flow.set('lastGreeOutput', 0);  // reset for the next cycle\n    return {payload: 'watchdog-restart'};\n}\n\nnode.status({fill:'green', shape:'dot',\n    text: 'OK, last output ' + Math.round(age) + 'min ago'});\nreturn null;",
-        "outputs": 1,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 400,
-        "y": 1560,
-        "wires": [
-            [
-                "d9711a6e9a08a601"
-            ]
-        ]
-    },
-    {
-        "id": "d9711a6e9a08a601",
-        "type": "exec",
-        "z": "556b70d1e6fd3dde",
-        "command": "svc -t /service/node-red-venus",
-        "addpay": "",
-        "append": "",
-        "useSpawn": "false",
-        "timer": "",
-        "winHide": false,
-        "oldrc": false,
-        "name": "Restart Node-RED",
-        "x": 650,
-        "y": 1560,
-        "wires": [
-            [],
-            [],
-            []
-        ]
-    },
-    {
-        "id": "e00e95715627875c",
-        "type": "function",
-        "z": "556b70d1e6fd3dde",
-        "name": "Resync to Gree",
-        "func": "// Resync after reconnect: sends the current desired state to the AC\nvar config = flow.get('config') || {};\nvar state  = flow.get('acState') || {};\n\nif (state.power) {\n    // Desired state: ON - resend the full configuration\n    var greeMsg = {\n        topic: 'on',\n        payload: {\n            power:       'on',\n            mode:        config.mode,\n            temperature: config.targetTemp,\n            fanSpeed:    config.fanSpeed,\n            blow:        config.blow\n        }\n    };\n    node.status({fill:'green', shape:'dot',\n        text: 'Resync ON @ ' + config.targetTemp + 'C'});\n    return greeMsg;\n} else {\n    // Desired state: OFF - send explicit OFF to be safe\n    node.status({fill:'red', shape:'dot', text: 'Resync OFF'});\n    return {topic: 'off', payload: {power: 'off'}};\n}",
-        "outputs": 1,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 880,
-        "y": 800,
-        "wires": [
-            [
-                "72f57580f5a03db9"
-            ]
-        ]
+        "group": "db-group-advanced",
+        "order": 10,
+        "width": 6,
+        "height": 2,
+        "name": "Critical help",
+        "label": "",
+        "format": "{{msg.payload}}",
+        "layout": "row-left",
+        "style": false,
+        "font": "",
+        "fontSize": 11,
+        "color": "#8a93a6",
+        "className": "",
+        "x": 410,
+        "y": 2080,
+        "wires": []
     },
     {
         "id": "db-group-status",
@@ -1818,10 +1907,26 @@
         "layout": "notebook",
         "theme": "db-theme",
         "breakpoints": [
-            { "name": "Default", "px": "0", "cols": "3" },
-            { "name": "Tablet", "px": "576", "cols": "6" },
-            { "name": "Small Desktop", "px": "768", "cols": "9" },
-            { "name": "Desktop", "px": "1024", "cols": "12" }
+            {
+                "name": "Default",
+                "px": "0",
+                "cols": "3"
+            },
+            {
+                "name": "Tablet",
+                "px": "576",
+                "cols": "6"
+            },
+            {
+                "name": "Small Desktop",
+                "px": "768",
+                "cols": "9"
+            },
+            {
+                "name": "Desktop",
+                "px": "1024",
+                "cols": "12"
+            }
         ],
         "order": 2,
         "className": "",
@@ -1843,13 +1948,13 @@
     {
         "id": "db-theme",
         "type": "ui-theme",
-        "name": "TinyHouse Theme",
+        "name": "TinyHouse Dark",
         "colors": {
-            "surface": "#ffffff",
-            "primary": "#0094ce",
-            "bgPage": "#eeeeee",
-            "groupBg": "#ffffff",
-            "groupOutline": "#cccccc"
+            "surface": "#1b2230",
+            "primary": "#4cc9f0",
+            "bgPage": "#0f1115",
+            "groupBg": "#181b22",
+            "groupOutline": "#2a3550"
         },
         "sizes": {
             "pagePadding": "12px",

@@ -82,9 +82,15 @@ git push origin vX.Y.Z
 
 The workflow sets `package.json` version from the tag, runs `npm publish` (needs `NPM_TOKEN` secret + the `release` GitHub environment), and creates a GitHub Release with the `.tgz` attached. There is no auto-bump from commit messages — pick the version manually.
 
+## Production vs simulator
+
+- **`docker/nodered/flows.user.json` is the production flow** — the one to import into a real Node-RED (e.g. on Venus OS) driving real Gree hardware. It contains only the control logic + dashboards; no simulator/mock dependencies.
+- **`docker/nodered/flows.mocks.json` is simulator-only.** `merge-flows.js` appends it to the user flow at image build time to produce the `flows.json` that runs *inside the docker stack* (mock Victron/Ruuvi sensors, the Sim Sensors + Sim Clock pages). It must **not** be deployed to real hardware.
+- For real hardware: import `flows.user.json`, point the `gree-hvac-config` node at the AC's real host/IP (the sample uses `gree.lan`), and wire the real Victron/Ruuvi input nodes (named `Battery SOC`, `Battery State`, `Battery Voltage`, `Ruuvi Inside`, `Ruuvi Outside`) into `Collect Data`.
+
 ## Things to know
 
 - **Actions on this repo**: push events to branches do not trigger Actions; only tag pushes do (release.yml) and PR/push to master (ci.yml + e2e.yml). If a workflow seems to be missing, check repo Actions settings before assuming a config bug.
-- **The example flow** at `docker/nodered/flows.user.json` is the user's real flow, kept verbatim. The mocks tab in `flows.mocks.json` is merged in at image build time (`merge-flows.js`) — don't edit the user file to add mock data; edit the mocks file.
+- **The example flow** at `docker/nodered/flows.user.json` is the user's real flow. The mocks tab in `flows.mocks.json` is merged in at image build time (`merge-flows.js`) — don't edit the user file to add mock data; edit the mocks file.
 - **`gree.lan`** is hard-coded in the example flow's config node. Docker-compose aliases the sim container as `gree.lan` on `sim-net` so the flow resolves without modification.
-- **The simulator dashboard at `:8080`** exposes everything the flow needs: AC state, mock sensors, fault injection. Use POST `/api/sensors` to drive SOC/temperature changes that the example flow reacts to.
+- **The simulator dashboard at `:8080`** is a standalone Gree-device simulator — it controls the simulated AC unit and simulates its protocol link (fault injection). It has **no** dependency on the example flow. Mock Victron/Ruuvi sensor values are set from the Node-RED "Sim Sensors" page (which POSTs `/api/sensors`).

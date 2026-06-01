@@ -56,7 +56,7 @@
 
             <div class="controls">
                 <h2>Control AC directly</h2>
-                <p class="hint">Sets the AC state directly on the simulator — like a remote control on the unit.</p>
+                <p class="hint">Sets the AC state directly on the simulator — every property the Gree protocol exposes, like a full remote control on the unit.</p>
                 <div class="control-row">
                     <button id="ac-power" class="ctl-power">Toggle power</button>
                     <div class="stepper">
@@ -85,13 +85,54 @@
                             <option value="5">high</option>
                         </select>
                     </label>
+                    <label>Temperature unit
+                        <select id="ac-tempunit">
+                            <option value="0">celsius</option>
+                            <option value="1">fahrenheit</option>
+                        </select>
+                    </label>
+                    <label>Fresh-air valve
+                        <select id="ac-air">
+                            <option value="0">off</option>
+                            <option value="1">inside</option>
+                            <option value="2">outside</option>
+                            <option value="3">mode3</option>
+                        </select>
+                    </label>
+                    <label>Horizontal swing
+                        <select id="ac-swingh">
+                            <option value="0">default</option>
+                            <option value="1">full</option>
+                            <option value="2">fixedLeft</option>
+                            <option value="3">fixedMidLeft</option>
+                            <option value="4">fixedMid</option>
+                            <option value="5">fixedMidRight</option>
+                            <option value="6">fixedRight</option>
+                            <option value="7">fullAlt</option>
+                        </select>
+                    </label>
                     <label>Vertical swing
                         <select id="ac-swingv">
                             <option value="0">default</option>
                             <option value="1">full</option>
                             <option value="2">fixedTop</option>
+                            <option value="3">fixedMidTop</option>
                             <option value="4">fixedMid</option>
+                            <option value="5">fixedMidBottom</option>
                             <option value="6">fixedBottom</option>
+                            <option value="7">swingBottom</option>
+                            <option value="8">swingMidBottom</option>
+                            <option value="9">swingMid</option>
+                            <option value="10">swingMidTop</option>
+                            <option value="11">swingTop</option>
+                        </select>
+                    </label>
+                    <label>Quiet
+                        <select id="ac-quiet">
+                            <option value="0">off</option>
+                            <option value="1">mode1</option>
+                            <option value="2">mode2</option>
+                            <option value="3">mode3</option>
                         </select>
                     </label>
                     <label>Lights
@@ -100,18 +141,56 @@
                             <option value="0">off</option>
                         </select>
                     </label>
+                    <label>X-Fan (blow)
+                        <select id="ac-blow">
+                            <option value="1">on</option>
+                            <option value="0">off</option>
+                        </select>
+                    </label>
+                    <label>Health (ionizer)
+                        <select id="ac-health">
+                            <option value="1">on</option>
+                            <option value="0">off</option>
+                        </select>
+                    </label>
+                    <label>Sleep
+                        <select id="ac-sleep">
+                            <option value="1">on</option>
+                            <option value="0">off</option>
+                        </select>
+                    </label>
+                    <label>Turbo
+                        <select id="ac-turbo">
+                            <option value="1">on</option>
+                            <option value="0">off</option>
+                        </select>
+                    </label>
+                    <label>Power save
+                        <select id="ac-powersave">
+                            <option value="1">on</option>
+                            <option value="0">off</option>
+                        </select>
+                    </label>
+                    <label>Safety heating (8&nbsp;°C)
+                        <select id="ac-safety">
+                            <option value="1">on</option>
+                            <option value="0">off</option>
+                        </select>
+                    </label>
+                </div>
+
+                <h2>Room temperature (internal sensor)</h2>
+                <p class="hint">The unit's own temperature reading (vendor <code>TemSen</code>).</p>
+                <div class="row">
+                    <input type="number" id="tempInput" value="25" min="-10" max="50" step="0.5" />
+                    <button id="tempBtn">Set</button>
                 </div>
             </div>
         </section>
 
         <section class="panel">
-            <h2>Override room temperature</h2>
-            <div class="row">
-                <input type="number" id="tempInput" value="25" min="-10" max="50" step="0.5" />
-                <button id="tempBtn">Set</button>
-            </div>
-
             <h2>Fault injection</h2>
+            <p class="hint">Simulate a flaky Wi-Fi link to the unit, to test client resilience.</p>
             <div class="grid">
                 <label>Drop probability (0-1)
                     <input type="number" id="dropProb" step="0.05" min="0" max="1" />
@@ -128,27 +207,7 @@
             </div>
             <button id="faultsBtn">Apply faults</button>
 
-            <h2>Mock sensors (for example flow)</h2>
-            <div class="grid">
-                <label>SOC (%)
-                    <input type="number" id="s-soc" step="1" min="0" max="100" />
-                </label>
-                <label>Battery voltage (V)
-                    <input type="number" id="s-volt" step="0.1" min="0" max="60" />
-                </label>
-                <label>Battery state (0=idle 1=charging 2=discharging)
-                    <input type="number" id="s-bstate" step="1" min="0" max="2" />
-                </label>
-                <label>Inside temp (°C)
-                    <input type="number" id="s-inside" step="0.1" min="-20" max="60" />
-                </label>
-                <label>Outside temp (°C)
-                    <input type="number" id="s-outside" step="0.1" min="-30" max="60" />
-                </label>
-            </div>
-            <button id="sensorsBtn">Apply sensors</button>
-
-            <h2>Stats</h2>
+            <h2>Protocol stats</h2>
             <pre id="stats">{}</pre>
         </section>
     </main>
