@@ -41,6 +41,50 @@ function renderState(s) {
     toggleBadge('badge-powersave', f.powerSave === 'on');
 
     renderControls(s);
+    renderLastChange(s.lastChange);
+}
+
+const SOURCE_LABELS = {
+    udp: 'Gree UDP protocol',
+    http: 'HTTP API',
+    sim: 'Simulator',
+};
+let lastChangeAt = null;
+
+/**
+ * Show the origin of the most recent state change and briefly flash when a
+ * new change arrives, so flow-driven changes are distinguishable from
+ * direct dashboard actions.
+ * @param lc
+ */
+function renderLastChange(lc) {
+    const pill = $('#lastchange-src');
+    const detail = $('#lastchange-detail');
+    if (!pill || !detail) return;
+    if (!lc) {
+        pill.textContent = '—';
+        pill.className = 'src-pill';
+        detail.textContent = '';
+        return;
+    }
+    pill.textContent = SOURCE_LABELS[lc.source] || lc.source;
+    pill.className = 'src-pill ' + lc.source;
+    const t = new Date(lc.at);
+    const hh = String(t.getHours()).padStart(2, '0');
+    const mm = String(t.getMinutes()).padStart(2, '0');
+    const ss = String(t.getSeconds()).padStart(2, '0');
+    detail.textContent = `· ${hh}:${mm}:${ss} · ${(lc.keys || []).join(', ')}`;
+
+    if (lc.at !== lastChangeAt) {
+        lastChangeAt = lc.at;
+        const row = document.querySelector('.lastchange');
+        if (row) {
+            row.classList.remove('flash');
+            // reflow to restart the animation
+            void row.offsetWidth;
+            row.classList.add('flash');
+        }
+    }
 }
 
 /**

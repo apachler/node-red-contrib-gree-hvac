@@ -27,10 +27,21 @@ class DeviceState extends EventEmitter {
     constructor(initial = {}) {
         super();
         this._state = { ...DEFAULT_STATE, ...initial };
+        /**
+         * Origin of the most recent state change, so consumers (the
+         * dashboard) can tell apart changes driven by the Node-RED flow
+         * over UDP from changes made directly on the dashboard.
+         * @type {{source: string, at: number, keys: string[]} | null}
+         */
+        this._lastChange = null;
     }
 
     get all() {
         return { ...this._state };
+    }
+
+    get lastChange() {
+        return this._lastChange ? { ...this._lastChange } : null;
     }
 
     getCols(cols) {
@@ -39,7 +50,7 @@ class DeviceState extends EventEmitter {
         );
     }
 
-    apply(opts, values) {
+    apply(opts, values, source = 'sim') {
         const changed = {};
         for (let i = 0; i < opts.length; i++) {
             const key = opts[i];
@@ -55,23 +66,40 @@ class DeviceState extends EventEmitter {
             }
         }
         if (Object.keys(changed).length) {
-            this.emit('change', { changed, state: { ...this._state } });
+            this._lastChange = {
+                source,
+                at: Date.now(),
+                keys: Object.keys(changed),
+            };
+            this.emit('change', {
+                changed,
+                state: { ...this._state },
+                source,
+                at: this._lastChange.at,
+            });
         }
         return changed;
     }
 
-    set(key, value) {
+    set(key, value, source = 'sim') {
         const vendorKey = VENDOR_CODES[key] || key;
-        this.apply([vendorKey], [value]);
+        this.apply([vendorKey], [value], source);
     }
 
-    setCurrentTemperature(celsius) {
+    setCurrentTemperature(celsius, source = 'sim') {
         const encoded = celsius + 40;
         if (this._state.TemSen !== encoded) {
             this._state.TemSen = encoded;
+            this._lastChange = {
+                source,
+                at: Date.now(),
+                keys: ['TemSen'],
+            };
             this.emit('change', {
                 changed: { TemSen: encoded },
                 state: { ...this._state },
+                source,
+                at: this._lastChange.at,
             });
         }
     }

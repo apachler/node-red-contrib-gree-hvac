@@ -288,7 +288,11 @@ class Simulator extends EventEmitter {
     _respondCmd(inner, rinfo) {
         const opts = Array.isArray(inner.opt) ? inner.opt : [];
         const vals = Array.isArray(inner.p) ? inner.p : [];
-        this._state.apply(opts, vals);
+        // A 'cmd' arrives over the Gree UDP protocol from any client (the
+        // Node-RED flow's gree-hvac node, gree-hvac-client, or a real app).
+        // Tag the change as protocol-driven so the dashboard can tell it
+        // apart from a direct action taken on the dashboard itself.
+        this._state.apply(opts, vals, 'udp');
         const payload = {
             t: 'res',
             mac: this.cid,

@@ -56,6 +56,17 @@ section { background: var(--panel); border: 1px solid #262b36; border-radius: 12
 .setpoint .unit { font-size: 28px; color: var(--muted); margin-left: 4px; }
 .current { color: var(--muted); margin-top: 6px; }
 .mode, .swing { color: var(--fg); margin-top: 12px; font-size: 13px; }
+.lastchange { color: var(--muted); margin-top: 12px; font-size: 12px; }
+.src-pill {
+    display: inline-block; padding: 2px 8px; border-radius: 999px;
+    font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase;
+    background: #2a2f3a; color: var(--muted); border: 1px solid #2f3543;
+}
+.src-pill.udp { background: rgba(76,201,240,0.16); color: var(--accent); border-color: rgba(76,201,240,0.45); }
+.src-pill.http { background: rgba(45,212,122,0.15); color: var(--on); border-color: rgba(45,212,122,0.4); }
+.src-pill.sim { background: #2a2f3a; color: var(--muted); }
+@keyframes flash { from { background: rgba(245,158,11,0.35); } to { background: transparent; } }
+.lastchange.flash { animation: flash 1.1s ease-out; border-radius: 6px; }
 .features { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 .badge {
     font-size: 10px; letter-spacing: 0.6px; text-transform: uppercase;

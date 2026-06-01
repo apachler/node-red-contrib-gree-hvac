@@ -167,7 +167,7 @@ class Dashboard extends EventEmitter {
                     opts.push(k);
                     vals.push(body[k]);
                 }
-                this.simulator.state.apply(opts, vals);
+                this.simulator.state.apply(opts, vals, 'http');
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify(this._stateSnapshot()));
             })
@@ -184,7 +184,7 @@ class Dashboard extends EventEmitter {
                 if (!Number.isFinite(celsius)) {
                     throw new Error('expected { "celsius": <number> }');
                 }
-                this.simulator.state.setCurrentTemperature(celsius);
+                this.simulator.state.setCurrentTemperature(celsius, 'http');
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify(this._stateSnapshot()));
             })
@@ -300,6 +300,8 @@ class Dashboard extends EventEmitter {
             friendly,
             // Decode current temperature for display
             currentTemperatureC: raw.TemSen === 0 ? null : raw.TemSen - 40,
+            // Origin of the most recent change (flow / dashboard / sim)
+            lastChange: this.simulator.state.lastChange,
         };
     }
 }
