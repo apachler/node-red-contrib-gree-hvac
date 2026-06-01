@@ -64,8 +64,8 @@ class FakeClient extends EventEmitter {
 FakeClient.reset();
 
 /**
- *
  * @param overrides
+ * @returns {ConnectionManager}
  */
 function makeManager(overrides) {
     return new ConnectionManager({
@@ -89,8 +89,8 @@ function makeManager(overrides) {
 }
 
 /**
- *
  * @param ms
+ * @returns {Promise<void>}
  */
 function tick(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));

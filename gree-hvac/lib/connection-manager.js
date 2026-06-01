@@ -128,6 +128,7 @@ class ConnectionManager extends EventEmitter {
 
     /**
      * Snapshot for diagnostics output / runtime context.
+     * @returns {object} metrics snapshot
      */
     metrics() {
         const now = Date.now();

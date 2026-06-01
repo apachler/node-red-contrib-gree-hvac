@@ -1,0 +1,46 @@
+# Customizes the categorized changelog GitHub auto-generates for each
+# Release. Triggered by --generate-notes (or the "Generate release notes"
+# button in the Releases UI). Categorization works off PR labels — the
+# auto-labeler workflow (.github/workflows/labeler.yml) assigns these
+# from each PR's title prefix (feat:, fix:, chore:, ...).
+changelog:
+  exclude:
+    labels:
+      - skip-changelog
+    authors:
+      - dependabot
+      - dependabot[bot]
+      - github-actions
+      - github-actions[bot]
+  categories:
+    - title: "🚀 Features"
+      labels:
+        - feat
+        - feature
+        - enhancement
+    - title: "🐛 Bug Fixes"
+      labels:
+        - fix
+        - bug
+        - bugfix
+    - title: "🧪 Tests"
+      labels:
+        - test
+        - tests
+    - title: "📚 Documentation"
+      labels:
+        - docs
+        - documentation
+    - title: "🔧 CI / Build"
+      labels:
+        - ci
+        - build
+    - title: "🧰 Maintenance"
+      labels:
+        - chore
+        - refactor
+        - dependencies
+        - style
+    - title: "Other Changes"
+      labels:
+        - "*"

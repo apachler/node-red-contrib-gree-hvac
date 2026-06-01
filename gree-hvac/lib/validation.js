@@ -17,8 +17,8 @@ const NUMERIC_PROPERTIES = new Set(['temperature', 'currentTemperature']);
  * unknown key to the device confuses the WiFi module and can contribute
  * to wedging it. Known-enum properties whose value isn't in the enum are
  * also dropped. Numeric properties pass through any finite number.
- * @param {Object<string, unknown>} input
- * @returns {{ properties: Object<string, unknown>, warnings: string[] }}
+ * @param {{[key: string]: unknown}} input
+ * @returns {{ properties: {[key: string]: unknown}, warnings: string[] }}
  */
 function validateProperties(input) {
     const properties = {};
