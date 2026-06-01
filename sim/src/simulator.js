@@ -47,6 +47,8 @@ class Simulator extends EventEmitter {
             commands: 0,
             errors: 0,
         };
+        this._startedAt = Date.now();
+        this._lastActivityAt = null;
 
         this._state.on('change', payload => this.emit('state-change', payload));
     }
@@ -58,7 +60,22 @@ class Simulator extends EventEmitter {
         return this._faults;
     }
     get stats() {
-        return { ...this._stats };
+        const out = this._stats.packetsTx + this._stats.packetsDropped;
+        return {
+            ...this._stats,
+            dropRate:
+                out > 0
+                    ? +((this._stats.packetsDropped / out) * 100).toFixed(1)
+                    : 0,
+            uptimeSeconds: Math.round((Date.now() - this._startedAt) / 1000),
+            lastActivityAt: this._lastActivityAt,
+        };
+    }
+
+    resetStats() {
+        for (const k of Object.keys(this._stats)) this._stats[k] = 0;
+        this._startedAt = Date.now();
+        this._lastActivityAt = null;
     }
     get deviceKey() {
         return this._deviceKey;
@@ -103,6 +120,7 @@ class Simulator extends EventEmitter {
 
     _onMessage(buf, rinfo) {
         this._stats.packetsRx++;
+        this._lastActivityAt = Date.now();
         let msg;
         try {
             msg = JSON.parse(buf.toString('utf8'));

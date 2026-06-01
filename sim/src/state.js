@@ -14,7 +14,7 @@ const DEFAULT_STATE = {
     Blo: 1,
     Health: 0,
     SwhSlp: 0,
-    Lig: 1,
+    Lig: 0,
     SwingLfRig: 0,
     SwUpDn: 0,
     Quiet: 0,

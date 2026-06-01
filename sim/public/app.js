@@ -151,6 +151,41 @@ function toggleBadge(id, on) {
  * @param stats
  */
 function renderStats(stats) {
+    const summary = $('#stat-summary');
+    if (summary) {
+        const age = stats.lastActivityAt
+            ? Math.round((Date.now() - stats.lastActivityAt) / 1000) + 's ago'
+            : '—';
+        const rows = [
+            ['Uptime', (stats.uptimeSeconds || 0) + 's', false],
+            [
+                'Drop rate',
+                (stats.dropRate || 0) + '%',
+                (stats.dropRate || 0) > 0,
+            ],
+            [
+                'Rx / Tx',
+                (stats.packetsRx || 0) + ' / ' + (stats.packetsTx || 0),
+                false,
+            ],
+            [
+                'Dropped',
+                stats.packetsDropped || 0,
+                (stats.packetsDropped || 0) > 0,
+            ],
+            ['Commands', stats.commands || 0, false],
+            ['Errors', stats.errors || 0, (stats.errors || 0) > 0],
+            ['Last activity', age, false],
+        ];
+        summary.innerHTML = rows
+            .map(
+                ([k, v, warn]) =>
+                    `<span class="pair"><span class="k">${k}</span><span class="v${
+                        warn ? ' warn' : ''
+                    }">${v}</span></span>`
+            )
+            .join('');
+    }
     $('#stats').textContent = JSON.stringify(stats, null, 2);
 }
 
@@ -215,6 +250,15 @@ async function init() {
                 body: JSON.stringify({ celsius: c }),
             });
             renderState(s);
+        } catch (e) {
+            alert('failed: ' + e.message);
+        }
+    });
+
+    $('#statsResetBtn').addEventListener('click', async () => {
+        try {
+            const s = await fetchJson('/api/stats/reset', { method: 'POST' });
+            renderStats(s);
         } catch (e) {
             alert('failed: ' + e.message);
         }

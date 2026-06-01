@@ -87,6 +87,13 @@ class Dashboard extends EventEmitter {
 
             if (route === 'GET /api/state') return this._sendState(res);
             if (route === 'GET /api/stats') return this._sendStats(res);
+            if (route === 'POST /api/stats/reset') {
+                this.simulator.resetStats();
+                this._broadcast('stats', this.simulator.stats);
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(this.simulator.stats));
+                return;
+            }
             if (route === 'GET /api/faults') return this._sendFaults(res);
             if (route === 'POST /api/faults')
                 return this._updateFaults(req, res);
