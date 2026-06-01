@@ -55,3 +55,65 @@ Usage
 Example
 -------
 ![example](https://raw.githubusercontent.com/inwaar/node-red-contrib-gree-hvac/master/images/example.png)
+
+Development with the simulator
+------------------------------
+
+The repo ships a software simulator of a Gree HVAC device, so you can develop and test the nodes without owning hardware. The simulator implements the same UDP protocol (AES-ECB / AES-GCM) the real device speaks, exposes a small HTTP dashboard that visualizes the AC state in real time, and serves mock Victron / Ruuvi sensor values so the bundled example flow runs end-to-end.
+
+### Requirements
+
+- Docker + Docker Compose v2 (`docker compose` subcommand)
+- Node.js 18+ on the host (only for running the e2e tests; the containers ship their own Node)
+
+### Bring up the stack
+
+```bash
+npm run sim:up      # docker compose up -d --build
+```
+
+This starts two services:
+
+| Service        | URL                                | What it is                                            |
+| -------------- | ---------------------------------- | ----------------------------------------------------- |
+| `gree-sim`     | http://localhost:8080              | Simulator dashboard (live AC state, fault injection, mock sensor knobs) |
+| `gree-sim`     | udp://localhost:7000               | Gree protocol endpoint (also reachable in-cluster as `gree.lan`) |
+| `node-red`     | http://localhost:1880              | Node-RED with the contrib nodes + the example flow pre-loaded |
+
+The sim container is aliased as `gree.lan` on the docker network, so the example flow's `gree-hvac-config` (which targets `gree.lan`) works without modification.
+
+Tail logs and tear down:
+
+```bash
+npm run sim:logs
+npm run sim:down    # also removes the network and the Node-RED userdir volume
+```
+
+### Run the tests
+
+**Unit tests of the simulator itself** (no docker required):
+
+```bash
+npm run test:sim
+```
+
+**End-to-end tests** against the live compose stack — boots the stack, exercises the simulator over UDP using the real `gree-hvac-client`, drives the deployed Node-RED flow via its admin API, injects packet drops to verify the connection-manager's recovery, and tears the stack down:
+
+```bash
+npm run test:e2e
+```
+
+Useful env vars while iterating:
+
+- `E2E_SKIP_BUILD=1` — reuse the existing images (skip `docker compose build`)
+- `E2E_KEEP_UP=1` — leave the stack running after the tests finish so you can poke at it
+
+### What's actually being tested
+
+| Test file                                  | What it covers                                                                                                   |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `sim/test/simulator.test.js`               | Wire-level: discovery, bind, status, cmd, fault injection — without involving the contrib nodes                  |
+| `sim/test/client-roundtrip.test.js`        | Real `gree-hvac-client` connecting to the in-process simulator over loopback                                     |
+| `test/e2e/sim.e2e.test.js`                 | Dashboard HTTP API + client round-trip against the dockerized sim                                                |
+| `test/e2e/nodered.e2e.test.js`             | Node-RED admin API: flow deployed, `gree-hvac-config` host wired to `gree.lan`, manual switch + button flow drives the sim's AC state |
+| `test/e2e/fault-recovery.e2e.test.js`      | Sets `dropEvery: 2` on the sim, verifies the client still surfaces status updates                                |
