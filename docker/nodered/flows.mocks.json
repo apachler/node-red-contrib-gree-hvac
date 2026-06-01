@@ -302,7 +302,7 @@
         "height": 1,
         "name": "Stored in sim",
         "label": "Stored in sim:",
-        "format": "SOC {{msg.payload.soc}}% · {{msg.payload.batteryVoltage}}V · state {{msg.payload.batterySystemStateNum}} · in {{msg.payload.insideC}}°C · out {{msg.payload.outsideC}}°C",
+        "format": "{{msg.payload}}",
         "layout": "col-center",
         "style": false,
         "font": "",
@@ -350,6 +350,24 @@
         "x": 660,
         "y": 400,
         "wires": [
+            ["ss-fmt"]
+        ]
+    },
+    {
+        "id": "ss-fmt",
+        "type": "function",
+        "z": "mocks-tab",
+        "name": "Format stored values",
+        "func": "// Build a plain display string. Dashboard 2.0 ui-text renders the whole\n// payload object as '[object Object]' if you reference nested fields in\n// its format template, so we format here and show {{msg.payload}}.\nvar s = msg.payload || {};\nvar f = function (v) { return (v === undefined || v === null) ? '?' : v; };\nmsg.payload = 'SOC ' + f(s.soc) + '% · ' + f(s.batteryVoltage) + 'V · state ' + f(s.batterySystemStateNum) + ' · in ' + f(s.insideC) + '°C · out ' + f(s.outsideC) + '°C';\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 660,
+        "y": 520,
+        "wires": [
             ["ss-result"]
         ]
     },
@@ -394,7 +412,7 @@
         "x": 340,
         "y": 620,
         "wires": [
-            ["ss-fanout", "ss-result"]
+            ["ss-fanout", "ss-fmt"]
         ]
     },
     {
