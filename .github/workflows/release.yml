@@ -18,13 +18,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Ensure the tag is on master
+      - name: Ensure the tag is on master (else delete it)
         run: |
           git fetch --no-tags origin master
           if git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
             echo "Tag $GITHUB_REF_NAME ($GITHUB_SHA) is on master — releasing."
           else
-            echo "::error::Tag $GITHUB_REF_NAME is not on master; only tags on master trigger a release."
+            echo "::error::Tag $GITHUB_REF_NAME is not on master. Tags may only exist on master — deleting it."
+            git push --delete origin "$GITHUB_REF_NAME" || true
             exit 1
           fi
 
