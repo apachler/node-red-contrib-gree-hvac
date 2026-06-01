@@ -24,9 +24,24 @@ The node also publishes a live metrics snapshot under `context().get('gree')` (s
 Install
 -------
 
-Run the following command in your Node-RED user directory - typically `~/.node-red`
+### From npm (recommended)
 
-`npm install node-red-contrib-gree-hvac`
+Run the following command in your Node-RED user directory — typically `~/.node-red`:
+
+```
+npm install node-red-contrib-gree-hvac
+```
+
+### From a GitHub Release tarball
+
+Each GitHub Release ships a packaged `.tgz` you can install directly without going through npm. This is useful for air-gapped Node-RED instances or for pinning to a specific commit before it appears in the npm registry.
+
+```
+cd ~/.node-red
+npm install https://github.com/inwaar/node-red-contrib-gree-hvac/releases/download/v<version>/node-red-contrib-gree-hvac-<version>.tgz
+```
+
+Or download the `.tgz` from the [Releases page](https://github.com/inwaar/node-red-contrib-gree-hvac/releases) and run `npm install ./node-red-contrib-gree-hvac-<version>.tgz` from your `~/.node-red` directory. Restart Node-RED after installation.
 
 Usage
 -----

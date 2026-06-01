@@ -49,6 +49,11 @@ releases page.
 - **`engines.node`** and `node-red.version` declared in `package.json`.
 - **Dependabot** config for weekly npm updates (with a grouped PR for
   devDependencies) and monthly GitHub Actions updates.
+- **GitHub Release tarballs**: every release now also publishes the
+  packaged `.tgz` as a GitHub Release asset, so it can be installed
+  directly into Node-RED without going through the npm registry —
+  useful for air-gapped Node-RED instances. See the README for the
+  install command.
 
 ### Changed
 

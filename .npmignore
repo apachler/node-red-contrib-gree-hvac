@@ -3,6 +3,9 @@
 .eslintrc.js
 .prettierrc
 .gitignore
+.releaserc.json
+images/
+release/
 sandbox/
 test/
 node_modules/
