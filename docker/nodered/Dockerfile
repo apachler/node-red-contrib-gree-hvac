@@ -7,12 +7,18 @@ USER root
 WORKDIR /opt/contrib
 
 # Copy the local package source. Excludes node_modules / test artefacts
-# via the .dockerignore at the repo root.
+# via the .dockerignore at the repo root. The Node-RED node entry points
+# are referenced from package.json's "node-red.nodes" map — there is no
+# index.js in this package.
 COPY --chown=node-red:node-red package.json package-lock.json* ./
 COPY --chown=node-red:node-red gree-hvac ./gree-hvac
-COPY --chown=node-red:node-red index.js ./index.js
 
 RUN npm install --omit=dev --no-audit --no-fund && npm cache clean --force
+
+# nodemon is used by the dev override (docker-compose.dev.yml) to restart
+# Node-RED when files in the bind-mounted contrib package change. Harmless
+# in non-dev mode — it sits unused.
+RUN npm install -g --no-audit --no-fund nodemon@3 && npm cache clean --force
 
 WORKDIR /data
 

@@ -89,6 +89,19 @@ npm run sim:logs
 npm run sim:down    # also removes the network and the Node-RED userdir volume
 ```
 
+### Hot-reload while iterating on the nodes
+
+`npm run sim:dev` brings the stack up with the host's `gree-hvac/` source bind-mounted over the image's installed copy and Node-RED wrapped in `nodemon`, so edits to `gree-hvac/*.js` or `gree-hvac/*.html` trigger a runtime restart within ~2 seconds:
+
+```bash
+npm run sim:dev          # foreground; Ctrl+C to stop
+npm run sim:dev:down     # tear down the dev stack
+```
+
+What's mounted: `./gree-hvac/` → `/data/node_modules/node-red-contrib-gree-hvac/gree-hvac/` (read-only) and `./package.json` → the same package's package.json. Flow edits made through the editor still persist into Node-RED's internal `/data` volume.
+
+Node-RED does not hot-reload nodes in place — `nodemon` restarts the whole runtime on change, so the editor will briefly lose its WebSocket and reconnect. The browser tab survives the restart; just re-deploy if you were mid-edit. Use `npm run sim:up` (the production-like mode) when you want stable behavior for the e2e suite or for letting flows run unattended.
+
 ### Run the tests
 
 **Unit tests of the simulator itself** (no docker required):

@@ -28,6 +28,8 @@
     "sim:up": "docker compose up -d --build",
     "sim:down": "docker compose down -v --remove-orphans",
     "sim:logs": "docker compose logs -f",
+    "sim:dev": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build",
+    "sim:dev:down": "docker compose -f docker-compose.yml -f docker-compose.dev.yml down -v --remove-orphans",
     "nd": "node-red -u sandbox",
     "watch": "npm-watch nd"
   },
