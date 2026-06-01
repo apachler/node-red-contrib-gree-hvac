@@ -1,0 +1,48 @@
+name: Auto-tag on version bump
+
+# When master gets a new package.json version (e.g. after a release PR is
+# merged), create and push the matching v<version> tag. The tag then drives
+# the Release workflow (release.yml), which verifies the tag is on master.
+#
+# NOTE: for the pushed tag to trigger the Release workflow, the push must use
+# a PAT (a tag pushed with the default GITHUB_TOKEN does NOT start further
+# workflows). Add a fine-grained PAT with "contents: write" as the secret
+# RELEASE_PAT. Without it the tag is still created, but you must run the
+# Release workflow manually (or re-push the tag) to publish.
+on:
+  push:
+    branches: [master]
+    paths: ["package.json"]
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    name: Tag package.json version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+      - name: Create + push v<version> if it isn't tagged yet
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          case "$VERSION" in
+            "" | "0.0.0-development")
+              echo "No release version set in package.json ($VERSION) — skipping."
+              exit 0
+              ;;
+          esac
+          TAG="v$VERSION"
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists — nothing to do."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+          echo "Created and pushed $TAG"
