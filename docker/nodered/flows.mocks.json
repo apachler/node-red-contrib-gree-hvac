@@ -4,7 +4,7 @@
         "type": "tab",
         "label": "🧪 Mocks (sim only)",
         "disabled": false,
-        "info": "Pumps mock Victron + Ruuvi sensor values from the simulator container into the 'Daten sammeln' function in the main flow. This tab replaces the role of the Victron + Ruuvi input nodes when there is no Venus OS / dbus available.\n\nReads values from the simulator's HTTP API:\n  GET http://gree.lan:8080/api/sensors\n\nFor the dashboard / control logic to react, set values on the simulator dashboard at http://localhost:8080/."
+        "info": "Pumps mock Victron + Ruuvi sensor values from the simulator container into the 'Collect Data' function in the main flow. This tab replaces the role of the Victron + Ruuvi input nodes when there is no Venus OS / dbus available.\n\nReads values from the simulator's HTTP API:\n  GET http://gree.lan:8080/api/sensors\n\nFor the dashboard / control logic to react, set values on the simulator dashboard at http://localhost:8080/, or use the 'Sim Sensors' dashboard page."
     },
     {
         "id": "mock-tick",
@@ -54,7 +54,7 @@
         "type": "function",
         "z": "mocks-tab",
         "name": "Fan out to Daten sammeln",
-        "func": "// Receives { soc, batteryVoltage, batterySystemStateNum, insideC, outsideC }\n// from the simulator's /api/sensors endpoint and emits one message per\n// sensor with a `path` field that matches the dispatch logic in the\n// 'Daten sammeln' function (which keys off substring matches in msg.path).\nvar s = msg.payload || {};\nif (typeof s !== 'object') {\n    node.warn('expected object payload from /api/sensors, got ' + typeof s);\n    return null;\n}\n\nif (typeof s.soc === 'number') {\n    node.send({ path: 'Battery SOC', payload: s.soc });\n}\nif (typeof s.batterySystemStateNum === 'number') {\n    node.send({ path: 'Battery State', payload: s.batterySystemStateNum });\n}\nif (typeof s.batteryVoltage === 'number') {\n    node.send({ path: 'Battery Voltage', payload: s.batteryVoltage });\n}\nif (typeof s.insideC === 'number') {\n    node.send({ path: 'Ruuvi Innen', payload: s.insideC });\n}\nif (typeof s.outsideC === 'number') {\n    node.send({ path: 'Ruuvi Außen', payload: s.outsideC });\n}\nnode.status({ fill: 'green', shape: 'dot', text: 'pumped ' + new Date().toISOString().slice(11,19) });\nreturn null;",
+        "func": "// Receives { soc, batteryVoltage, batterySystemStateNum, insideC, outsideC }\n// from the simulator's /api/sensors endpoint and emits one message per\n// sensor with a `path` field that matches the dispatch logic in the\n// 'Collect Data' function (which keys off substring matches in msg.path).\nvar s = msg.payload || {};\nif (typeof s !== 'object') {\n    node.warn('expected object payload from /api/sensors, got ' + typeof s);\n    return null;\n}\n\nif (typeof s.soc === 'number') {\n    node.send({ path: 'Battery SOC', payload: s.soc });\n}\nif (typeof s.batterySystemStateNum === 'number') {\n    node.send({ path: 'Battery State', payload: s.batterySystemStateNum });\n}\nif (typeof s.batteryVoltage === 'number') {\n    node.send({ path: 'Battery Voltage', payload: s.batteryVoltage });\n}\nif (typeof s.insideC === 'number') {\n    node.send({ path: 'Ruuvi Inside', payload: s.insideC });\n}\nif (typeof s.outsideC === 'number') {\n    node.send({ path: 'Ruuvi Outside', payload: s.outsideC });\n}\nnode.status({ fill: 'green', shape: 'dot', text: 'pumped ' + new Date().toISOString().slice(11,19) });\nreturn null;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -210,15 +210,15 @@
         "id": "sensor-form-load",
         "type": "inject",
         "z": "mocks-tab",
-        "name": "Load current on open",
-        "info": "Prefills the form with the simulator's current sensor values so the page reflects reality when opened. Runs once at startup and then every 30s.",
+        "name": "Load current on startup",
+        "info": "Prefills the form with the simulator's current sensor values once at startup, so the fields start from reality rather than hard-coded defaults. It does NOT refresh periodically — a periodic prefill would overwrite values while you are typing. The :8080 dashboard is the live view; this form is for setting values.",
         "props": [
             { "p": "payload" }
         ],
-        "repeat": "30",
+        "repeat": "",
         "crontab": "",
         "once": true,
-        "onceDelay": "1.5",
+        "onceDelay": "2",
         "topic": "",
         "payload": "",
         "payloadType": "date",
