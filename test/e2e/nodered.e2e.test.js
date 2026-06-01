@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const { ensureStack, teardownStack } = require('./global-setup');
-const { get, postJson, waitFor, sleep } = require('./harness');
+const { get, postJson, waitFor } = require('./harness');
 
 const NR = 'http://127.0.0.1:1880';
 const SIM = 'http://127.0.0.1:8080';
@@ -59,61 +59,54 @@ test('mocks flow drives sim state via the dashboard', async () => {
     assert.equal(state.friendly.temperature, 24);
 });
 
-test('manual switch + button in user flow drives the gree node end-to-end', async () => {
-    // 1. flip the dashboard "manual mode" switch by writing the ui-switch's
-    //    backing message into the node-red runtime via the inject API
-    await injectViaNode('8594a4df82975e15', { payload: true, topic: 'mode' });
-    await sleep(500);
-    // 2. click "Klima EIN" button (ui-button node id 1f1084ee1379f036)
-    await injectViaNode('1f1084ee1379f036', { payload: 'on', topic: 'manual' });
+test('deployed Node-RED flow drives the gree node end-to-end', async () => {
+    // The dashboard ui-switch/ui-button nodes can't be triggered over the
+    // admin API (only plain inject nodes expose /inject), so the mocks tab
+    // ships two inject nodes wired straight into the Gree node. Triggering
+    // them exercises the real path: Node-RED flow -> gree-hvac node -> UDP
+    // -> simulator.
 
-    // 3. Watch the sim dashboard for the AC to come on; the user flow's
-    //    "Manual Klima Handler" emits a {power:'on', mode:'cool', ...} message
-    //    into the gree-hvac node, which talks to the sim over UDP and
-    //    flips the sim's state.
+    // Start from a known-off state.
+    await postJson(`${SIM}/api/set`, { Pow: 0 });
+
+    // 1. Trigger "Test: AC ON" -> Gree node sends {power:'on', mode:'cool', ...}
+    await triggerInject('mock-test-ac-on');
     await waitFor(
         async () => {
-            const r = await get(`${SIM}/api/state`);
-            const s = JSON.parse(r.body);
+            const s = JSON.parse((await get(`${SIM}/api/state`)).body);
             return s.friendly.power === 'on' && s.friendly.mode === 'cool';
         },
         {
             timeout: 30000,
             interval: 1000,
-            label: 'sim AC power on after manual button',
+            label: 'sim AC power on after inject',
         }
     );
 
-    // 4. press "Klima AUS"
-    await injectViaNode('7349dcb0f80c476b', {
-        payload: 'off',
-        topic: 'manual',
-    });
+    // 2. Trigger "Test: AC OFF"
+    await triggerInject('mock-test-ac-off');
     await waitFor(
         async () => {
-            const r = await get(`${SIM}/api/state`);
-            const s = JSON.parse(r.body);
+            const s = JSON.parse((await get(`${SIM}/api/state`)).body);
             return s.friendly.power === 'off';
         },
         {
             timeout: 30000,
             interval: 1000,
-            label: 'sim AC power off after manual button',
+            label: 'sim AC power off after inject',
         }
     );
 });
 
 /**
- * Trigger a Node-RED node via the admin API as if a user had clicked its
- * inject/button. Uses the documented /inject/:id endpoint, falling back to
- * a POST against the node's input via /eval is not needed because inject
- * and ui-button both expose /inject.
+ * Fire a plain inject node via the Node-RED admin API. The node sends its
+ * own configured payload/topic, so no body is needed.
  * @param nodeId
- * @param msg
+ * @returns {Promise<void>}
  */
-async function injectViaNode(nodeId, msg) {
+async function triggerInject(nodeId) {
     const url = `${NR}/inject/${encodeURIComponent(nodeId)}`;
-    const r = await postJson(url, { __user_inject_props__: [], ...msg });
+    const r = await postJson(url, {});
     if (r.status !== 200 && r.status !== 204) {
         throw new Error(
             `inject ${nodeId} returned ${r.status}: ${r.body.slice(0, 200)}`

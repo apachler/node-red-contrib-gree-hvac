@@ -81,5 +81,51 @@
         "x": 580,
         "y": 160,
         "wires": []
+    },
+    {
+        "id": "mock-test-ac-on",
+        "type": "inject",
+        "z": "mocks-tab",
+        "name": "Test: AC ON",
+        "info": "e2e hook. The dashboard ui-button/ui-switch nodes can't be triggered over the admin /inject API (only plain inject nodes can), so this inject feeds the Gree node directly with an ON command. The e2e suite POSTs to /inject/mock-test-ac-on and asserts the simulator's AC turns on.",
+        "props": [
+            { "p": "payload" },
+            { "p": "topic", "vt": "str" }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "on",
+        "payload": "{\"power\":\"on\",\"mode\":\"cool\",\"temperature\":21,\"fanSpeed\":\"high\"}",
+        "payloadType": "json",
+        "x": 320,
+        "y": 240,
+        "wires": [
+            ["72f57580f5a03db9"]
+        ]
+    },
+    {
+        "id": "mock-test-ac-off",
+        "type": "inject",
+        "z": "mocks-tab",
+        "name": "Test: AC OFF",
+        "info": "e2e hook — feeds the Gree node directly with an OFF command. See 'Test: AC ON'.",
+        "props": [
+            { "p": "payload" },
+            { "p": "topic", "vt": "str" }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "off",
+        "payload": "{\"power\":\"off\"}",
+        "payloadType": "json",
+        "x": 320,
+        "y": 300,
+        "wires": [
+            ["72f57580f5a03db9"]
+        ]
     }
 ]

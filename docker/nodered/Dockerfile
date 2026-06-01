@@ -1,4 +1,4 @@
-FROM nodered/node-red:3.1-18
+FROM nodered/node-red:3.1.15-18
 
 USER root
 
@@ -46,6 +46,13 @@ RUN node /opt/build/merge-flows.js \
         /opt/build/flows.mocks.json \
         /data/flows.json \
     && chown node-red:node-red /data/flows.json
+
+# Reset WORKDIR back to the base image's dir. The official node-red image's
+# ENTRYPOINT is the relative path ./entrypoint.sh, resolved against
+# /usr/src/node-red — leaving WORKDIR at /data breaks it with
+# "stat ./entrypoint.sh: no such file or directory". The userDir stays
+# /data (the entrypoint defaults to it); only the launch CWD matters here.
+WORKDIR /usr/src/node-red
 
 USER node-red
 

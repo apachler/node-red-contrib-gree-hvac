@@ -26,7 +26,7 @@
     "lint:fix": "eslint --fix ./",
     "test": "node --test test/*.test.js",
     "test:sim": "node --test sim/test/*.test.js",
-    "test:e2e": "node --test --test-timeout=600000 test/e2e/*.e2e.test.js",
+    "test:e2e": "node test/e2e/run-e2e.js",
     "sim:up": "docker compose up -d --build",
     "sim:down": "docker compose down -v --remove-orphans",
     "sim:logs": "docker compose logs -f",
