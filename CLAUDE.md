@@ -58,7 +58,9 @@ While iterating on e2e tests: `E2E_SKIP_BUILD=1 E2E_KEEP_UP=1 npm run test:e2e` 
 
 ## Gree protocol cheat-sheet
 
-The wire format lives in `node_modules/gree-hvac-client/src/`. The simulator mirrors it. Quick reference:
+Full human-readable spec (transport, encryption, message flow, every property + value, the TemSen +40 quirk): **`docs/PROTOCOL.md`**. Quick reference below.
+
+The wire format lives in `node_modules/gree-hvac-client/src/`. The simulator mirrors it.
 
 | Step       | Client → Device                                       | Device → Client                              |
 | ---------- | ----------------------------------------------------- | -------------------------------------------- |

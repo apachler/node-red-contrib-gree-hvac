@@ -80,6 +80,10 @@ class Dashboard extends EventEmitter {
                 return this._serveStatic('app.js', res);
             if (route === 'GET /styles.css')
                 return this._serveStatic('styles.css', res);
+            if (route === 'GET /logo.svg')
+                return this._serveStatic('logo.svg', res);
+            if (route === 'GET /favicon.ico')
+                return this._serveStatic('logo.svg', res);
 
             if (route === 'GET /api/state') return this._sendState(res);
             if (route === 'GET /api/stats') return this._sendStats(res);
@@ -118,6 +122,8 @@ class Dashboard extends EventEmitter {
                     ? 'application/javascript; charset=utf-8'
                     : ext === '.css'
                     ? 'text/css; charset=utf-8'
+                    : ext === '.svg'
+                    ? 'image/svg+xml; charset=utf-8'
                     : 'application/octet-stream';
             res.writeHead(200, { 'Content-Type': type });
             res.end(data);

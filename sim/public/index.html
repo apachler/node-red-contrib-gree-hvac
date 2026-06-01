@@ -4,10 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Gree HVAC Simulator</title>
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
     <header>
+        <img class="logo" src="/logo.svg" alt="" width="36" height="36" />
         <h1>Gree HVAC Simulator</h1>
         <div class="meta">
             <span id="dev-name">—</span>
@@ -54,7 +56,7 @@
 
             <div class="controls">
                 <h2>Control AC directly</h2>
-                <p class="hint">Writes straight to the simulator (bypasses Node-RED) — like a remote control on the unit.</p>
+                <p class="hint">Sets the AC state directly on the simulator — like a remote control on the unit.</p>
                 <div class="control-row">
                     <button id="ac-power" class="ctl-power">Toggle power</button>
                     <div class="stepper">

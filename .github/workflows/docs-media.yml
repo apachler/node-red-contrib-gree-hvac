@@ -1,0 +1,58 @@
+name: Docs media
+
+# Renders the README's demo GIF (VHS) and dashboard screenshot (Playwright)
+# on demand and uploads them as artifacts. Manual only — these are heavy and
+# only needed when the dashboard/demo changes.
+on:
+  workflow_dispatch:
+
+jobs:
+  media:
+    name: Render demo GIF + screenshot
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "18.x"
+          cache: "npm"
+
+      - name: Install repo deps
+        run: npm ci
+
+      - name: Build images
+        run: docker compose build
+
+      - name: Render demo GIF (VHS)
+        uses: charmbracelet/vhs-action@v2
+        with:
+          path: docs/demo.tape
+
+      - name: Bring stack up for screenshot
+        run: |
+          npm run sim:up
+          # wait for the sim dashboard to answer
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:8080/api/state >/dev/null && break
+            sleep 2
+          done
+
+      - name: Capture dashboard screenshot (Playwright)
+        run: |
+          npm i --no-save playwright
+          npx playwright install --with-deps chromium
+          node docs/screenshot.mjs
+
+      - name: Tear down
+        if: always()
+        run: npm run sim:down || true
+
+      - name: Upload media
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-media
+          path: |
+            docs/demo.gif
+            docs/sim-dashboard.png
+          if-no-files-found: warn
