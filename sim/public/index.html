@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gree HVAC Simulator</title>
+    <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+    <header>
+        <h1>Gree HVAC Simulator</h1>
+        <div class="meta">
+            <span id="dev-name">—</span>
+            <span class="dot"></span>
+            <span id="dev-cid">—</span>
+            <span class="dot"></span>
+            <span id="dev-cipher">—</span>
+        </div>
+    </header>
+
+    <main>
+        <section class="ac">
+            <div class="display">
+                <div class="power" id="power-pill">OFF</div>
+                <div class="setpoint">
+                    <span id="setpoint-val">--</span><span class="unit">°C</span>
+                </div>
+                <div class="current">
+                    Room: <span id="current-val">--</span>°C
+                </div>
+                <div class="mode">
+                    Mode: <span id="mode-val">--</span> ·
+                    Fan: <span id="fan-val">--</span>
+                </div>
+                <div class="swing">
+                    Swing H: <span id="swingH-val">--</span> ·
+                    V: <span id="swingV-val">--</span>
+                </div>
+                <div class="features">
+                    <span class="badge" id="badge-turbo">turbo</span>
+                    <span class="badge" id="badge-quiet">quiet</span>
+                    <span class="badge" id="badge-sleep">sleep</span>
+                    <span class="badge" id="badge-blow">blow</span>
+                    <span class="badge" id="badge-health">health</span>
+                    <span class="badge" id="badge-light">light</span>
+                    <span class="badge" id="badge-powersave">eco</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2>Override room temperature</h2>
+            <div class="row">
+                <input type="number" id="tempInput" value="25" min="-10" max="50" step="0.5" />
+                <button id="tempBtn">Set</button>
+            </div>
+
+            <h2>Fault injection</h2>
+            <div class="grid">
+                <label>Drop probability (0-1)
+                    <input type="number" id="dropProb" step="0.05" min="0" max="1" />
+                </label>
+                <label>Drop every Nth packet
+                    <input type="number" id="dropEvery" step="1" min="0" />
+                </label>
+                <label>Latency ms
+                    <input type="number" id="latency" step="10" min="0" />
+                </label>
+                <label>Jitter ms
+                    <input type="number" id="jitter" step="10" min="0" />
+                </label>
+            </div>
+            <button id="faultsBtn">Apply faults</button>
+
+            <h2>Mock sensors (for example flow)</h2>
+            <div class="grid">
+                <label>SOC (%)
+                    <input type="number" id="s-soc" step="1" min="0" max="100" />
+                </label>
+                <label>Battery voltage (V)
+                    <input type="number" id="s-volt" step="0.1" min="0" max="60" />
+                </label>
+                <label>Battery state (0=idle 1=charging 2=discharging)
+                    <input type="number" id="s-bstate" step="1" min="0" max="2" />
+                </label>
+                <label>Inside temp (°C)
+                    <input type="number" id="s-inside" step="0.1" min="-20" max="60" />
+                </label>
+                <label>Outside temp (°C)
+                    <input type="number" id="s-outside" step="0.1" min="-30" max="60" />
+                </label>
+            </div>
+            <button id="sensorsBtn">Apply sensors</button>
+
+            <h2>Stats</h2>
+            <pre id="stats">{}</pre>
+        </section>
+    </main>
+
+    <script src="/app.js"></script>
+</body>
+</html>
