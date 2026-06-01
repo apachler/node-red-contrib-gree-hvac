@@ -2,11 +2,16 @@
 
 const $ = sel => document.querySelector(sel);
 
+// Last full state snapshot, so the control widgets know the current vendor
+// values (e.g. to toggle power or step the setpoint relative to "now").
+let lastState = null;
+
 /**
  *
  * @param s
  */
 function renderState(s) {
+    lastState = s;
     $('#dev-name').textContent = s.name;
     $('#dev-cid').textContent = s.cid;
     $('#dev-cipher').textContent = `cipher: ${s.cipher}`;
@@ -34,6 +39,40 @@ function renderState(s) {
     toggleBadge('badge-health', f.health === 'on');
     toggleBadge('badge-light', f.lights === 'on');
     toggleBadge('badge-powersave', f.powerSave === 'on');
+
+    renderControls(s);
+}
+
+/**
+ * Sync the direct-control widgets with the live state.
+ * @param s
+ */
+function renderControls(s) {
+    const v = s.vendor || {};
+    const power = s.friendly.power === 'on';
+    const powerBtn = $('#ac-power');
+    if (powerBtn) {
+        powerBtn.textContent = power ? 'Turn off' : 'Turn on';
+        powerBtn.classList.toggle('ctl-power', power);
+    }
+    setSelect('#ac-mode', v.Mod);
+    setSelect('#ac-fan', v.WdSpd);
+    setSelect('#ac-swingv', v.SwUpDn);
+    setSelect('#ac-lights', v.Lig);
+    const temp = $('#ac-temp-val');
+    if (temp) {
+        temp.textContent =
+            typeof v.SetTem === 'number' ? `${v.SetTem}°C` : '--°C';
+    }
+}
+
+/**
+ * @param sel
+ * @param value
+ */
+function setSelect(sel, value) {
+    const el = $(sel);
+    if (el && value !== undefined && value !== null) el.value = String(value);
 }
 
 /**
@@ -175,6 +214,59 @@ async function init() {
             alert('failed: ' + e.message);
         }
     });
+
+    // --- Direct AC control (writes vendor codes straight to /api/set) ---
+
+    $('#ac-power').addEventListener('click', () => {
+        const on = lastState && lastState.friendly.power === 'on';
+        setAc({ Pow: on ? 0 : 1 });
+    });
+    $('#ac-temp-up').addEventListener('click', () => stepTemp(1));
+    $('#ac-temp-down').addEventListener('click', () => stepTemp(-1));
+    $('#ac-mode').addEventListener('change', e =>
+        setAc({ Mod: Number(e.target.value) })
+    );
+    $('#ac-fan').addEventListener('change', e =>
+        setAc({ WdSpd: Number(e.target.value) })
+    );
+    $('#ac-swingv').addEventListener('change', e =>
+        setAc({ SwUpDn: Number(e.target.value) })
+    );
+    $('#ac-lights').addEventListener('change', e =>
+        setAc({ Lig: Number(e.target.value) })
+    );
+}
+
+/**
+ * Step the setpoint relative to the current value (clamped 16–30°C).
+ * @param delta
+ */
+function stepTemp(delta) {
+    const cur =
+        lastState && typeof lastState.vendor.SetTem === 'number'
+            ? lastState.vendor.SetTem
+            : 24;
+    const next = Math.max(16, Math.min(30, cur + delta));
+    setAc({ SetTem: next });
+}
+
+/**
+ * POST vendor property codes to the simulator's /api/set. The SSE 'state'
+ * event then refreshes the display, but we also render the response so the
+ * UI updates immediately.
+ * @param vendorProps
+ */
+async function setAc(vendorProps) {
+    try {
+        const s = await fetchJson('/api/set', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(vendorProps),
+        });
+        renderState(s);
+    } catch (e) {
+        alert('failed: ' + e.message);
+    }
 }
 
 init();

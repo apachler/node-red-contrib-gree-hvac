@@ -127,5 +127,160 @@
         "wires": [
             ["72f57580f5a03db9"]
         ]
+    },
+    {
+        "id": "sensor-form",
+        "type": "ui-form",
+        "z": "mocks-tab",
+        "name": "Mock sensor form",
+        "label": "Set mock Victron + Ruuvi values",
+        "group": "sim-sensors-group",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "options": [
+            { "label": "Battery SOC (%)", "key": "soc", "type": "number", "required": true, "rows": null },
+            { "label": "Battery voltage (V)", "key": "batteryVoltage", "type": "number", "required": true, "rows": null },
+            { "label": "Battery state (0=idle 1=charging 2=discharging)", "key": "batterySystemStateNum", "type": "number", "required": true, "rows": null },
+            { "label": "Inside temp (°C)", "key": "insideC", "type": "number", "required": true, "rows": null },
+            { "label": "Outside temp (°C)", "key": "outsideC", "type": "number", "required": true, "rows": null }
+        ],
+        "formValue": {
+            "soc": 78,
+            "batteryVoltage": 53.7,
+            "batterySystemStateNum": 1,
+            "insideC": 24.5,
+            "outsideC": 22
+        },
+        "payload": "",
+        "submit": "Apply to simulator",
+        "cancel": "Reset",
+        "split": 4,
+        "className": "",
+        "x": 330,
+        "y": 400,
+        "wires": [
+            ["sensor-form-post"]
+        ]
+    },
+    {
+        "id": "sensor-form-post",
+        "type": "http request",
+        "z": "mocks-tab",
+        "name": "POST /api/sensors",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://gree.lan:8080/api/sensors",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 560,
+        "y": 400,
+        "wires": [
+            ["sensor-form-result"]
+        ]
+    },
+    {
+        "id": "sensor-form-result",
+        "type": "ui-text",
+        "z": "mocks-tab",
+        "group": "sim-sensors-group",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "name": "Applied values",
+        "label": "Stored in simulator:",
+        "format": "SOC {{msg.payload.soc}}% · {{msg.payload.batteryVoltage}}V · state {{msg.payload.batterySystemStateNum}} · in {{msg.payload.insideC}}°C · out {{msg.payload.outsideC}}°C",
+        "layout": "col-center",
+        "style": false,
+        "font": "",
+        "fontSize": 14,
+        "color": "#717171",
+        "className": "",
+        "x": 780,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "sensor-form-load",
+        "type": "inject",
+        "z": "mocks-tab",
+        "name": "Load current on open",
+        "info": "Prefills the form with the simulator's current sensor values so the page reflects reality when opened. Runs once at startup and then every 30s.",
+        "props": [
+            { "p": "payload" }
+        ],
+        "repeat": "30",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "1.5",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 330,
+        "y": 460,
+        "wires": [
+            ["sensor-form-load-fetch"]
+        ]
+    },
+    {
+        "id": "sensor-form-load-fetch",
+        "type": "http request",
+        "z": "mocks-tab",
+        "name": "GET /api/sensors",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://gree.lan:8080/api/sensors",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 560,
+        "y": 460,
+        "wires": [
+            ["sensor-form"]
+        ]
+    },
+    {
+        "id": "sim-sensors-page",
+        "type": "ui-page",
+        "name": "Sim Sensors",
+        "ui": "db-base",
+        "path": "/sim-sensors",
+        "icon": "flask-outline",
+        "layout": "grid",
+        "theme": "db-theme",
+        "breakpoints": [
+            { "name": "Default", "px": "0", "cols": "3" },
+            { "name": "Tablet", "px": "576", "cols": "6" },
+            { "name": "Small Desktop", "px": "768", "cols": "9" },
+            { "name": "Desktop", "px": "1024", "cols": "12" }
+        ],
+        "order": 2,
+        "className": "",
+        "visible": "true",
+        "disabled": "false"
+    },
+    {
+        "id": "sim-sensors-group",
+        "type": "ui-group",
+        "name": "🧪 Mock Victron + Ruuvi (sim only)",
+        "page": "sim-sensors-page",
+        "width": "6",
+        "height": "1",
+        "order": 1,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false"
     }
 ]

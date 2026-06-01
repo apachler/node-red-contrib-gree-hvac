@@ -46,6 +46,55 @@
                     <span class="badge" id="badge-powersave">eco</span>
                 </div>
             </div>
+
+            <div class="controls">
+                <h2>Control AC directly</h2>
+                <p class="hint">Writes straight to the simulator (bypasses Node-RED) — like a remote control on the unit.</p>
+                <div class="control-row">
+                    <button id="ac-power" class="ctl-power">Toggle power</button>
+                    <div class="stepper">
+                        <button id="ac-temp-down" title="Cooler">−</button>
+                        <span id="ac-temp-val">--°C</span>
+                        <button id="ac-temp-up" title="Warmer">+</button>
+                    </div>
+                </div>
+                <div class="control-grid">
+                    <label>Mode
+                        <select id="ac-mode">
+                            <option value="0">auto</option>
+                            <option value="1">cool</option>
+                            <option value="2">dry</option>
+                            <option value="3">fan_only</option>
+                            <option value="4">heat</option>
+                        </select>
+                    </label>
+                    <label>Fan speed
+                        <select id="ac-fan">
+                            <option value="0">auto</option>
+                            <option value="1">low</option>
+                            <option value="2">mediumLow</option>
+                            <option value="3">medium</option>
+                            <option value="4">mediumHigh</option>
+                            <option value="5">high</option>
+                        </select>
+                    </label>
+                    <label>Vertical swing
+                        <select id="ac-swingv">
+                            <option value="0">default</option>
+                            <option value="1">full</option>
+                            <option value="2">fixedTop</option>
+                            <option value="4">fixedMid</option>
+                            <option value="6">fixedBottom</option>
+                        </select>
+                    </label>
+                    <label>Lights
+                        <select id="ac-lights">
+                            <option value="1">on</option>
+                            <option value="0">off</option>
+                        </select>
+                    </label>
+                </div>
+            </div>
         </section>
 
         <section class="panel">
