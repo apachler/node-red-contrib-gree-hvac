@@ -5,8 +5,16 @@
         defaults: {
             name: { value: "Gree HVAC" },
             device: { value: "", type: "gree-hvac-config", required: true },
-            interval: { value: "3", required: true },
-            logLevel: { value: "error", required: true }
+            interval: { value: 4, required: true, validate: RED.validators.number() },
+            pollingTimeout: { value: 8, required: false, validate: RED.validators.number() },
+            connectTimeout: { value: 8, required: false, validate: RED.validators.number() },
+            recoveryDelay: { value: 30, required: false, validate: RED.validators.number() },
+            maxBackoff: { value: 300, required: false, validate: RED.validators.number() },
+            unresponsiveTimeout: { value: 60, required: false, validate: RED.validators.number() },
+            noResponseThreshold: { value: 3, required: false, validate: RED.validators.number() },
+            commandRate: { value: 500, required: false, validate: RED.validators.number() },
+            logLevel: { value: "error", required: true },
+            debug: { value: false }
         },
         inputs: 1,
         outputs: 2,
@@ -24,26 +32,94 @@
     </div>
 
     <div class="form-row">
-        <label for="node-input-device"><i class="icon-tag"></i>Gree HVAC</label>
+        <label for="node-input-device"><i class="icon-tag"></i> Gree HVAC</label>
         <input type="text" id="node-input-device" placeholder="">
     </div>
 
     <div class="form-row">
-        <label for="node-input-device"><i class="icon-tag"></i>Polling interval (sec)</label>
-        <input type="number" id="node-input-interval" placeholder="">
+        <label for="node-input-interval"><i class="icon-tag"></i> Polling interval (s)</label>
+        <input type="number" id="node-input-interval" min="1" step="1" style="width:80px">
     </div>
 
     <div class="form-row">
-        <label for="node-input-logLevel"><i class="icon-tag"></i> Log-level</label>
-        <select id="node-input-logLevel">
+        <label for="node-input-pollingTimeout"><i class="icon-tag"></i> Polling timeout (s)</label>
+        <input type="number" id="node-input-pollingTimeout" min="1" step="1" style="width:80px">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-connectTimeout"><i class="icon-tag"></i> Connect timeout (s)</label>
+        <input type="number" id="node-input-connectTimeout" min="1" step="1" style="width:80px">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-noResponseThreshold"><i class="icon-tag"></i> No-response threshold</label>
+        <input type="number" id="node-input-noResponseThreshold" min="1" step="1" style="width:80px">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-unresponsiveTimeout"><i class="icon-tag"></i> Watchdog silence (s)</label>
+        <input type="number" id="node-input-unresponsiveTimeout" min="5" step="1" style="width:80px">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-recoveryDelay"><i class="icon-tag"></i> Recovery delay (s)</label>
+        <input type="number" id="node-input-recoveryDelay" min="1" step="1" style="width:80px">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-maxBackoff"><i class="icon-tag"></i> Max backoff (s)</label>
+        <input type="number" id="node-input-maxBackoff" min="1" step="1" style="width:80px">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-commandRate"><i class="icon-tag"></i> Min command spacing (ms)</label>
+        <input type="number" id="node-input-commandRate" min="0" step="50" style="width:80px">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-logLevel"><i class="icon-tag"></i> Log level</label>
+        <select id="node-input-logLevel" style="width:160px">
             <option value="error">Error</option>
             <option value="warn">Warn</option>
             <option value="info">Info</option>
             <option value="debug">Debug</option>
         </select>
     </div>
+
+    <div class="form-row">
+        <label for="node-input-debug" style="width:auto">
+            <input type="checkbox" id="node-input-debug" style="width:auto; margin-right:6px">
+            Forward manager log lines to Node-RED log
+        </label>
+    </div>
 </script>
 
 <script type="text/x-red" data-help-name="gree-hvac">
-    <p>Provides a node for control Gree HVAC (Heating, ventilation, and air conditioning)</p>
+    <p>Controls a Gree HVAC (air conditioner) over its local WiFi protocol.</p>
+
+    <h3>Inputs</h3>
+    <dl class="message-properties">
+        <dt>payload <span class="property-type">object</span></dt>
+        <dd>Map of property names to values to set in a single request (e.g. <code>{ power: "on", temperature: 22 }</code>).</dd>
+        <dt>topic <span class="property-type">string</span></dt>
+        <dt>payload <span class="property-type">string | number</span></dt>
+        <dd>Alternative form: set a single property where <code>msg.topic</code> is the property name.</dd>
+    </dl>
+
+    <h3>Outputs</h3>
+    <ol class="node-ports">
+        <li>Change events: <code>topic</code> is <code>updated</code> (from device) or <code>acknowledged</code> (from a write).</li>
+        <li>Full current property snapshot: <code>topic</code> is <code>properties</code>.</li>
+    </ol>
+
+    <h3>Connection handling</h3>
+    <p>The node wraps the underlying client with an exponential-backoff reconnect strategy
+    and a watchdog. The defaults are tuned for unattended 24/7 operation over WiFi:</p>
+    <ul>
+        <li><b>Polling interval / timeout</b>: how often device status is polled and how long a single poll may take. A timeout of roughly <em>2 × interval</em> is recommended for WiFi.</li>
+        <li><b>No-response threshold</b>: after this many consecutive missed polls the client is fully torn down and rebuilt (new UDP socket, new keys). This is what recovers a stuck WiFi module without a power-cycle.</li>
+        <li><b>Watchdog silence</b>: if no message of any kind has been seen from the device for this long, the same hard reset is triggered.</li>
+        <li><b>Recovery delay / max backoff</b>: wait time before the first reconnect attempt and the ceiling for the exponential backoff. The long initial delay (default 30 s) gives the WiFi module time to recover instead of being flooded with scan/bind packets.</li>
+        <li><b>Min command spacing</b>: minimum time between two outbound writes. Bursts are coalesced — multiple updates to the same property collapse to the latest value before being sent.</li>
+    </ul>
 </script>
