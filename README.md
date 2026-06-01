@@ -7,6 +7,20 @@ node-red-contrib-gree-hvac
 
 Provides a node for control Gree HVAC (Heating, ventilation, and air conditioning).
 
+Designed for unattended 24/7 operation: the node owns the client lifecycle, drives reconnect with exponential backoff, and has two watchdogs (silence-while-connected and stuck-in-connecting) so a wedged Gree WiFi module recovers without a physical power cycle. See [CHANGELOG.md](CHANGELOG.md) for the full list of reliability features.
+
+Nodes
+-----
+
+- `gree-hvac` — control and observe a single HVAC unit. Three outputs:
+  1. **Changes** — `updated` (delta from the device) or `acknowledged` (delta from a write).
+  2. **Snapshot** — full current property map.
+  3. **Diagnostics** — structured events (`state`, `error`, `queue_overflow`, `heartbeat`, `update`, `write_ack`) with metrics for alerting and dashboards.
+- `gree-hvac-discover` — broadcast-scans the subnet and returns the list of responding devices for populating config nodes.
+- `gree-hvac-config` — host + UDP port of a single device.
+
+The node also publishes a live metrics snapshot under `context().get('gree')` (state, uptime, last contact, queue size, reset counters).
+
 Install
 -------
 

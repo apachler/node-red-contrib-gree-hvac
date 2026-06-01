@@ -8,16 +8,22 @@
             interval: { value: 4, required: true, validate: RED.validators.number() },
             pollingTimeout: { value: 8, required: false, validate: RED.validators.number() },
             connectTimeout: { value: 8, required: false, validate: RED.validators.number() },
+            connectingTimeout: { value: 60, required: false, validate: RED.validators.number() },
             recoveryDelay: { value: 30, required: false, validate: RED.validators.number() },
             maxBackoff: { value: 300, required: false, validate: RED.validators.number() },
             unresponsiveTimeout: { value: 60, required: false, validate: RED.validators.number() },
             noResponseThreshold: { value: 3, required: false, validate: RED.validators.number() },
             commandRate: { value: 500, required: false, validate: RED.validators.number() },
+            maxQueueSize: { value: 64, required: false, validate: RED.validators.number() },
+            heartbeatInterval: { value: 60, required: false, validate: RED.validators.number() },
+            rejectIfOffline: { value: false },
+            validate: { value: true },
             logLevel: { value: "error", required: true },
             debug: { value: false }
         },
         inputs: 1,
-        outputs: 2,
+        outputs: 3,
+        outputLabels: ["changes", "snapshot", "diagnostics"],
         icon: "gree.png",
         label: function () {
             return this.name || "Gree";
@@ -36,6 +42,9 @@
         <input type="text" id="node-input-device" placeholder="">
     </div>
 
+    <hr/>
+    <h4>Polling</h4>
+
     <div class="form-row">
         <label for="node-input-interval"><i class="icon-tag"></i> Polling interval (s)</label>
         <input type="number" id="node-input-interval" min="1" step="1" style="width:80px">
@@ -47,13 +56,21 @@
     </div>
 
     <div class="form-row">
+        <label for="node-input-noResponseThreshold"><i class="icon-tag"></i> No-response threshold</label>
+        <input type="number" id="node-input-noResponseThreshold" min="1" step="1" style="width:80px">
+    </div>
+
+    <hr/>
+    <h4>Connection &amp; recovery</h4>
+
+    <div class="form-row">
         <label for="node-input-connectTimeout"><i class="icon-tag"></i> Connect timeout (s)</label>
         <input type="number" id="node-input-connectTimeout" min="1" step="1" style="width:80px">
     </div>
 
     <div class="form-row">
-        <label for="node-input-noResponseThreshold"><i class="icon-tag"></i> No-response threshold</label>
-        <input type="number" id="node-input-noResponseThreshold" min="1" step="1" style="width:80px">
+        <label for="node-input-connectingTimeout"><i class="icon-tag"></i> Stuck-connecting cap (s)</label>
+        <input type="number" id="node-input-connectingTimeout" min="5" step="1" style="width:80px">
     </div>
 
     <div class="form-row">
@@ -71,9 +88,39 @@
         <input type="number" id="node-input-maxBackoff" min="1" step="1" style="width:80px">
     </div>
 
+    <hr/>
+    <h4>Commands</h4>
+
     <div class="form-row">
         <label for="node-input-commandRate"><i class="icon-tag"></i> Min command spacing (ms)</label>
         <input type="number" id="node-input-commandRate" min="0" step="50" style="width:80px">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-maxQueueSize"><i class="icon-tag"></i> Max queued writes</label>
+        <input type="number" id="node-input-maxQueueSize" min="1" step="1" style="width:80px">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-validate" style="width:auto">
+            <input type="checkbox" id="node-input-validate" style="width:auto; margin-right:6px">
+            Validate properties against known schema
+        </label>
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-rejectIfOffline" style="width:auto">
+            <input type="checkbox" id="node-input-rejectIfOffline" style="width:auto; margin-right:6px">
+            Reject inputs while offline (instead of queueing)
+        </label>
+    </div>
+
+    <hr/>
+    <h4>Diagnostics</h4>
+
+    <div class="form-row">
+        <label for="node-input-heartbeatInterval"><i class="icon-tag"></i> Heartbeat interval (s, 0 = off)</label>
+        <input type="number" id="node-input-heartbeatInterval" min="0" step="1" style="width:80px">
     </div>
 
     <div class="form-row">
@@ -108,18 +155,28 @@
 
     <h3>Outputs</h3>
     <ol class="node-ports">
-        <li>Change events: <code>topic</code> is <code>updated</code> (from device) or <code>acknowledged</code> (from a write).</li>
-        <li>Full current property snapshot: <code>topic</code> is <code>properties</code>.</li>
+        <li><b>Changes</b> — <code>topic</code> is <code>updated</code> (delta from device) or <code>acknowledged</code> (delta from a write).</li>
+        <li><b>Snapshot</b> — <code>topic</code> is <code>properties</code>, the full current property map.</li>
+        <li><b>Diagnostics</b> — structured events (<code>state</code>, <code>error</code>, <code>queue_overflow</code>, <code>heartbeat</code>, <code>update</code>, <code>write_ack</code>) with metrics for alerting and dashboards.</li>
     </ol>
 
+    <h3>Catch-node integration</h3>
+    <p>Invalid input messages and rejected writes (when <em>reject if offline</em> is enabled) call <code>node.error(err, msg)</code> so they can be handled by a downstream catch node.</p>
+
+    <h3>Validation</h3>
+    <p>When enabled (default), property names and enum-valued payloads are checked against the upstream <code>PROPERTY</code> / <code>VALUE</code> schema. Unknown keys are dropped with a warning rather than sent to the device, because unknown keys are one of the known triggers for a wedged WiFi module.</p>
+
     <h3>Connection handling</h3>
-    <p>The node wraps the underlying client with an exponential-backoff reconnect strategy
-    and a watchdog. The defaults are tuned for unattended 24/7 operation over WiFi:</p>
+    <p>The node wraps the underlying client with an exponential-backoff reconnect strategy and two watchdogs (one for silence while connected, one for "stuck in connecting"). Defaults are tuned for unattended 24/7 operation over WiFi.</p>
     <ul>
-        <li><b>Polling interval / timeout</b>: how often device status is polled and how long a single poll may take. A timeout of roughly <em>2 × interval</em> is recommended for WiFi.</li>
-        <li><b>No-response threshold</b>: after this many consecutive missed polls the client is fully torn down and rebuilt (new UDP socket, new keys). This is what recovers a stuck WiFi module without a power-cycle.</li>
-        <li><b>Watchdog silence</b>: if no message of any kind has been seen from the device for this long, the same hard reset is triggered.</li>
-        <li><b>Recovery delay / max backoff</b>: wait time before the first reconnect attempt and the ceiling for the exponential backoff. The long initial delay (default 30 s) gives the WiFi module time to recover instead of being flooded with scan/bind packets.</li>
-        <li><b>Min command spacing</b>: minimum time between two outbound writes. Bursts are coalesced — multiple updates to the same property collapse to the latest value before being sent.</li>
+        <li><b>Polling interval / timeout / no-response threshold</b>: how often the device is polled, how long a single poll may take, and how many consecutive misses trigger a full client teardown + fresh socket. This is what recovers a stuck WiFi module without a power-cycle.</li>
+        <li><b>Watchdog silence</b>: total silence while connected before a hard reset is forced.</li>
+        <li><b>Stuck-connecting cap</b>: maximum time the node may sit in the <code>connecting</code> state before a hard reset is forced.</li>
+        <li><b>Recovery delay / max backoff</b>: initial reconnect delay and the ceiling of the exponential backoff. A long initial delay gives the WiFi module time to recover instead of being flooded with scan/bind packets.</li>
+        <li><b>Min command spacing / max queued writes</b>: rate-limit + bounded coalescing queue for outbound writes. Multiple updates to the same property collapse to the latest value before being sent; when the queue grows past the cap, the oldest entries are evicted.</li>
+        <li><b>Heartbeat interval</b>: emits a periodic <code>heartbeat</code> diagnostic on output 3 so absence-of-message can drive offline alerts. Set to 0 to disable.</li>
     </ul>
+
+    <h3>Runtime context</h3>
+    <p>The node publishes a live metrics snapshot under <code>context().get('gree')</code> with the current state, uptime, last-contact timestamp, queue size, and reset counters.</p>
 </script>

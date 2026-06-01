@@ -1,0 +1,11 @@
+.devcontainer/
+.github/
+.eslintrc.js
+.prettierrc
+.gitignore
+sandbox/
+test/
+node_modules/
+npm-debug.log
+*.log
+.DS_Store

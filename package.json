@@ -9,19 +9,25 @@
     "gree",
     "hvac"
   ],
+  "engines": {
+    "node": ">=18"
+  },
   "node-red": {
+    "version": ">=3.0.0",
     "nodes": {
       "gree-hvac": "gree-hvac/gree-hvac.js",
-      "gree-hvac-config": "gree-hvac/gree-hvac-config.js"
+      "gree-hvac-config": "gree-hvac/gree-hvac-config.js",
+      "gree-hvac-discover": "gree-hvac/gree-hvac-discover.js"
     }
   },
   "scripts": {
     "lint": "eslint ./",
+    "test": "node --test test/*.test.js",
     "nd": "node-red -u sandbox",
     "watch": "npm-watch nd"
   },
   "dependencies": {
-    "gree-hvac-client": "^2.2.0"
+    "gree-hvac-client": "~2.2.0"
   },
   "devDependencies": {
     "eslint": "^8.40.0",

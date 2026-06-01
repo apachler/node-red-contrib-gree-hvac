@@ -1,6 +1,8 @@
 'use strict';
 
 const Gree = require('gree-hvac-client');
+const { ConnectionManager } = require('./lib/connection-manager');
+const { validateProperties } = require('./lib/validation');
 
 module.exports = function (RED) {
     const num = (value, fallback) => {
@@ -8,381 +10,17 @@ module.exports = function (RED) {
         return Number.isFinite(n) && n > 0 ? n : fallback;
     };
 
-    /**
-     * Wraps gree-hvac-client with a production-grade connection manager.
-     *
-     * The upstream client retries connect/bind on a fixed schedule using the
-     * same UDP socket, never backs off, and never tears the socket down on
-     * failure. That is what wedges the Gree WiFi module (it ends up answering
-     * stale bind packets with stale keys and stops responding to anything
-     * until it is power-cycled). This manager:
-     *
-     *   - disables the library's auto-connect and owns the lifecycle itself,
-     *   - on any connect timeout / fatal error fully disposes the client and
-     *     rebuilds a fresh one with an exponential backoff,
-     *   - watches the stream of poll responses and forces a hard reset when
-     *     the device has been silent for too long,
-     *   - throttles and coalesces outbound writes so a noisy flow cannot
-     *     flood the WiFi module,
-     *   - attaches its own error handler to the underlying dgram socket so a
-     *     transient OS error cannot crash Node-RED.
-     */
-    class ConnectionManager {
-        constructor(opts) {
-            this.opts = opts;
-            this.client = null;
-            this.connected = false;
-            this.stopped = false;
-            this.lastContactAt = 0;
-            this.noResponseStreak = 0;
-            this.backoffMs = opts.recoveryDelayMs;
-            this.reconnectTimer = null;
-            this.watchdogTimer = null;
-            this.queue = new Map();
-            this.lastSendAt = 0;
-            this.sendTimer = null;
-            this.listeners = { event: [], log: [] };
-        }
-
-        on(event, fn) {
-            this.listeners[event].push(fn);
-        }
-
-        _emit(event, ...args) {
-            for (const fn of this.listeners[event]) {
-                try {
-                    fn(...args);
-                } catch (_) {
-                    // listener errors must not break the manager
-                }
-            }
-        }
-
-        _log(level, message, meta) {
-            this._emit('log', level, message, meta);
-        }
-
-        start() {
-            this._buildClient();
-            this._startWatchdog();
-        }
-
-        async stop() {
-            this.stopped = true;
-            this._clearTimer('reconnectTimer');
-            this._clearTimer('watchdogTimer');
-            this._clearTimer('sendTimer');
-            this.queue.clear();
-            await this._teardownClient();
-        }
-
-        send(properties) {
-            if (!properties || typeof properties !== 'object') {
-                return;
-            }
-            for (const [key, value] of Object.entries(properties)) {
-                // last write wins per property — collapses bursts
-                this.queue.set(key, value);
-            }
-            this._scheduleDrain();
-        }
-
-        _scheduleDrain() {
-            if (this.stopped || this.sendTimer || this.queue.size === 0) {
-                return;
-            }
-            if (!this.connected || !this.client) {
-                // will be retried on connect
-                return;
-            }
-            const sinceLast = Date.now() - this.lastSendAt;
-            const wait = Math.max(0, this.opts.commandRateMs - sinceLast);
-            this.sendTimer = setTimeout(() => {
-                this.sendTimer = null;
-                this._drainOnce();
-            }, wait);
-        }
-
-        _drainOnce() {
-            if (this.stopped || !this.connected || !this.client) {
-                return;
-            }
-            if (this.queue.size === 0) {
-                return;
-            }
-            const batch = Object.fromEntries(this.queue);
-            this.queue.clear();
-            this.lastSendAt = Date.now();
-            this.client.setProperties(batch).catch(error => {
-                // requeue keys that the caller has not overwritten since,
-                // so a transient send failure does not lose the command
-                for (const [key, value] of Object.entries(batch)) {
-                    if (!this.queue.has(key)) {
-                        this.queue.set(key, value);
-                    }
-                }
-                this._onClientError(error);
-            });
-            if (this.queue.size > 0) {
-                this._scheduleDrain();
-            }
-        }
-
-        _buildClient() {
-            if (this.stopped) {
-                return;
-            }
-            this._clearTimer('reconnectTimer');
-
-            this._log('info', 'Connecting', {
-                host: this.opts.host,
-                attemptBackoffMs: this.backoffMs,
-            });
-            this._emit('event', 'connecting');
-
-            let client;
-            try {
-                client = new Gree.Client({
-                    host: this.opts.host,
-                    port: this.opts.port,
-                    pollingInterval: this.opts.pollingIntervalMs,
-                    pollingTimeout: this.opts.pollingTimeoutMs,
-                    connectTimeout: this.opts.connectTimeoutMs,
-                    autoConnect: false,
-                    logLevel: this.opts.logLevel,
-                });
-            } catch (error) {
-                this._scheduleReconnect(error);
-                return;
-            }
-
-            this.client = client;
-            this.connected = false;
-            this.noResponseStreak = 0;
-
-            client.on('connect', () => {
-                if (this.client !== client) {
-                    return;
-                }
-                this.connected = true;
-                this.lastContactAt = Date.now();
-                this.noResponseStreak = 0;
-                this.backoffMs = this.opts.recoveryDelayMs; // reset on success
-                this._installSocketErrorHandler(client);
-                this._emit('event', 'connected', client.getDeviceId());
-                this._scheduleDrain();
-            });
-
-            client.on('update', (updated, properties) => {
-                if (this.client !== client) {
-                    return;
-                }
-                this.lastContactAt = Date.now();
-                this.noResponseStreak = 0;
-                this._emit('event', 'update', updated, properties);
-            });
-
-            client.on('success', (updated, properties) => {
-                if (this.client !== client) {
-                    return;
-                }
-                this.lastContactAt = Date.now();
-                this.noResponseStreak = 0;
-                this._emit('event', 'success', updated, properties);
-            });
-
-            client.on('no_response', () => {
-                if (this.client !== client) {
-                    return;
-                }
-                this.noResponseStreak += 1;
-                this._log('warn', 'No response from device', {
-                    streak: this.noResponseStreak,
-                    threshold: this.opts.noResponseThreshold,
-                });
-                this._emit('event', 'no_response', this.noResponseStreak);
-                if (this.noResponseStreak >= this.opts.noResponseThreshold) {
-                    this._log(
-                        'warn',
-                        'No-response threshold hit, forcing reset'
-                    );
-                    this._forceReset();
-                }
-            });
-
-            client.on('disconnect', () => {
-                if (this.client !== client) {
-                    return;
-                }
-                if (!this.connected) {
-                    // disconnect during initial connect = cancelled / failed
-                    return;
-                }
-                this.connected = false;
-                this._emit('event', 'disconnected');
-            });
-
-            client.on('error', error => {
-                if (this.client !== client) {
-                    return;
-                }
-                this._onClientError(error);
-            });
-
-            client.connect().catch(error => {
-                if (this.client !== client) {
-                    return;
-                }
-                this._onClientError(error);
-            });
-
-            // The upstream client creates its dgram socket inside connect();
-            // attach our own error handler as soon as it exists so a kernel
-            // socket error cannot become an uncaught exception.
-            this._installSocketErrorHandler(client);
-        }
-
-        _installSocketErrorHandler(client) {
-            const socket = client._socket;
-            if (!socket || socket.__greeHandlerInstalled) {
-                return;
-            }
-            socket.__greeHandlerInstalled = true;
-            socket.on('error', error => {
-                this._log('warn', 'UDP socket error', { error: error.message });
-                if (this.client === client) {
-                    this._onClientError(error);
-                }
-            });
-        }
-
-        _onClientError(error) {
-            this._emit('event', 'error', error);
-            this._forceReset(error);
-        }
-
-        _forceReset(cause) {
-            if (this.stopped) {
-                return;
-            }
-            const wasConnected = this.connected;
-            this.connected = false;
-            this._teardownClient()
-                .catch(() => {})
-                .finally(() => {
-                    if (this.stopped) {
-                        return;
-                    }
-                    if (!wasConnected) {
-                        // failed to (re)connect — grow backoff
-                        this.backoffMs = Math.min(
-                            this.opts.maxBackoffMs,
-                            Math.max(
-                                this.opts.recoveryDelayMs,
-                                this.backoffMs * 2
-                            )
-                        );
-                    }
-                    this._scheduleReconnect(cause);
-                });
-        }
-
-        _scheduleReconnect(cause) {
-            if (this.stopped || this.reconnectTimer) {
-                return;
-            }
-            const delay = this.backoffMs;
-            this._log('info', 'Scheduling reconnect', {
-                delayMs: delay,
-                reason: cause && cause.message,
-            });
-            this._emit('event', 'reconnect_scheduled', delay);
-            this.reconnectTimer = setTimeout(() => {
-                this.reconnectTimer = null;
-                this._buildClient();
-            }, delay);
-            if (typeof this.reconnectTimer.unref === 'function') {
-                this.reconnectTimer.unref();
-            }
-        }
-
-        _startWatchdog() {
-            const tick = () => {
-                if (this.stopped) {
-                    return;
-                }
-                if (this.connected && this.lastContactAt > 0) {
-                    const silent = Date.now() - this.lastContactAt;
-                    if (silent > this.opts.unresponsiveTimeoutMs) {
-                        this._log('warn', 'Watchdog: device silent too long', {
-                            silentMs: silent,
-                        });
-                        this._forceReset(
-                            new Error(
-                                'Watchdog: device silent for ' + silent + 'ms'
-                            )
-                        );
-                        return;
-                    }
-                }
-                this.watchdogTimer = setTimeout(tick, this.opts.watchdogTickMs);
-                if (typeof this.watchdogTimer.unref === 'function') {
-                    this.watchdogTimer.unref();
-                }
-            };
-            this.watchdogTimer = setTimeout(tick, this.opts.watchdogTickMs);
-            if (typeof this.watchdogTimer.unref === 'function') {
-                this.watchdogTimer.unref();
-            }
-        }
-
-        _clearTimer(name) {
-            if (this[name]) {
-                clearTimeout(this[name]);
-                this[name] = null;
-            }
-        }
-
-        async _teardownClient() {
-            const client = this.client;
-            this.client = null;
-            this.connected = false;
-            if (!client) {
-                return;
-            }
-            // The upstream client leaves _bindTimeoutRef armed after dispose;
-            // we clear it explicitly to stop stale bind packets being fired
-            // at the device after we have moved on.
-            try {
-                if (client._bindTimeoutRef) {
-                    clearTimeout(client._bindTimeoutRef);
-                    client._bindTimeoutRef = null;
-                }
-            } catch (_) {
-                /* private field — best effort */
-            }
-            // Neutralise the upstream library's internal reconnect chain.
-            // _scheduleReconnect / _initialize keep re-arming setTimeouts
-            // even after disconnect, and if their callbacks fire on a
-            // closed socket they emit further 'error' events; replacing
-            // them with no-ops breaks that chain. We deliberately keep
-            // our event listeners (especially 'error') attached so any
-            // late event from this client is absorbed instead of becoming
-            // an uncaught 'error' emit.
-            try {
-                client._initialize = () => Promise.resolve();
-                client._scheduleReconnect = () => Promise.resolve();
-            } catch (_) {
-                /* best effort — private fields */
-            }
-            try {
-                await client.disconnect();
-            } catch (_) {
-                // disconnect throws ClientNotConnectedError when socket is
-                // already gone — that is fine, we are tearing down anyway
-            }
-        }
-    }
+    const fmtTime = ts => {
+        const d = new Date(ts);
+        const pad = n => String(n).padStart(2, '0');
+        return (
+            pad(d.getHours()) +
+            ':' +
+            pad(d.getMinutes()) +
+            ':' +
+            pad(d.getSeconds())
+        );
+    };
 
     /**
      * @param config
@@ -412,13 +50,28 @@ module.exports = function (RED) {
                 config.unresponsiveTimeout,
                 Math.max(30, Math.ceil((pollingIntervalMs * 5) / 1000))
             ) * 1000;
+        const connectingTimeoutMs = Math.max(
+            connectTimeoutMs * 4,
+            num(config.connectingTimeout, 60) * 1000
+        );
         const commandRateMs = num(config.commandRate, 500);
         const noResponseThreshold = Math.max(
             1,
             Math.floor(num(config.noResponseThreshold, 3))
         );
+        const maxQueueSize = Math.max(
+            1,
+            Math.floor(num(config.maxQueueSize, 64))
+        );
+        const heartbeatIntervalMs = Math.max(
+            0,
+            Math.floor(num(config.heartbeatInterval, 60)) * 1000
+        );
+        const rejectIfOffline = config.rejectIfOffline === true;
+        const validate = config.validate !== false; // default on
 
         const manager = new ConnectionManager({
+            ClientCtor: Gree.Client,
             host: device.host,
             port: num(device.port, 7000),
             pollingIntervalMs,
@@ -427,38 +80,44 @@ module.exports = function (RED) {
             recoveryDelayMs,
             maxBackoffMs,
             unresponsiveTimeoutMs,
+            connectingTimeoutMs,
             watchdogTickMs: Math.max(1000, Math.floor(pollingIntervalMs / 2)),
             commandRateMs,
             noResponseThreshold,
+            maxQueueSize,
             logLevel: config.logLevel || 'error',
         });
 
-        const fmtTime = ts => {
-            const d = new Date(ts);
-            const pad = n => String(n).padStart(2, '0');
-            return (
-                pad(d.getHours()) +
-                ':' +
-                pad(d.getMinutes()) +
-                ':' +
-                pad(d.getSeconds())
-            );
+        const ctx = node.context();
+        const writeMetrics = () => {
+            try {
+                ctx.set('gree', manager.metrics());
+            } catch (_) {
+                /* context backend optional */
+            }
         };
 
-        const statusConnected = deviceId => {
+        const statusConnected = () => {
+            const id = manager.deviceId;
             node.status({
                 fill: 'green',
                 shape: 'dot',
                 text:
                     'connected' +
-                    (deviceId ? ' (' + deviceId + ')' : '') +
+                    (id ? ' (' + id + ')' : '') +
                     ' · ' +
                     fmtTime(Date.now()),
             });
         };
 
-        manager.on('event', (type, ...args) => {
-            switch (type) {
+        const emitDiagnostic = payload => {
+            // 3rd output — structured event for alerting / dashboards
+            node.send([null, null, { topic: 'diagnostic', payload }]);
+        };
+
+        manager.on('state', (state, prev, meta) => {
+            writeMetrics();
+            switch (state) {
                 case 'connecting':
                     node.status({
                         fill: 'yellow',
@@ -467,25 +126,7 @@ module.exports = function (RED) {
                     });
                     break;
                 case 'connected':
-                    statusConnected(args[0]);
-                    break;
-                case 'update':
-                    statusConnected(
-                        manager.client && manager.client.getDeviceId()
-                    );
-                    node.send([
-                        { topic: 'updated', payload: args[0] },
-                        { topic: 'properties', payload: args[1] },
-                    ]);
-                    break;
-                case 'success':
-                    statusConnected(
-                        manager.client && manager.client.getDeviceId()
-                    );
-                    node.send([
-                        { topic: 'acknowledged', payload: args[0] },
-                        { topic: 'properties', payload: args[1] },
-                    ]);
+                    statusConnected();
                     break;
                 case 'no_response':
                     node.status({
@@ -493,45 +134,87 @@ module.exports = function (RED) {
                         shape: 'ring',
                         text:
                             'no response (' +
-                            args[0] +
+                            (meta && meta.streak) +
                             '/' +
                             noResponseThreshold +
                             ')',
                     });
                     break;
-                case 'reconnect_scheduled':
-                    node.status({
-                        fill: 'yellow',
-                        shape: 'ring',
-                        text:
-                            'reconnect in ' + Math.round(args[0] / 1000) + 's',
-                    });
+                case 'reconnecting':
+                    if (meta && meta.delayMs) {
+                        node.status({
+                            fill: 'yellow',
+                            shape: 'ring',
+                            text:
+                                'reconnect in ' +
+                                Math.round(meta.delayMs / 1000) +
+                                's',
+                        });
+                    } else {
+                        node.status({
+                            fill: 'grey',
+                            shape: 'ring',
+                            text: 'reconnecting...',
+                        });
+                    }
                     break;
-                case 'disconnected':
+                case 'stopped':
                     node.status({
                         fill: 'grey',
                         shape: 'ring',
-                        text: 'disconnected',
+                        text: 'stopped',
                     });
-                    break;
-                case 'error':
-                    {
-                        const err = args[0];
-                        const text =
-                            (err && err.message) || String(err) || 'error';
-                        // Surface the error but keep the node alive — the
-                        // manager will reconnect on its own.
-                        node.warn(text);
-                        node.status({
-                            fill: 'red',
-                            shape: 'ring',
-                            text: text.slice(0, 40),
-                        });
-                    }
                     break;
                 default:
                     break;
             }
+        });
+
+        manager.on('update', (updated, properties) => {
+            statusConnected();
+            writeMetrics();
+            node.send([
+                { topic: 'updated', payload: updated },
+                { topic: 'properties', payload: properties },
+                null,
+            ]);
+        });
+
+        manager.on('success', (updated, properties) => {
+            statusConnected();
+            writeMetrics();
+            node.send([
+                { topic: 'acknowledged', payload: updated },
+                { topic: 'properties', payload: properties },
+                null,
+            ]);
+        });
+
+        manager.on('write_failed', (error, batch) => {
+            // Surface for catch-nodes if we still have the original input msg
+            // (we don't — write_failed fires from the drain queue), so report
+            // generically. Individual rejections from the input handler are
+            // routed via node.error(err, msg) where the msg is available.
+            node.warn(
+                'Write failed: ' +
+                    ((error && error.message) || error) +
+                    ' batch=' +
+                    JSON.stringify(batch)
+            );
+        });
+
+        manager.on('failure', error => {
+            const text = (error && error.message) || String(error) || 'error';
+            node.status({
+                fill: 'red',
+                shape: 'ring',
+                text: text.slice(0, 40),
+            });
+        });
+
+        manager.on('diagnostic', payload => {
+            emitDiagnostic(payload);
+            writeMetrics();
         });
 
         manager.on('log', (level, message, meta) => {
@@ -549,24 +232,66 @@ module.exports = function (RED) {
             }
         });
 
+        let heartbeatTimer = null;
+        if (heartbeatIntervalMs > 0) {
+            heartbeatTimer = setInterval(() => {
+                emitDiagnostic({ event: 'heartbeat', ...manager.metrics() });
+            }, heartbeatIntervalMs);
+            if (typeof heartbeatTimer.unref === 'function') {
+                heartbeatTimer.unref();
+            }
+        }
+
         this.on('input', (msg, send, done) => {
             try {
+                let raw;
                 if (
                     msg &&
                     typeof msg.payload === 'object' &&
                     msg.payload !== null
                 ) {
-                    manager.send(msg.payload);
+                    raw = msg.payload;
                 } else if (
                     msg &&
                     typeof msg.topic === 'string' &&
                     msg.topic.length > 0
                 ) {
-                    manager.send({ [msg.topic]: msg.payload });
+                    raw = { [msg.topic]: msg.payload };
                 } else {
-                    node.warn(
-                        'Ignored input: expected payload object or msg.topic to be set'
+                    const err = new Error(
+                        'Invalid input: expected payload object or msg.topic'
                     );
+                    if (done) done(err);
+                    else node.error(err, msg);
+                    return;
+                }
+
+                let properties = raw;
+                if (validate) {
+                    const result = validateProperties(raw);
+                    properties = result.properties;
+                    for (const w of result.warnings) {
+                        node.warn(w);
+                    }
+                    if (Object.keys(properties).length === 0) {
+                        const err = new Error(
+                            'No valid properties to send: ' +
+                                result.warnings.join('; ')
+                        );
+                        if (done) done(err);
+                        else node.error(err, msg);
+                        return;
+                    }
+                }
+
+                const res = manager.send(properties, { rejectIfOffline });
+                if (!res.accepted) {
+                    const err = new Error(
+                        'Command rejected: ' + (res.reason || 'unknown')
+                    );
+                    if (done) done(err);
+                    else node.error(err, msg);
+                    return;
                 }
                 if (done) done();
             } catch (error) {
@@ -576,6 +301,10 @@ module.exports = function (RED) {
         });
 
         this.on('close', done => {
+            if (heartbeatTimer) {
+                clearInterval(heartbeatTimer);
+                heartbeatTimer = null;
+            }
             manager
                 .stop()
                 .catch(() => {})
@@ -583,6 +312,7 @@ module.exports = function (RED) {
         });
 
         node.status({ fill: 'yellow', shape: 'dot', text: 'connecting...' });
+        writeMetrics();
         manager.start();
     }
 
