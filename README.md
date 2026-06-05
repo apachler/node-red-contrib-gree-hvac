@@ -37,24 +37,28 @@ The node also publishes a live metrics snapshot under `context().get('gree')` (s
 Install
 -------
 
-### From npm (recommended)
+> **Heads-up:** this is a maintained fork. The `node-red-contrib-gree-hvac` package on the npm registry is still the original upstream **0.3.0** — this fork is **not published to npm yet**. Until it is, install from a GitHub Release tarball (below).
 
-Run the following command in your Node-RED user directory — typically `~/.node-red`:
+### From a GitHub Release tarball (recommended)
 
-```
-npm install node-red-contrib-gree-hvac
-```
-
-### From a GitHub Release tarball
-
-Each GitHub Release ships a packaged `.tgz` you can install directly without going through npm. This is useful for air-gapped Node-RED instances or for pinning to a specific commit before it appears in the npm registry.
+Each GitHub Release ships a packaged `.tgz` you can install directly. Run this in your Node-RED user directory — typically `~/.node-red`:
 
 ```
 cd ~/.node-red
 npm install https://github.com/apachler/node-red-contrib-gree-hvac/releases/download/v<version>/node-red-contrib-gree-hvac-<version>.tgz
 ```
 
-Or download the `.tgz` from the [Releases page](https://github.com/apachler/node-red-contrib-gree-hvac/releases) and run `npm install ./node-red-contrib-gree-hvac-<version>.tgz` from your `~/.node-red` directory. Restart Node-RED after installation.
+Or download the `.tgz` from the [Releases page](https://github.com/apachler/node-red-contrib-gree-hvac/releases) and run `npm install ./node-red-contrib-gree-hvac-<version>.tgz` from your `~/.node-red` directory. Restart Node-RED after installation. This also works for air-gapped instances and for pinning to a specific release.
+
+### From npm
+
+Once this fork is published to npm, you'll be able to install it the usual way from your `~/.node-red` directory:
+
+```
+npm install node-red-contrib-gree-hvac
+```
+
+Until then, check the installed version — the registry currently serves the unmaintained upstream 0.3.0, not this fork.
 
 Usage
 -----
