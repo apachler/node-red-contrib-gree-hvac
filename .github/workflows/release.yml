@@ -2,67 +2,37 @@ name: Release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - master
+
+# semantic-release pushes the release commit + tag, creates the GitHub Release
+# (with the packed .tgz asset), and comments on released issues/PRs. No npm
+# publish — this package ships via Git + GitHub Releases only (same model as
+# the gree-hvac-client fork it depends on).
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+# Never cancel an in-flight release.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
     environment: release
-    permissions:
-      contents: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-
-      - name: Ensure the tag is on master (else delete it)
-        run: |
-          git fetch --no-tags origin master
-          if git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
-            echo "Tag $GITHUB_REF_NAME ($GITHUB_SHA) is on master — releasing."
-          else
-            echo "::error::Tag $GITHUB_REF_NAME is not on master. Tags may only exist on master — deleting it."
-            git push --delete origin "$GITHUB_REF_NAME" || true
-            exit 1
-          fi
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version: "18.x"
+          node-version: 20
           cache: "npm"
-          registry-url: "https://registry.npmjs.org"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Set package version from tag
-        run: npm version --no-git-tag-version --allow-same-version "${GITHUB_REF_NAME#v}"
-
-      - name: Pack tarball
-        run: npm pack
-
-      # Publish to npm is currently disabled. Re-enable once the NPM_TOKEN
-      # secret is configured for the release environment and the package
-      # owner is set on npmjs.com.
-      # - name: Publish to npm
-      #   env:
-      #     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      #   run: npm publish
-
-      - name: Create GitHub Release
+      - run: npm ci
+      - run: npx semantic-release
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release create "${GITHUB_REF_NAME}" \
-            --generate-notes \
-            --title "${GITHUB_REF_NAME}" \
-            *.tgz
-
-      - name: Publish to Node-RED catalog
-        uses: hacksore/node-red-flow@v2
-        with:
-          repo: "node-red-contrib-gree-hvac"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
