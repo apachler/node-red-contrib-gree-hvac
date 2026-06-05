@@ -1,21 +1,34 @@
 version: 2
 updates:
+  # All npm (dev) updates batched into one monthly PR.
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
     open-pull-requests-limit: 5
     groups:
-      dev-dependencies:
-        dependency-type: "development"
+      npm:
+        patterns:
+          - "*"
+
+  # All GitHub Actions bumps batched into one monthly PR.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "monthly"
-  # Keep the digest-pinned base images current.
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  # Keep the digest-pinned base images current, batched monthly.
   - package-ecosystem: "docker"
     directories:
       - "/sim"
       - "/docker/nodered"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
+    groups:
+      docker-images:
+        patterns:
+          - "*"
