@@ -6,3 +6,5 @@ sandbox/
 release/
 coverage/
 .nyc_output/
+HAPPY-CODING.md
+*.tmp.*
