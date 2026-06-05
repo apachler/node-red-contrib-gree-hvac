@@ -3,11 +3,30 @@
   "version": "1.5.0",
   "description": "A Node-RED integration for controlling Gree smart air conditioners",
   "author": "Igor Starovierov <igor.decler@gmail.com>",
+  "contributors": [
+    "Andreas Pachler <apachler@paan-systems.com>"
+  ],
   "license": "MIT",
   "keywords": [
     "node-red",
+    "node-red-contrib",
     "gree",
-    "hvac"
+    "hvac",
+    "air-conditioner",
+    "ac",
+    "climate",
+    "iot",
+    "udp"
+  ],
+  "homepage": "https://github.com/apachler/node-red-contrib-gree-hvac#readme",
+  "bugs": {
+    "url": "https://github.com/apachler/node-red-contrib-gree-hvac/issues"
+  },
+  "files": [
+    "gree-hvac/",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=18"
@@ -27,11 +46,16 @@
     "test": "node --test test/*.test.js",
     "test:sim": "node --test sim/test/*.test.js",
     "test:e2e": "node test/e2e/run-e2e.js",
+    "coverage": "c8 --reporter=text --reporter=lcov node --test test/*.test.js sim/test/*.test.js",
+    "audit": "npm audit --omit=dev --audit-level=high",
     "sim:up": "docker compose up -d --build",
     "sim:down": "docker compose down -v --remove-orphans",
     "sim:logs": "docker compose logs -f",
     "sim:dev": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build",
     "sim:dev:down": "docker compose -f docker-compose.yml -f docker-compose.dev.yml down -v --remove-orphans",
+    "flow:pull": "node docker/nodered/pull-flows.js",
+    "flow:pull:user": "node docker/nodered/pull-flows.js user",
+    "flow:pull:mocks": "node docker/nodered/pull-flows.js mocks",
     "nd": "node-red -u sandbox",
     "watch": "npm-watch nd"
   },
@@ -39,17 +63,17 @@
     "gree-hvac-client": "~2.2.0"
   },
   "devDependencies": {
+    "c8": "^9.1.0",
     "eslint": "^8.40.0",
     "eslint-config-prettier": "^8.8.0",
     "eslint-plugin-jsdoc": "^44.1.0",
     "eslint-plugin-prettier": "^4.2.1",
     "npm-watch": "^0.13.0",
-    "prettier": "^2.8.8",
-    "semantic-release": "^21.0.2"
+    "prettier": "^2.8.8"
   },
   "repository": {
     "type": "git",
-    "url": "git@github.com:inwaar/node-red-contrib-gree-hvac.git"
+    "url": "git+https://github.com/apachler/node-red-contrib-gree-hvac.git"
   },
   "watch": {
     "nd": "gree-hvac/**/*.*"
