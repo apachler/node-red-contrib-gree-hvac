@@ -10,9 +10,12 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/npm/v/node-red-contrib-gree-hvac" alt="NPM" />
+  <a href="https://www.npmjs.com/package/node-red-contrib-gree-hvac"><img src="https://img.shields.io/npm/v/node-red-contrib-gree-hvac" alt="npm version" /></a>
   <img src="https://img.shields.io/badge/dynamic/xml?label=Node-RED%20catalog&query=%2F%2Fdiv%5B%40class%3D%27flowmeta%27%5D%5B1%5D%2Fdiv%5B%40class%3D%27flowinfo%27%5D%5B1%5D%2Ftext%28%29%5B1%5D&url=https%3A%2F%2Fflows.nodered.org%2Fnode%2Fnode-red-contrib-gree-hvac" alt="Node-RED catalog" />
-  <img src="https://img.shields.io/github/actions/workflow/status/inwaar/node-red-contrib-gree-hvac/release.yml?label=release" alt="Release" />
+  <a href="https://github.com/apachler/node-red-contrib-gree-hvac/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/apachler/node-red-contrib-gree-hvac/ci.yml?branch=master&label=CI" alt="CI" /></a>
+  <a href="https://github.com/apachler/node-red-contrib-gree-hvac/actions/workflows/codeql.yml"><img src="https://img.shields.io/github/actions/workflow/status/apachler/node-red-contrib-gree-hvac/codeql.yml?branch=master&label=CodeQL" alt="CodeQL" /></a>
+  <a href="https://github.com/apachler/node-red-contrib-gree-hvac/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/apachler/node-red-contrib-gree-hvac/release.yml?label=release" alt="Release" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT" /></a>
 </p>
 
 Provides a node for control Gree HVAC (Heating, ventilation, and air conditioning).
@@ -48,10 +51,10 @@ Each GitHub Release ships a packaged `.tgz` you can install directly without goi
 
 ```
 cd ~/.node-red
-npm install https://github.com/inwaar/node-red-contrib-gree-hvac/releases/download/v<version>/node-red-contrib-gree-hvac-<version>.tgz
+npm install https://github.com/apachler/node-red-contrib-gree-hvac/releases/download/v<version>/node-red-contrib-gree-hvac-<version>.tgz
 ```
 
-Or download the `.tgz` from the [Releases page](https://github.com/inwaar/node-red-contrib-gree-hvac/releases) and run `npm install ./node-red-contrib-gree-hvac-<version>.tgz` from your `~/.node-red` directory. Restart Node-RED after installation.
+Or download the `.tgz` from the [Releases page](https://github.com/apachler/node-red-contrib-gree-hvac/releases) and run `npm install ./node-red-contrib-gree-hvac-<version>.tgz` from your `~/.node-red` directory. Restart Node-RED after installation.
 
 Usage
 -----
@@ -163,3 +166,36 @@ Useful env vars while iterating:
 | `test/e2e/sim.e2e.test.js`                 | Dashboard HTTP API + client round-trip against the dockerized sim                                                |
 | `test/e2e/nodered.e2e.test.js`             | Node-RED admin API: flow deployed, `gree-hvac-config` host wired to `gree.lan`, manual switch + button flow drives the sim's AC state |
 | `test/e2e/fault-recovery.e2e.test.js`      | Sets `dropEvery: 2` on the sim, verifies the client still surfaces status updates                                |
+
+Contributing
+------------
+
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for the dev
+setup, the pre-push lint hook, the testing commands, and the Conventional-Commit
+PR-title convention that drives the release notes. Please also read the
+[Code of Conduct](CODE_OF_CONDUCT.md).
+
+Support
+-------
+
+For usage questions and how-to help, see [SUPPORT.md](SUPPORT.md). For what each
+Gree property and value means, see [docs/PROTOCOL.md](docs/PROTOCOL.md).
+
+Security
+--------
+
+Please report security vulnerabilities privately — do **not** open a public
+issue. See the [security policy](SECURITY.md).
+
+License
+-------
+
+[MIT](LICENSE) © Igor Starovierov and contributors.
+
+Acknowledgements
+----------------
+
+- Built on [`gree-hvac-client`](https://www.npmjs.com/package/gree-hvac-client)
+  for the UDP/AES wire protocol.
+- Originally authored by [Igor Starovierov](https://github.com/inwaar); currently
+  maintained by [Andreas Pachler](https://github.com/apachler).
