@@ -103,7 +103,7 @@
         "payload": "refresh",
         "payloadType": "str",
         "x": 150,
-        "y": 640,
+        "y": 600,
         "wires": [
             [
                 "77981d7e2d91e28b",
@@ -193,8 +193,8 @@
         "styleRounded": true,
         "styleGlow": false,
         "className": "",
-        "x": 1280,
-        "y": 320,
+        "x": 1000,
+        "y": 580,
         "wires": [
             []
         ]
@@ -252,8 +252,8 @@
         "styleRounded": true,
         "styleGlow": false,
         "className": "",
-        "x": 1280,
-        "y": 380,
+        "x": 1000,
+        "y": 620,
         "wires": [
             []
         ]
@@ -304,8 +304,8 @@
         "height": 5,
         "className": "",
         "interpolation": "linear",
-        "x": 1290,
-        "y": 460,
+        "x": 1010,
+        "y": 660,
         "wires": [
             []
         ]
@@ -356,8 +356,8 @@
         "height": 5,
         "className": "",
         "interpolation": "linear",
-        "x": 1290,
-        "y": 580,
+        "x": 1010,
+        "y": 700,
         "wires": [
             []
         ]
@@ -413,7 +413,7 @@
         "complete": "payload",
         "targetType": "msg",
         "x": 720,
-        "y": 180,
+        "y": 140,
         "wires": []
     },
     {
@@ -484,7 +484,7 @@
         "outputFalse": "",
         "debounce": "",
         "x": 190,
-        "y": 360,
+        "y": 340,
         "wires": [
             [
                 "bc74c3718f91fdaa"
@@ -514,7 +514,7 @@
         "outputFalse": "",
         "debounce": "",
         "x": 180,
-        "y": 420,
+        "y": 380,
         "wires": [
             [
                 "bc74c3718f91fdaa"
@@ -544,7 +544,7 @@
         "outputFalse": "",
         "debounce": "",
         "x": 190,
-        "y": 480,
+        "y": 420,
         "wires": [
             [
                 "bc74c3718f91fdaa"
@@ -574,7 +574,7 @@
         "outputFalse": "",
         "debounce": "",
         "x": 190,
-        "y": 540,
+        "y": 460,
         "wires": [
             [
                 "bc74c3718f91fdaa"
@@ -589,8 +589,8 @@
         "links": [
             "mock-sensor-linkout"
         ],
-        "x": 195,
-        "y": 600,
+        "x": 245,
+        "y": 500,
         "wires": [
             [
                 "bc74c3718f91fdaa"
@@ -631,7 +631,7 @@
         "finalize": "",
         "libs": [],
         "x": 730,
-        "y": 440,
+        "y": 420,
         "wires": [
             [
                 "5c842271060cd209"
@@ -761,7 +761,7 @@
         "styleGlow": false,
         "className": "",
         "x": 990,
-        "y": 360,
+        "y": 340,
         "wires": [
             []
         ]
@@ -784,7 +784,7 @@
         "color": "#717171",
         "className": "",
         "x": 1000,
-        "y": 420,
+        "y": 380,
         "wires": []
     },
     {
@@ -805,7 +805,7 @@
         "color": "#717171",
         "className": "",
         "x": 990,
-        "y": 480,
+        "y": 420,
         "wires": []
     },
     {
@@ -826,7 +826,7 @@
         "color": "#717171",
         "className": "",
         "x": 980,
-        "y": 540,
+        "y": 460,
         "wires": []
     },
     {
@@ -847,7 +847,7 @@
         "color": "#717171",
         "className": "",
         "x": 990,
-        "y": 660,
+        "y": 500,
         "wires": []
     },
     {
@@ -1026,7 +1026,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 430,
+        "x": 440,
         "y": 960,
         "wires": [
             [
@@ -1051,8 +1051,6 @@
         "tooltip": "Turn AC on (manual mode only)",
         "color": "#ffffff",
         "bgcolor": "#2e9e6b",
-        "buttonColor": "#2e9e6b",
-        "textColor": "#ffffff",
         "className": "",
         "icon": "",
         "iconPosition": "left",
@@ -1060,8 +1058,10 @@
         "payloadType": "str",
         "topic": "manual",
         "topicType": "str",
+        "buttonColor": "#2e9e6b",
+        "textColor": "#ffffff",
         "x": 200,
-        "y": 1000,
+        "y": 1020,
         "wires": [
             [
                 "9ef528e856991b18"
@@ -1082,8 +1082,6 @@
         "tooltip": "Turn AC off (manual mode only)",
         "color": "#ffffff",
         "bgcolor": "#cf5b54",
-        "buttonColor": "#cf5b54",
-        "textColor": "#ffffff",
         "className": "",
         "icon": "",
         "iconPosition": "left",
@@ -1091,6 +1089,8 @@
         "payloadType": "str",
         "topic": "manual",
         "topicType": "str",
+        "buttonColor": "#cf5b54",
+        "textColor": "#ffffff",
         "x": 200,
         "y": 1060,
         "wires": [
@@ -1111,7 +1111,7 @@
         "finalize": "",
         "libs": [],
         "x": 430,
-        "y": 1040,
+        "y": 1020,
         "wires": [
             [
                 "a77a1a38e609c269"
@@ -1139,7 +1139,7 @@
         "color": "#8a93a6",
         "className": "",
         "x": 710,
-        "y": 1000,
+        "y": 240,
         "wires": []
     },
     {
@@ -1228,8 +1228,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1270,
-        "y": 1380,
+        "x": 710,
+        "y": 1360,
         "wires": [
             []
         ]
@@ -1262,7 +1262,7 @@
         "iconInnerPosition": "inside",
         "spinner": "default",
         "x": 430,
-        "y": 1200,
+        "y": 1220,
         "wires": [
             [
                 "6132d49b22644866"
@@ -1296,7 +1296,7 @@
         "iconPosition": "left",
         "iconInnerPosition": "inside",
         "spinner": "default",
-        "x": 440,
+        "x": 460,
         "y": 1260,
         "wires": [
             [
@@ -1331,8 +1331,8 @@
         "iconPosition": "left",
         "iconInnerPosition": "inside",
         "spinner": "default",
-        "x": 440,
-        "y": 1320,
+        "x": 470,
+        "y": 1300,
         "wires": [
             [
                 "6132d49b22644866"
@@ -1366,8 +1366,8 @@
         "iconPosition": "left",
         "iconInnerPosition": "inside",
         "spinner": "default",
-        "x": 440,
-        "y": 1380,
+        "x": 450,
+        "y": 1820,
         "wires": [
             [
                 "6132d49b22644866"
@@ -1401,8 +1401,8 @@
         "iconPosition": "left",
         "iconInnerPosition": "inside",
         "spinner": "default",
-        "x": 710,
-        "y": 1200,
+        "x": 410,
+        "y": 1340,
         "wires": [
             [
                 "6132d49b22644866"
@@ -1436,8 +1436,8 @@
         "iconPosition": "left",
         "iconInnerPosition": "inside",
         "spinner": "default",
-        "x": 710,
-        "y": 1260,
+        "x": 410,
+        "y": 1380,
         "wires": [
             [
                 "6132d49b22644866"
@@ -1471,8 +1471,8 @@
         "iconPosition": "left",
         "iconInnerPosition": "inside",
         "spinner": "default",
-        "x": 990,
-        "y": 1320,
+        "x": 410,
+        "y": 1540,
         "wires": [
             [
                 "6132d49b22644866"
@@ -1506,8 +1506,8 @@
         "iconPosition": "left",
         "iconInnerPosition": "inside",
         "spinner": "default",
-        "x": 990,
-        "y": 1380,
+        "x": 410,
+        "y": 1580,
         "wires": [
             [
                 "6132d49b22644866"
@@ -1557,8 +1557,8 @@
         "className": "",
         "typeIsComboBox": false,
         "msgTrigger": "onChange",
-        "x": 690,
-        "y": 1320,
+        "x": 390,
+        "y": 1420,
         "wires": [
             [
                 "6132d49b22644866"
@@ -1612,8 +1612,8 @@
         "className": "",
         "typeIsComboBox": false,
         "msgTrigger": "onChange",
-        "x": 710,
-        "y": 1380,
+        "x": 410,
+        "y": 1460,
         "wires": [
             [
                 "6132d49b22644866"
@@ -1651,8 +1651,8 @@
         "className": "",
         "typeIsComboBox": false,
         "msgTrigger": "onChange",
-        "x": 690,
-        "y": 1440,
+        "x": 390,
+        "y": 1500,
         "wires": [
             [
                 "6132d49b22644866"
@@ -1676,8 +1676,8 @@
         "fontSize": 11,
         "color": "#e08a8a",
         "className": "",
-        "x": 1000,
-        "y": 1200,
+        "x": 720,
+        "y": 200,
         "wires": []
     },
     {
@@ -1706,8 +1706,8 @@
         "offvalueType": "bool",
         "officon": "",
         "offcolor": "#4caf50",
-        "x": 1000,
-        "y": 1260,
+        "x": 180,
+        "y": 1880,
         "wires": [
             [
                 "crit-lock-handler"
@@ -1726,8 +1726,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1270,
-        "y": 1620,
+        "x": 410,
+        "y": 1880,
         "wires": []
     },
     {
@@ -1757,8 +1757,8 @@
         "iconPosition": "left",
         "iconInnerPosition": "inside",
         "spinner": "default",
-        "x": 1010,
-        "y": 1440,
+        "x": 430,
+        "y": 1620,
         "wires": [
             [
                 "6132d49b22644866"
@@ -1792,8 +1792,8 @@
         "iconPosition": "left",
         "iconInnerPosition": "inside",
         "spinner": "default",
-        "x": 980,
-        "y": 1500,
+        "x": 400,
+        "y": 1660,
         "wires": [
             [
                 "6132d49b22644866"
@@ -1827,8 +1827,8 @@
         "iconPosition": "left",
         "iconInnerPosition": "inside",
         "spinner": "default",
-        "x": 980,
-        "y": 1560,
+        "x": 400,
+        "y": 1700,
         "wires": [
             [
                 "6132d49b22644866"
@@ -1862,8 +1862,8 @@
         "iconPosition": "left",
         "iconInnerPosition": "inside",
         "spinner": "default",
-        "x": 990,
-        "y": 1620,
+        "x": 410,
+        "y": 1740,
         "wires": [
             [
                 "6132d49b22644866"
@@ -1897,8 +1897,8 @@
         "iconPosition": "left",
         "iconInnerPosition": "inside",
         "spinner": "default",
-        "x": 990,
-        "y": 1680,
+        "x": 410,
+        "y": 1780,
         "wires": [
             [
                 "6132d49b22644866"
@@ -2098,7 +2098,7 @@
         "name": "🎨 Light palette — paste into the 'TinyHouse Dark' theme node to switch",
         "info": "Dashboard 2.0 has no per-user light/dark toggle; the theme colours are fixed by the theme node. To switch the whole dashboard to light mode, set the 'TinyHouse Dark' theme colours to:\n\n  surface:      #ffffff\n  primary:      #0094ce\n  bgPage:       #eef1f5\n  groupBg:      #ffffff\n  groupOutline: #d4dae3\n\n(The current dark palette is surface #161c27, primary #4cc9f0, bgPage #0e131b, groupBg #1a2230, groupOutline #2b3851.)",
         "x": 285,
-        "y": 1780,
+        "y": 2200,
         "wires": []
     },
     {
@@ -2114,8 +2114,8 @@
         "links": [
             "mock-cmd-linkout"
         ],
-        "x": 735,
-        "y": 860,
+        "x": 805,
+        "y": 840,
         "wires": [
             [
                 "72f57580f5a03db9"

@@ -365,8 +365,8 @@
         "fontSize": 13,
         "color": "#717171",
         "className": "",
-        "x": 1490,
-        "y": 640,
+        "x": 950,
+        "y": 780,
         "wires": []
     },
     {
@@ -425,8 +425,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1280,
-        "y": 640,
+        "x": 700,
+        "y": 780,
         "wires": [
             [
                 "ss-result"
@@ -733,7 +733,7 @@
         "z": "mocks-tab",
         "name": "E2E CONTROL HOOKS  →  global.test / global.simClock  (sim only)",
         "info": "HTTP hooks the e2e suite uses to drive the control logic without the dashboard:\n  POST /test       set { config, manualMode, simClock } overrides (POST {} to clear)\n  GET  /test/status read back controllerStatus + active overrides\nMain Logic honours global.test the same way it honours global.simClock; both are inert in production when unset.",
-        "x": 300,
+        "x": 260,
         "y": 980,
         "wires": []
     },
@@ -746,7 +746,7 @@
         "method": "post",
         "upload": false,
         "swaggerDoc": "",
-        "x": 160,
+        "x": 200,
         "y": 1020,
         "wires": [
             [
@@ -766,7 +766,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 420,
+        "x": 410,
         "y": 1020,
         "wires": [
             [
@@ -781,7 +781,7 @@
         "name": "",
         "statusCode": "",
         "headers": {},
-        "x": 660,
+        "x": 650,
         "y": 1020,
         "wires": []
     },
@@ -794,7 +794,7 @@
         "method": "get",
         "upload": false,
         "swaggerDoc": "",
-        "x": 170,
+        "x": 180,
         "y": 1080,
         "wires": [
             [
@@ -814,7 +814,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 430,
+        "x": 420,
         "y": 1080,
         "wires": [
             [
@@ -829,7 +829,7 @@
         "name": "",
         "statusCode": "",
         "headers": {},
-        "x": 660,
+        "x": 650,
         "y": 1080,
         "wires": []
     },
