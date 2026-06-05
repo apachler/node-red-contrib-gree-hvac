@@ -581,6 +581,23 @@
         ]
     },
     {
+        "id": "mock-sensor-linkin",
+        "type": "link in",
+        "z": "556b70d1e6fd3dde",
+        "name": "External sensors",
+        "links": [
+            "mock-sensor-linkout"
+        ],
+        "x": 195,
+        "y": 600,
+        "wires": [
+            [
+                "bc74c3718f91fdaa"
+            ]
+        ],
+        "info": "Generic sensor-injection entry point feeding 'Collect Data'. The simulator's mock sensor pump (Mocks tab) targets this link in place of the Victron/Ruuvi hardware nodes. On real hardware no link-out references it, so it stays idle and the victron-input-* nodes drive Collect Data directly — harmless to keep in the production flow."
+    },
+    {
         "id": "bc74c3718f91fdaa",
         "type": "function",
         "z": "556b70d1e6fd3dde",
@@ -1124,7 +1141,7 @@
         "z": "556b70d1e6fd3dde",
         "name": "═══════════════════ ⚙️ CONFIGURATION DASHBOARD ═══════════════════",
         "info": "",
-        "x": 40,
+        "x": 365,
         "y": 1140,
         "wires": []
     },

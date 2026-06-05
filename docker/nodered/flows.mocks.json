@@ -71,8 +71,24 @@
         "x": 720,
         "y": 120,
         "wires": [
-            []
+            [
+                "mock-sensor-linkout"
+            ]
         ]
+    },
+    {
+        "id": "mock-sensor-linkout",
+        "type": "link out",
+        "z": "mocks-tab",
+        "name": "→ Collect Data",
+        "mode": "link",
+        "links": [
+            "mock-sensor-linkin"
+        ],
+        "x": 935,
+        "y": 120,
+        "wires": [],
+        "info": "Editor-safe cross-tab link to the user flow's 'Collect Data' node. The previous direct wire from this tab to the user tab was silently dropped whenever the flow was edited + redeployed in the browser editor (the editor can't draw cross-tab wires); link nodes survive that round-trip. Targets the 'mock-sensor-linkin' link-in on the user-flow tab."
     },
     {
         "id": "mock-debug",
