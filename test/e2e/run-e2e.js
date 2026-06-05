@@ -75,13 +75,11 @@ async function main() {
         // a single sim, and fault-recovery.e2e.test.js injects packet drops
         // that would break the other files' assertions if they ran in
         // parallel against the same container.
+        // No --test-timeout: it's Node 20+ only and the e2e CI floor is Node
+        // 18, which rejects the flag. The test files carry their own waits and
+        // the e2e CI job has a timeout-minutes cap as the safety net.
         exitCode = await runNodeTest(
-            [
-                '--test',
-                '--test-concurrency=1',
-                '--test-timeout=120000',
-                'test/e2e/*.e2e.test.js',
-            ],
+            ['--test', '--test-concurrency=1', 'test/e2e/*.e2e.test.js'],
             { ...process.env, E2E_STACK_UP: '1' }
         );
     } catch (err) {
