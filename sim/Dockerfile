@@ -1,5 +1,7 @@
-# Pinned to a patch line for reproducible builds (digest-pin is a backlog item).
-FROM node:18.20-alpine
+# Pinned to an immutable digest for bit-for-bit reproducible builds; the
+# Dependabot docker ecosystem keeps the digest current. The tag is retained
+# alongside the digest for human readability.
+FROM node:18.20-alpine@sha256:8d6421d663b4c28fd3ebc498332f249011d118945588d0a35cb9bc4b8ca09d9e
 
 WORKDIR /app
 
