@@ -21,7 +21,7 @@
         "type": "function",
         "z": "556b70d1e6fd3dde",
         "name": "Config Init",
-        "func": "// SINGLE SOURCE OF TRUTH for all configuration defaults. Every other\n// node reads flow.get('config') and must NOT re-default values — change a\n// default here and it applies everywhere.\nvar defaults = {\n    // --- comfort / safe ---\n    targetTemp: 23,            // AC setpoint while running (°C)\n    insideOnThreshold: 20,     // turn on when inside reaches this (°C)\n    outsideOnThreshold: 24,    // …or pre-cool when outside reaches this (°C)\n    timeOnHour: 9,             // operating window start (hour)\n    timeOffHour: 19,           // operating window end (hour)\n    mode: 'cool',\n    fanSpeed: 'auto',\n    blow: 'on',                // X-Fan: dry the coil after shutdown\n    // --- full writeable device parameter set (asserted on every command) ---\n    temperatureUnit: 'celsius',\n    lights: 'on',\n    air: 'off',\n    health: 'off',\n    sleep: 'off',\n    swingHor: 'default',\n    swingVert: 'default',\n    quiet: 'off',\n    turbo: 'off',\n    powerSave: 'off',\n    safetyHeating: 'off',\n    // --- critical: battery & compressor protection ---\n    socOnThreshold: 70,        // start only above this SOC (%)\n    socOffThreshold: 65,       // stop below this SOC (%)\n    voltageOnThreshold: 53.5,  // PV-surplus voltage gate (V)\n    onDelay: 60,               // conditions sustained before ON (s)\n    offDelay: 60,              // conditions lost before OFF (s)\n    minOnTime: 300,            // minimum runtime once on (s)\n    minOffTime: 180            // minimum off before restart (s)\n};\nvar saved = flow.get('config', 'persistent');\nvar config = Object.assign({}, defaults, saved || {});\nflow.set('config', config);\nflow.set('config', config, 'persistent');\nif (!flow.get('acState')) {\n    flow.set('acState', {power:false,manualMode:false,conditionsMetSince:null,conditionsNotMetSince:null,lastOnAt:0,lastOffAt:0});\n}\nflow.set('currentValues', {soc:0,batteryVoltage:0,batteryState:'Unknown',batterySystemState:'Unknown',batterySystemStateNum:-1,temperature:0,tempReceived:false,outsideTemp:0,outsideTempReceived:false});\nnode.status({fill:'green',shape:'dot',text:'Config loaded'});\nmsg.payload = config;\nreturn msg;",
+        "func": "// SINGLE SOURCE OF TRUTH for all configuration defaults. Every other\n// node reads flow.get('config') and must NOT re-default values — change a\n// default here and it applies everywhere.\nvar defaults = {\n    // --- comfort / safe ---\n    targetTemp: 23,            // AC setpoint while running (°C)\n    insideOnThreshold: 20,     // turn on when inside reaches this (°C)\n    insideOffThreshold: 20,    // turn OFF when room cools to/below this (°C)\n    outsideOnThreshold: 24,    // …or pre-cool when outside reaches this (°C)\n    timeOnHour: 9,             // operating window start (hour)\n    timeOffHour: 19,           // operating window end (hour)\n    mode: 'cool',\n    fanSpeed: 'auto',\n    blow: 'on',                // X-Fan: dry the coil after shutdown\n    // --- full writeable device parameter set (asserted on every command) ---\n    temperatureUnit: 'celsius',\n    lights: 'off',\n    air: 'off',\n    health: 'off',\n    sleep: 'off',\n    swingHor: 'default',\n    swingVert: 'default',\n    quiet: 'off',\n    turbo: 'off',\n    powerSave: 'off',\n    safetyHeating: 'off',\n    // --- critical: battery & compressor protection ---\n    socOnThreshold: 70,        // start only above this SOC (%)\n    socOffThreshold: 65,       // stop below this SOC (%)\n    voltageOnThreshold: 53.5,  // PV-surplus voltage gate (V)\n    onDelay: 60,               // conditions sustained before ON (s)\n    offDelay: 60,              // conditions lost before OFF (s)\n    minOnTime: 300,            // minimum runtime once on (s)\n    minOffTime: 180            // minimum off before restart (s)\n};\nvar saved = flow.get('config', 'persistent');\nvar config = Object.assign({}, defaults, saved || {});\n// Device-parameter constants have no dashboard control — always take them\n// from the defaults above so editing a default here actually applies\n// (a previously-persisted snapshot must not shadow it).\n['temperatureUnit','lights','air','health','sleep','swingHor','swingVert','quiet','turbo','powerSave','safetyHeating'].forEach(function(k){ config[k] = defaults[k]; });\nflow.set('config', config);\nflow.set('config', config, 'persistent');\nif (!flow.get('acState')) {\n    flow.set('acState', {power:false,manualMode:false,conditionsMetSince:null,conditionsNotMetSince:null,lastOnAt:0,lastOffAt:0});\n}\nflow.set('currentValues', {soc:0,batteryVoltage:0,batteryState:'Unknown',batterySystemState:'Unknown',batterySystemStateNum:-1,temperature:0,tempReceived:false,outsideTemp:0,outsideTempReceived:false});\nnode.status({fill:'green',shape:'dot',text:'Config loaded'});\nmsg.payload = config;\nreturn msg;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -116,7 +116,7 @@
         "type": "function",
         "z": "556b70d1e6fd3dde",
         "name": "Visualisation feed",
-        "func": "// Feeds the overview gauges + trend charts from currentValues/acState.\nvar v = flow.get('currentValues') || {};\nvar s = flow.get('acState') || {};\nvar inside  = v.tempReceived ? v.temperature : null;\nvar outside = v.outsideTempReceived ? v.outsideTemp : null;\nvar voltage = v.batteryVoltage || 0;\nvar soc = v.soc || 0;\nvar power = s.power ? 100 : 0;\nreturn [\n    outside !== null ? { payload: parseFloat(outside.toFixed(1)) } : null,\n    voltage > 0 ? { payload: parseFloat(voltage.toFixed(2)) } : null,\n    [\n        inside !== null ? { payload: parseFloat(inside.toFixed(1)), topic: 'Inside' } : null,\n        outside !== null ? { payload: parseFloat(outside.toFixed(1)), topic: 'Outside' } : null\n    ],\n    [\n        { payload: Math.round(soc), topic: 'SOC %' },\n        { payload: power, topic: 'AC on' }\n    ]\n];",
+        "func": "// Feeds the overview gauges + trend charts from currentValues/acState.\nvar v = flow.get('currentValues') || {};\nvar s = flow.get('acState') || {};\nvar inside  = v.tempReceived ? v.temperature : null;\nvar outside = v.outsideTempReceived ? v.outsideTemp : null;\nvar voltage = v.batteryVoltage || 0;\nvar soc = v.soc || 0;\nvar power = s.power ? 100 : 0;\nreturn [\n    outside !== null ? { payload: parseFloat(outside.toFixed(1)) } : null,\n    voltage > 0 ? { payload: parseFloat(voltage.toFixed(2)) } : null,\n    [\n        inside !== null ? { payload: parseFloat(inside.toFixed(1)), topic: 'Inside [°C]' } : null,\n        outside !== null ? { payload: parseFloat(outside.toFixed(1)), topic: 'Outside [°C]' } : null\n    ],\n    [\n        { payload: Math.round(soc), topic: 'SOC [%]' },\n        { payload: power, topic: 'AC [on/off]' }\n    ]\n];",
         "outputs": 4,
         "timeout": "",
         "noerr": 0,
@@ -153,10 +153,10 @@
         "height": 2,
         "gtype": "gauge-half",
         "gstyle": "needle",
-        "title": "☀️ Outside",
+        "title": "Outside",
         "alwaysShowTitle": false,
         "units": "°C",
-        "icon": "",
+        "icon": "mdi-weather-sunny",
         "prefix": "",
         "suffix": "",
         "segments": [
@@ -212,10 +212,10 @@
         "height": 2,
         "gtype": "gauge-half",
         "gstyle": "needle",
-        "title": "🔌 Voltage",
+        "title": "Voltage",
         "alwaysShowTitle": false,
         "units": "V",
-        "icon": "",
+        "icon": "mdi-power-plug",
         "prefix": "",
         "suffix": "",
         "segments": [
@@ -264,7 +264,7 @@
         "z": "556b70d1e6fd3dde",
         "group": "db-group-trends",
         "name": "Temperature trend",
-        "label": "Temperature (°C)",
+        "label": "Temperature",
         "order": 3,
         "chartType": "line",
         "category": "topic",
@@ -316,7 +316,7 @@
         "z": "556b70d1e6fd3dde",
         "group": "db-group-trends",
         "name": "SOC + AC runtime",
-        "label": "SOC (%) + AC on",
+        "label": "State",
         "order": 4,
         "chartType": "line",
         "category": "topic",
@@ -396,7 +396,8 @@
         "y": 100,
         "wires": [
             [
-                "8594a4df82975e15"
+                "8594a4df82975e15",
+                "sync-manual-btns"
             ]
         ]
     },
@@ -644,9 +645,7 @@
             [
                 "7216cde8034cbf1f"
             ],
-            [
-                "f235fd7dad07c15e"
-            ],
+            [],
             [
                 "478a2476306b47f0"
             ],
@@ -668,10 +667,10 @@
         "height": "2",
         "gtype": "gauge-half",
         "gstyle": "needle",
-        "title": "🔋 SOC",
+        "title": "SOC",
         "alwaysShowTitle": false,
         "units": "%",
-        "icon": "",
+        "icon": "mdi-battery",
         "prefix": "",
         "suffix": "",
         "segments": [
@@ -721,10 +720,10 @@
         "height": "2",
         "gtype": "gauge-half",
         "gstyle": "needle",
-        "title": "🌡️ Inside",
+        "title": "Inside",
         "alwaysShowTitle": false,
         "units": "°C",
-        "icon": "",
+        "icon": "mdi-thermometer",
         "prefix": "",
         "suffix": "",
         "segments": [
@@ -831,32 +830,11 @@
         "wires": []
     },
     {
-        "id": "f235fd7dad07c15e",
-        "type": "ui-text",
-        "z": "556b70d1e6fd3dde",
-        "group": "db-group-mode",
-        "order": 1,
-        "width": "6",
-        "height": "1",
-        "name": "Mode Text",
-        "label": "Mode:",
-        "format": "{{msg.payload}}",
-        "layout": "row-spread",
-        "style": false,
-        "font": "",
-        "fontSize": 16,
-        "color": "#717171",
-        "className": "",
-        "x": 990,
-        "y": 600,
-        "wires": []
-    },
-    {
         "id": "478a2476306b47f0",
         "type": "ui-text",
         "z": "556b70d1e6fd3dde",
-        "group": "db-group-mode",
-        "order": 3,
+        "group": "db-group-status",
+        "order": 6,
         "width": "6",
         "height": "1",
         "name": "Status Text",
@@ -887,7 +865,7 @@
         "type": "function",
         "z": "556b70d1e6fd3dde",
         "name": "Main Logic",
-        "func": "// Decides when the AC turns on/off from PV surplus + temperature, and\n// publishes a single controllerStatus (read by the Node-RED status text and\n// the simulator dashboard). All tunables come from flow.config (see\n// 'Config Init' for the single source of defaults) — no inline defaults.\nvar config = flow.get('config') || {};\nvar values = flow.get('currentValues') || {};\nvar state  = flow.get('acState') || {};\n\n// Test override (GLOBAL context, inert in production when unset) — mirrors\n// the simClock hook below. Lets the sim-only mocks tab shrink debounce\n// delays / force manual mode for e2e without reaching into this tab's flow\n// context. NEVER set on real hardware.\nvar testOverride = global.get('test');\nif (testOverride) {\n    if (testOverride.config) { config = Object.assign({}, config, testOverride.config); }\n    if (testOverride.manualMode !== undefined) { state.manualMode = testOverride.manualMode; }\n    if (testOverride.resetNonce && testOverride.resetNonce !== global.get('testResetSeen')) {\n        state = { power:false, manualMode: state.manualMode, conditionsMetSince:null, conditionsNotMetSince:null, lastOnAt:0, lastOffAt:0 };\n        flow.set('acState', state);\n        global.set('testResetSeen', testOverride.resetNonce);\n    }\n}\n\nvar now = Date.now();\n\n// Sim clock override (test tooling, GLOBAL context). Only the time-of-day\n// gate uses it; Date.now() (delays / min-times) stays real.\nvar simClock = global.get('simClock');\nvar hour = (simClock && simClock.enabled) ? Number(simClock.hour) : new Date().getHours();\n\nvar soc      = values.soc || 0;\nvar inside   = (values.temperature !== undefined) ? values.temperature : 0;\nvar voltage  = values.batteryVoltage || 0;\nvar stateNum = values.batterySystemStateNum;\nvar outside  = values.outsideTempReceived ? values.outsideTemp : null;\n\nfunction setCtrl(phase, message, eta) {\n    global.set('controllerStatus', {phase: phase, message: message, etaSeconds: Math.max(0, Math.round(eta || 0)), since: now});\n}\n\n// Manual mode: the controller stands down.\nif (state.manualMode) {\n    node.status({fill:'blue',shape:'dot',text:'Manual: ' + (state.power ? 'ON' : 'OFF')});\n    setCtrl('manual', 'Manual mode — AC ' + (state.power ? 'on' : 'off'), 0);\n    return null;\n}\n\n// Temperature gate (OR): start pre-emptively when the room is already\n// warming (inside >= insideOnThreshold) OR when it is hot enough outside\n// that the room will soon climb (outside >= outsideOnThreshold). Either\n// trigger is enough; the AC then holds at targetTemp.\nvar insideOK  = inside >= config.insideOnThreshold;\nvar outsideOK = (outside !== null) && (outside >= config.outsideOnThreshold);\n\nvar timeOK     = (hour >= config.timeOnHour && hour < config.timeOffHour);\nvar pvOK       = (stateNum === 0 || stateNum === 1);   // not discharging = PV surplus\nvar voltOK     = voltage >= config.voltageOnThreshold;\nvar socStartOK = soc >= config.socOnThreshold;\nvar socKeepOK  = soc >= config.socOffThreshold;\nvar tempOK     = insideOK || outsideOK;\n\n// ===== currently ON =====\nif (state.power) {\n    var onFor = (now - (state.lastOnAt || now)) / 1000;\n    var off = [];\n    if (!timeOK) off.push('quiet hours');\n    if (!socKeepOK) off.push('SOC ' + Math.round(soc) + '% < ' + config.socOffThreshold + '%');\n    if (!pvOK) off.push('battery discharging');\n\n    if (off.length) {\n        if (onFor < config.minOnTime) {\n            var holdOn = config.minOnTime - onFor;\n            node.status({fill:'green',shape:'dot',text:'Running, min on-time ' + Math.ceil(holdOn) + 's'});\n            setCtrl('on', 'Running, holding for compressor', holdOn);\n            return null;\n        }\n        if (!state.conditionsNotMetSince) { state.conditionsNotMetSince = now; flow.set('acState', state); }\n        var offWaited = (now - state.conditionsNotMetSince) / 1000;\n        if (offWaited >= config.offDelay) {\n            state.power = false; state.lastOffAt = now; state.conditionsNotMetSince = null; flow.set('acState', state);\n            node.status({fill:'red',shape:'dot',text:'OFF: ' + off.join(', ')});\n            setCtrl('off', 'AC off — ' + off.join(', '), 0);\n            return {payload: {action:'off', reason: off.join(', ')}};\n        }\n        node.status({fill:'yellow',shape:'dot',text:'OFF in ' + Math.ceil(config.offDelay - offWaited) + 's'});\n        setCtrl('disarming', 'AC OFF (' + off.join(', ') + ') in', config.offDelay - offWaited);\n        return null;\n    }\n    state.conditionsNotMetSince = null; flow.set('acState', state);\n    node.status({fill:'green',shape:'dot',text:'Running | ' + voltage.toFixed(2) + 'V | SOC ' + Math.round(soc) + '%'});\n    setCtrl('on', 'Running — SOC ' + Math.round(soc) + '% · ' + inside.toFixed(1) + '°C', 0);\n    return null;\n}\n\n// ===== currently OFF =====\nvar blockers = [];\nif (!timeOK) blockers.push('quiet hours');\nif (!socStartOK) blockers.push('SOC ' + Math.round(soc) + '% < ' + config.socOnThreshold + '%');\nif (!voltOK) blockers.push(voltage.toFixed(2) + 'V < ' + config.voltageOnThreshold + 'V');\nif (!pvOK) blockers.push('battery discharging');\nif (!tempOK) blockers.push('inside ' + inside.toFixed(1) + '°C < ' + config.insideOnThreshold + '°C & outside ' + (outside === null ? '?' : outside.toFixed(1) + '°C') + ' < ' + config.outsideOnThreshold + '°C');\n\nif (blockers.length) {\n    state.conditionsMetSince = null; flow.set('acState', state);\n    node.status({fill:'grey',shape:'ring',text:'Waiting: ' + blockers.join(' | ')});\n    setCtrl('idle', 'Waiting — ' + blockers.join(', '), 0);\n    return null;\n}\n\n// Compressor cooldown (min off-time) before a restart.\nvar offFor = (now - (state.lastOffAt || 0)) / 1000;\nif (state.lastOffAt && offFor < config.minOffTime) {\n    state.conditionsMetSince = null; flow.set('acState', state);\n    node.status({fill:'yellow',shape:'ring',text:'Compressor cooldown ' + Math.ceil(config.minOffTime - offFor) + 's'});\n    setCtrl('blocked', 'Compressor cooldown', config.minOffTime - offFor);\n    return null;\n}\n\nif (!state.conditionsMetSince) { state.conditionsMetSince = now; flow.set('acState', state); }\nvar onWaited = (now - state.conditionsMetSince) / 1000;\nif (onWaited >= config.onDelay) {\n    state.power = true; state.lastOnAt = now; state.conditionsMetSince = null; state.conditionsNotMetSince = null; flow.set('acState', state);\n    node.status({fill:'green',shape:'dot',text:'ON: SOC ' + Math.round(soc) + '% | ' + inside.toFixed(1) + '°C'});\n    setCtrl('on', 'AC on — cooling to ' + config.targetTemp + '°C', 0);\n    return {payload: {action:'on', reason:'SOC ' + Math.round(soc) + '% | ' + voltage.toFixed(2) + 'V | ' + inside.toFixed(1) + '°C'}};\n}\nnode.status({fill:'yellow',shape:'dot',text:'ON in ' + Math.ceil(config.onDelay - onWaited) + 's'});\nsetCtrl('arming', 'AC ON in', config.onDelay - onWaited);\nreturn null;",
+        "func": "// Decides when the AC turns on/off from PV surplus + temperature, and\n// publishes a single controllerStatus (read by the Node-RED status text and\n// the simulator dashboard). All tunables come from flow.config (see\n// 'Config Init' for the single source of defaults) — no inline defaults.\nvar config = flow.get('config') || {};\nvar values = flow.get('currentValues') || {};\nvar state  = flow.get('acState') || {};\n\n// Test override (GLOBAL context, inert in production when unset) — mirrors\n// the simClock hook below. Lets the sim-only mocks tab shrink debounce\n// delays / force manual mode for e2e without reaching into this tab's flow\n// context. NEVER set on real hardware.\nvar testOverride = global.get('test');\nif (testOverride) {\n    if (testOverride.config) { config = Object.assign({}, config, testOverride.config); }\n    if (testOverride.manualMode !== undefined) { state.manualMode = testOverride.manualMode; }\n    if (testOverride.resetNonce && testOverride.resetNonce !== global.get('testResetSeen')) {\n        state = { power:false, manualMode: state.manualMode, conditionsMetSince:null, conditionsNotMetSince:null, lastOnAt:0, lastOffAt:0 };\n        flow.set('acState', state);\n        global.set('testResetSeen', testOverride.resetNonce);\n    }\n}\n\nvar now = Date.now();\n\n// Sim clock override (test tooling, GLOBAL context). Only the time-of-day\n// gate uses it; Date.now() (delays / min-times) stays real.\nvar simClock = global.get('simClock');\nvar hour = (simClock && simClock.enabled) ? Number(simClock.hour) : new Date().getHours();\n\nvar soc      = values.soc || 0;\nvar inside   = (values.temperature !== undefined) ? values.temperature : 0;\nvar voltage  = values.batteryVoltage || 0;\nvar stateNum = values.batterySystemStateNum;\nvar outside  = values.outsideTempReceived ? values.outsideTemp : null;\n\nfunction setCtrl(phase, message, eta) {\n    global.set('controllerStatus', {phase: phase, message: message, etaSeconds: Math.max(0, Math.round(eta || 0)), since: now});\n}\n\n// Manual mode: the controller stands down.\nif (state.manualMode) {\n    node.status({fill:'blue',shape:'dot',text:'Manual: ' + (state.power ? 'ON' : 'OFF')});\n    setCtrl('manual', 'Manual mode — AC ' + (state.power ? 'on' : 'off'), 0);\n    return null;\n}\n\n// Temperature gate (OR): start pre-emptively when the room is already\n// warming (inside >= insideOnThreshold) OR when it is hot enough outside\n// that the room will soon climb (outside >= outsideOnThreshold). Either\n// trigger is enough; the AC then holds at targetTemp.\nvar insideOK  = inside >= config.insideOnThreshold;\nvar outsideOK = (outside !== null) && (outside >= config.outsideOnThreshold);\n\nvar timeOK     = (hour >= config.timeOnHour && hour < config.timeOffHour);\nvar pvOK       = (stateNum === 0 || stateNum === 1);   // not discharging = PV surplus\nvar voltOK     = voltage >= config.voltageOnThreshold;\nvar socStartOK = soc >= config.socOnThreshold;\nvar socKeepOK  = soc >= config.socOffThreshold;\nvar tempOK     = insideOK || outsideOK;\n\n// ===== currently ON =====\nif (state.power) {\n    var onFor = (now - (state.lastOnAt || now)) / 1000;\n    var off = [];\n    if (!timeOK) off.push('quiet hours');\n    if (!socKeepOK) off.push('SOC ' + Math.round(soc) + '% < ' + config.socOffThreshold + '%');\n    if (!pvOK) off.push('battery discharging');\n    if (values.tempReceived && inside <= config.insideOffThreshold) off.push('room cooled to ' + inside.toFixed(1) + '°C ≤ ' + config.insideOffThreshold + '°C');\n\n    if (off.length) {\n        if (onFor < config.minOnTime) {\n            var holdOn = config.minOnTime - onFor;\n            node.status({fill:'green',shape:'dot',text:'Running, min on-time ' + Math.ceil(holdOn) + 's'});\n            setCtrl('on', 'Running, holding for compressor', holdOn);\n            return null;\n        }\n        if (!state.conditionsNotMetSince) { state.conditionsNotMetSince = now; flow.set('acState', state); }\n        var offWaited = (now - state.conditionsNotMetSince) / 1000;\n        if (offWaited >= config.offDelay) {\n            state.power = false; state.lastOffAt = now; state.conditionsNotMetSince = null; flow.set('acState', state);\n            node.status({fill:'red',shape:'dot',text:'OFF: ' + off.join(', ')});\n            setCtrl('off', 'AC off — ' + off.join(', '), 0);\n            return {payload: {action:'off', reason: off.join(', ')}};\n        }\n        node.status({fill:'yellow',shape:'dot',text:'OFF in ' + Math.ceil(config.offDelay - offWaited) + 's'});\n        setCtrl('disarming', 'AC OFF (' + off.join(', ') + ') in', config.offDelay - offWaited);\n        return null;\n    }\n    state.conditionsNotMetSince = null; flow.set('acState', state);\n    node.status({fill:'green',shape:'dot',text:'Running | ' + voltage.toFixed(2) + 'V | SOC ' + Math.round(soc) + '%'});\n    setCtrl('on', 'Running — SOC ' + Math.round(soc) + '% · ' + inside.toFixed(1) + '°C', 0);\n    return null;\n}\n\n// ===== currently OFF =====\nvar blockers = [];\nif (!timeOK) blockers.push('quiet hours');\nif (!socStartOK) blockers.push('SOC ' + Math.round(soc) + '% < ' + config.socOnThreshold + '%');\nif (!voltOK) blockers.push(voltage.toFixed(2) + 'V < ' + config.voltageOnThreshold + 'V');\nif (!pvOK) blockers.push('battery discharging');\nif (!tempOK) blockers.push('inside ' + inside.toFixed(1) + '°C < ' + config.insideOnThreshold + '°C & outside ' + (outside === null ? '?' : outside.toFixed(1) + '°C') + ' < ' + config.outsideOnThreshold + '°C');\n\nif (blockers.length) {\n    state.conditionsMetSince = null; flow.set('acState', state);\n    node.status({fill:'grey',shape:'ring',text:'Waiting: ' + blockers.join(' | ')});\n    setCtrl('idle', 'Waiting — ' + blockers.join(', '), 0);\n    return null;\n}\n\n// Compressor cooldown (min off-time) before a restart.\nvar offFor = (now - (state.lastOffAt || 0)) / 1000;\nif (state.lastOffAt && offFor < config.minOffTime) {\n    state.conditionsMetSince = null; flow.set('acState', state);\n    node.status({fill:'yellow',shape:'ring',text:'Compressor cooldown ' + Math.ceil(config.minOffTime - offFor) + 's'});\n    setCtrl('blocked', 'Compressor cooldown', config.minOffTime - offFor);\n    return null;\n}\n\nif (!state.conditionsMetSince) { state.conditionsMetSince = now; flow.set('acState', state); }\nvar onWaited = (now - state.conditionsMetSince) / 1000;\nif (onWaited >= config.onDelay) {\n    state.power = true; state.lastOnAt = now; state.conditionsMetSince = null; state.conditionsNotMetSince = null; flow.set('acState', state);\n    node.status({fill:'green',shape:'dot',text:'ON: SOC ' + Math.round(soc) + '% | ' + inside.toFixed(1) + '°C'});\n    setCtrl('on', 'AC on — cooling to ' + config.targetTemp + '°C', 0);\n    return {payload: {action:'on', reason:'SOC ' + Math.round(soc) + '% | ' + voltage.toFixed(2) + 'V | ' + inside.toFixed(1) + '°C'}};\n}\nnode.status({fill:'yellow',shape:'dot',text:'ON in ' + Math.ceil(config.onDelay - onWaited) + 's'});\nsetCtrl('arming', 'AC ON in', config.onDelay - onWaited);\nreturn null;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -983,30 +961,32 @@
     },
     {
         "id": "8594a4df82975e15",
-        "type": "ui-switch",
+        "type": "ui-button-group",
         "z": "556b70d1e6fd3dde",
-        "name": "Mode Switch",
-        "label": "Manual",
+        "name": "Mode Select",
         "group": "db-group-mode",
-        "order": 2,
-        "width": "6",
-        "height": "1",
+        "order": 1,
+        "width": 6,
+        "height": 1,
+        "label": "",
+        "className": "",
+        "rounded": true,
+        "useThemeColors": true,
         "passthru": false,
-        "decouple": false,
+        "options": [
+            {
+                "label": "🤖 Automatic",
+                "value": "false",
+                "valueType": "bool"
+            },
+            {
+                "label": "✋ Manual",
+                "value": "true",
+                "valueType": "bool"
+            }
+        ],
         "topic": "mode",
         "topicType": "str",
-        "style": "",
-        "className": "",
-        "layout": "",
-        "clickableArea": "switch",
-        "onvalue": "true",
-        "onvalueType": "bool",
-        "onicon": "mdi-hand-back-left",
-        "oncolor": "#2196f3",
-        "offvalue": "false",
-        "offvalueType": "bool",
-        "officon": "mdi-robot",
-        "offcolor": "#4caf50",
         "x": 190,
         "y": 920,
         "wires": [
@@ -1030,7 +1010,30 @@
         "y": 920,
         "wires": [
             [
-                "b01830b89a5ffb3f"
+                "b01830b89a5ffb3f",
+                "sync-manual-btns"
+            ]
+        ]
+    },
+    {
+        "id": "sync-manual-btns",
+        "type": "function",
+        "z": "556b70d1e6fd3dde",
+        "name": "Grey Manual Buttons",
+        "func": "// D2 ui-button has no dynamic 'enabled', but it honours buttonColor /\n// textColor via msg.ui_update. Grey the manual AC buttons whenever we are\n// NOT in Manual mode so it is obvious they are inert; restore colour in\n// Manual. Reads acState so it works from any trigger (mode change / init).\nvar s = flow.get('acState') || {};\nvar on = !!s.manualMode;\nvar grey = {buttonColor:'#3a4254', textColor:'#8a93a6'};\nreturn [\n    {ui_update: on ? {buttonColor:'#2e9e6b', textColor:'#ffffff'} : grey},\n    {ui_update: on ? {buttonColor:'#cf5b54', textColor:'#ffffff'} : grey}\n];",
+        "outputs": 2,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 430,
+        "y": 960,
+        "wires": [
+            [
+                "1f1084ee1379f036"
+            ],
+            [
+                "7349dcb0f80c476b"
             ]
         ]
     },
@@ -1038,17 +1041,19 @@
         "id": "1f1084ee1379f036",
         "type": "ui-button",
         "z": "556b70d1e6fd3dde",
-        "group": "db-group-manual",
+        "group": "db-group-mode",
         "name": "AC ON",
         "label": "❄️ AC ON",
-        "order": 1,
+        "order": 2,
         "width": "6",
         "height": "1",
         "emulateClick": false,
         "tooltip": "Turn AC on (manual mode only)",
         "color": "#ffffff",
         "bgcolor": "#2e9e6b",
-        "className": "btn-ac-on",
+        "buttonColor": "#2e9e6b",
+        "textColor": "#ffffff",
+        "className": "",
         "icon": "",
         "iconPosition": "left",
         "payload": "on",
@@ -1067,17 +1072,19 @@
         "id": "7349dcb0f80c476b",
         "type": "ui-button",
         "z": "556b70d1e6fd3dde",
-        "group": "db-group-manual",
+        "group": "db-group-mode",
         "name": "AC OFF",
         "label": "⏹️ AC OFF",
-        "order": 2,
+        "order": 3,
         "width": "6",
         "height": "1",
         "emulateClick": false,
         "tooltip": "Turn AC off (manual mode only)",
         "color": "#ffffff",
         "bgcolor": "#cf5b54",
-        "className": "btn-ac-off",
+        "buttonColor": "#cf5b54",
+        "textColor": "#ffffff",
+        "className": "",
         "icon": "",
         "iconPosition": "left",
         "payload": "off",
@@ -1118,8 +1125,8 @@
         "id": "b53de9b45acbf61b",
         "type": "ui-text",
         "z": "556b70d1e6fd3dde",
-        "group": "db-group-manual",
-        "order": 3,
+        "group": "db-group-mode",
+        "order": 4,
         "width": "6",
         "height": "1",
         "name": "Manual Hint",
@@ -1150,8 +1157,8 @@
         "type": "function",
         "z": "556b70d1e6fd3dde",
         "name": "Config → Widgets",
-        "func": "// Prefill every Config-page widget from the single flow.config so the\n// sliders/inputs reflect the live configuration on load. Order matches the\n// wires below.\nvar c = flow.get('config') || {};\nnode.send([\n    [{payload: c.targetTemp}],\n    [{payload: c.insideOnThreshold}],\n    [{payload: c.outsideOnThreshold}],\n    [{payload: c.timeOnHour}],\n    [{payload: c.timeOffHour}],\n    [{payload: c.mode}],\n    [{payload: c.fanSpeed}],\n    [{payload: c.blow}],\n    [{payload: c.socOnThreshold}],\n    [{payload: c.socOffThreshold}],\n    [{payload: c.voltageOnThreshold}],\n    [{payload: c.onDelay}],\n    [{payload: c.offDelay}],\n    [{payload: c.minOnTime}],\n    [{payload: c.minOffTime}]\n]);\nreturn null;",
-        "outputs": 15,
+        "func": "// Prefill every Config-page widget from the single flow.config so the\n// sliders/inputs reflect the live configuration on load. Order matches the\n// wires below.\nvar c = flow.get('config') || {};\nnode.send([\n    [{payload: c.targetTemp}],\n    [{payload: c.insideOnThreshold}],\n    [{payload: c.outsideOnThreshold}],\n    [{payload: c.timeOnHour}],\n    [{payload: c.timeOffHour}],\n    [{payload: c.mode}],\n    [{payload: c.fanSpeed}],\n    [{payload: c.blow}],\n    [{payload: c.socOnThreshold}],\n    [{payload: c.socOffThreshold}],\n    [{payload: c.voltageOnThreshold}],\n    [{payload: c.onDelay}],\n    [{payload: c.offDelay}],\n    [{payload: c.minOnTime}],\n    [{payload: c.minOffTime}],\n    [{payload: c.insideOffThreshold}]\n]);\nreturn null;",
+        "outputs": 16,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
@@ -1203,6 +1210,9 @@
             ],
             [
                 "cfg-minoff"
+            ],
+            [
+                "cfg-insideoff"
             ]
         ]
     },
@@ -1211,7 +1221,7 @@
         "type": "function",
         "z": "556b70d1e6fd3dde",
         "name": "Save Config",
-        "func": "// Persists one config key from a dashboard widget. String keys pass\n// through; numeric keys are validated; CRITICAL keys are gated behind the\n// 'Unlock critical settings' switch so they can't be changed by accident.\nvar config = flow.get('config') || {};\nvar key = msg.topic;\nif (!key) { return null; }\n\nvar STRING_KEYS = ['mode', 'fanSpeed', 'blow'];\nvar CRITICAL = ['socOnThreshold','socOffThreshold','voltageOnThreshold','onDelay','offDelay','minOnTime','minOffTime'];\n\nif (CRITICAL.indexOf(key) !== -1 && !flow.get('criticalUnlocked')) {\n    node.status({fill:'red',shape:'ring',text:'🔒 Unlock critical settings to change ' + key});\n    return null;\n}\n\nvar value;\nif (STRING_KEYS.indexOf(key) !== -1) {\n    value = String(msg.payload);\n} else {\n    value = Number(msg.payload);\n    if (!Number.isFinite(value)) { node.status({fill:'red',shape:'dot',text:'Invalid value for ' + key}); return null; }\n}\n\nif (key === 'socOffThreshold' && value >= config.socOnThreshold) {\n    node.status({fill:'red',shape:'dot',text:'OFF-SOC must be < ON-SOC (' + config.socOnThreshold + '%)'}); return null;\n}\nif (key === 'socOnThreshold' && value <= config.socOffThreshold) {\n    node.status({fill:'red',shape:'dot',text:'ON-SOC must be > OFF-SOC (' + config.socOffThreshold + '%)'}); return null;\n}\nif (key === 'timeOnHour' && value >= config.timeOffHour) {\n    node.status({fill:'red',shape:'dot',text:'From must be < Until (' + config.timeOffHour + 'h)'}); return null;\n}\nif (key === 'timeOffHour' && value <= config.timeOnHour) {\n    node.status({fill:'red',shape:'dot',text:'Until must be > From (' + config.timeOnHour + 'h)'}); return null;\n}\nif (['onDelay','offDelay','minOnTime','minOffTime','insideOnThreshold','outsideOnThreshold'].indexOf(key) !== -1 && value < 0) {\n    node.status({fill:'red',shape:'dot',text: key + ' must be ≥ 0'}); return null;\n}\n\nconfig[key] = value;\nflow.set('config', config);\nflow.set('config', config, 'persistent');\nnode.status({fill:'green',shape:'dot',text: key + ' = ' + value + ' ✓'});\nreturn null;",
+        "func": "// Persists one config key from a dashboard widget. String keys pass\n// through; numeric keys are validated; CRITICAL keys are gated behind the\n// 'Unlock critical settings' switch so they can't be changed by accident.\nvar config = flow.get('config') || {};\nvar key = msg.topic;\nif (!key) { return null; }\n\nvar STRING_KEYS = ['mode', 'fanSpeed', 'blow'];\nvar CRITICAL = ['socOnThreshold','socOffThreshold','voltageOnThreshold','onDelay','offDelay','minOnTime','minOffTime'];\n\nif (CRITICAL.indexOf(key) !== -1 && !flow.get('criticalUnlocked')) {\n    node.status({fill:'red',shape:'ring',text:'🔒 Unlock critical settings to change ' + key});\n    return null;\n}\n\nvar value;\nif (STRING_KEYS.indexOf(key) !== -1) {\n    value = String(msg.payload);\n} else {\n    value = Number(msg.payload);\n    if (!Number.isFinite(value)) { node.status({fill:'red',shape:'dot',text:'Invalid value for ' + key}); return null; }\n}\n\nif (key === 'socOffThreshold' && value >= config.socOnThreshold) {\n    node.status({fill:'red',shape:'dot',text:'OFF-SOC must be < ON-SOC (' + config.socOnThreshold + '%)'}); return null;\n}\nif (key === 'socOnThreshold' && value <= config.socOffThreshold) {\n    node.status({fill:'red',shape:'dot',text:'ON-SOC must be > OFF-SOC (' + config.socOffThreshold + '%)'}); return null;\n}\nif (key === 'timeOnHour' && value >= config.timeOffHour) {\n    node.status({fill:'red',shape:'dot',text:'From must be < Until (' + config.timeOffHour + 'h)'}); return null;\n}\nif (key === 'timeOffHour' && value <= config.timeOnHour) {\n    node.status({fill:'red',shape:'dot',text:'Until must be > From (' + config.timeOnHour + 'h)'}); return null;\n}\nif (['onDelay','offDelay','minOnTime','minOffTime','insideOnThreshold','insideOffThreshold','outsideOnThreshold'].indexOf(key) !== -1 && value < 0) {\n    node.status({fill:'red',shape:'dot',text: key + ' must be ≥ 0'}); return null;\n}\n\nconfig[key] = value;\nflow.set('config', config);\nflow.set('config', config, 'persistent');\nnode.status({fill:'green',shape:'dot',text: key + ' = ' + value + ' ✓'});\nreturn null;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -1323,6 +1333,41 @@
         "spinner": "default",
         "x": 440,
         "y": 1320,
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
+    },
+    {
+        "id": "cfg-insideoff",
+        "type": "ui-number-input",
+        "z": "556b70d1e6fd3dde",
+        "group": "db-group-config",
+        "name": "Deactivate temperature",
+        "label": "🔽 Deactivate (°C) — stop when room ≤ this",
+        "order": 4,
+        "width": 6,
+        "height": 1,
+        "topic": "insideOffThreshold",
+        "topicType": "str",
+        "min": 10,
+        "max": 30,
+        "step": 0.5,
+        "tooltip": "",
+        "delay": 300,
+        "passthru": false,
+        "sendOnDelay": false,
+        "sendOnBlur": true,
+        "sendOnEnter": true,
+        "className": "",
+        "clearable": false,
+        "icon": "",
+        "iconPosition": "left",
+        "iconInnerPosition": "inside",
+        "spinner": "default",
+        "x": 440,
+        "y": 1380,
         "wires": [
             [
                 "6132d49b22644866"
@@ -1906,19 +1951,6 @@
         "host": "gree.lan"
     },
     {
-        "id": "db-group-manual",
-        "type": "ui-group",
-        "name": "✋ Manual Control",
-        "page": "db-page",
-        "width": "6",
-        "height": "1",
-        "order": 3,
-        "showTitle": true,
-        "className": "",
-        "visible": "true",
-        "disabled": "false"
-    },
-    {
         "id": "db-group-config",
         "type": "ui-group",
         "name": "🌡️ Temperature & turn-on",
@@ -2068,30 +2100,6 @@
         "x": 285,
         "y": 1780,
         "wires": []
-    },
-    {
-        "id": "db-manual-btn-css",
-        "type": "ui-template",
-        "z": "556b70d1e6fd3dde",
-        "group": "",
-        "page": "",
-        "ui": "db-base",
-        "name": "Manual button colours",
-        "order": 0,
-        "width": 0,
-        "height": 0,
-        "head": "",
-        "format": "/* Dashboard 2.0 ui-button ignores the per-node bgcolor/color fields\n * (those are Dashboard 1.0 props) and falls back to the theme primary.\n * Colour the manual AC ON/OFF buttons by their className instead. */\n.btn-ac-on.v-btn,\n.btn-ac-on .v-btn,\n.btn-ac-on button {\n    background-color: #2e9e6b !important;\n    color: #ffffff !important;\n}\n.btn-ac-off.v-btn,\n.btn-ac-off .v-btn,\n.btn-ac-off button {\n    background-color: #cf5b54 !important;\n    color: #ffffff !important;\n}\n/* Disabled (Manual mode off): go fully grey instead of a dimmed colour. */\n.btn-ac-on.v-btn--disabled,\n.btn-ac-on .v-btn--disabled,\n.btn-ac-off.v-btn--disabled,\n.btn-ac-off .v-btn--disabled {\n    background-color: #3a4254 !important;\n    color: #8a93a6 !important;\n    opacity: 1 !important;\n}\n",
-        "storeOutMessages": true,
-        "passthru": true,
-        "resendOnRefresh": true,
-        "templateScope": "site:style",
-        "className": "",
-        "x": 290,
-        "y": 1840,
-        "wires": [
-            []
-        ]
     },
     {
         "id": "246ab47def5693a2",
