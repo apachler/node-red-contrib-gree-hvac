@@ -53,6 +53,7 @@
     "sim:logs": "docker compose logs -f",
     "sim:dev": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build",
     "sim:dev:down": "docker compose -f docker-compose.yml -f docker-compose.dev.yml down -v --remove-orphans",
+    "flow:push": "node docker/nodered/push-flows.js",
     "flow:pull": "node docker/nodered/pull-flows.js",
     "flow:pull:user": "node docker/nodered/pull-flows.js user",
     "flow:pull:mocks": "node docker/nodered/pull-flows.js mocks",
