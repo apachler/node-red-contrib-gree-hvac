@@ -6,6 +6,9 @@ name: Docs media
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   media:
     name: Render demo GIF + screenshot
