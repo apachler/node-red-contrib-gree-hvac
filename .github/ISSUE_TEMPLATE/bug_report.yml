@@ -1,0 +1,71 @@
+name: Bug report
+description: Report a problem with the nodes or the simulator
+title: "fix: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug! Please fill in as much as you
+        can — reproductions against the bundled simulator are especially helpful.
+        For security issues, **do not** use this form — see our [security policy](https://github.com/apachler/node-red-contrib-gree-hvac/security/policy).
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps. If possible, reproduce against the simulator (`npm run sim:up`).
+      placeholder: |
+        1. Import flow …
+        2. Set property … to …
+        3. Observe …
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics output
+      description: >
+        Relevant output from the node's third (Diagnostics) output —
+        `state`, `error`, `queue_overflow`, `heartbeat`, etc. Redact IPs/MACs if needed.
+      render: text
+  - type: input
+    id: pkg-version
+    attributes:
+      label: Package version
+      description: "Output of `npm ls node-red-contrib-gree-hvac`"
+      placeholder: "1.5.0"
+    validations:
+      required: true
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js version
+      placeholder: "v18.20.0"
+    validations:
+      required: true
+  - type: input
+    id: nodered-version
+    attributes:
+      label: Node-RED version
+      placeholder: "3.1.0"
+  - type: input
+    id: device
+    attributes:
+      label: Gree model / firmware (if hardware-related)
+      placeholder: "e.g. GWH09 / firmware 1.x — or 'simulator'"
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I'm using the latest released version
+          required: true
+        - label: I searched existing issues for duplicates
+          required: true
