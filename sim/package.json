@@ -1,0 +1,17 @@
+{
+  "name": "gree-hvac-sim",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Software simulator of a Gree HVAC device — implements the Gree UDP protocol (ECB/GCM) and serves a status dashboard.",
+  "main": "src/simulator.js",
+  "bin": {
+    "gree-sim": "bin/gree-sim.js"
+  },
+  "scripts": {
+    "start": "node bin/gree-sim.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

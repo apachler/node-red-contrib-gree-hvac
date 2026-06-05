@@ -1,0 +1,12 @@
+node_modules
+**/node_modules
+.git
+.idea
+.vscode
+release
+*.tgz
+coverage
+.nyc_output
+sandbox
+test/e2e
+.github

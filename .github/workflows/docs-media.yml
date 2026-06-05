@@ -1,0 +1,81 @@
+name: Docs media
+
+# Renders the README's demo GIF (VHS) and dashboard screenshots (Playwright).
+# Manual only — heavy, and only needed when the demo/dashboard changes.
+# The demo GIF is committed back (VHS doesn't render reliably on all dev hosts,
+# so CI is the source of truth for it); the screenshots are uploaded as an
+# artifact for manual review rather than auto-committed over the curated ones.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: docs-media-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  media:
+    name: Render demo GIF + screenshots
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "18.x"
+          cache: "npm"
+
+      - name: Install repo deps
+        run: npm ci
+
+      - name: Build images
+        run: docker compose build
+
+      - name: Render demo GIF (VHS)
+        uses: charmbracelet/vhs-action@v2
+        with:
+          path: docs/demo.tape
+
+      - name: Commit demo GIF
+        run: |
+          if [[ -n "$(git status --porcelain docs/demo.gif)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add docs/demo.gif
+            git commit -m "docs: regenerate demo GIF [skip ci]"
+            git push
+          else
+            echo "demo.gif unchanged — nothing to commit"
+          fi
+
+      - name: Bring stack up for screenshots
+        run: |
+          npm run sim:up
+          # wait for the sim dashboard to answer
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:8080/api/state >/dev/null && break
+            sleep 2
+          done
+
+      - name: Capture dashboard screenshots (Playwright)
+        run: |
+          npm i --no-save playwright
+          npx playwright install --with-deps chromium
+          node docs/screenshot.mjs
+
+      - name: Tear down
+        if: always()
+        run: npm run sim:down || true
+
+      - name: Upload screenshots (review, not auto-committed)
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-screenshots
+          path: |
+            docs/nodered-home.png
+            docs/nodered-config.png
+            docs/nodered-sim-sensors.png
+            docs/sim-dashboard.png
+          if-no-files-found: warn

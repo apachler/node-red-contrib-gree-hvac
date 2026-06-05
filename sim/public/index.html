@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gree HVAC Simulator</title>
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+    <header>
+        <img class="logo" src="/logo.svg" alt="" width="36" height="36" />
+        <h1>Gree HVAC Simulator</h1>
+        <div class="meta">
+            <span id="dev-name">—</span>
+            <span class="dot"></span>
+            <span id="dev-cid">—</span>
+            <span class="dot"></span>
+            <span id="dev-cipher">—</span>
+        </div>
+    </header>
+
+    <main>
+        <section class="ac">
+            <div class="display">
+                <div class="power" id="power-pill">OFF</div>
+                <div class="setpoint">
+                    <span id="setpoint-val">--</span><span class="unit">°C</span>
+                </div>
+                <div class="current">
+                    Room: <span id="current-val">--</span>°C
+                </div>
+                <div class="mode">
+                    Mode: <span id="mode-val">--</span> ·
+                    Fan: <span id="fan-val">--</span>
+                </div>
+                <div class="swing">
+                    Swing H: <span id="swingH-val">--</span> ·
+                    V: <span id="swingV-val">--</span>
+                </div>
+                <div class="lastchange">
+                    Last change:
+                    <span class="src-pill" id="lastchange-src">—</span>
+                    <span id="lastchange-detail"></span>
+                </div>
+                <div class="features">
+                    <span class="badge" id="badge-turbo">turbo</span>
+                    <span class="badge" id="badge-quiet">quiet</span>
+                    <span class="badge" id="badge-sleep">sleep</span>
+                    <span class="badge" id="badge-blow">blow</span>
+                    <span class="badge" id="badge-health">health</span>
+                    <span class="badge" id="badge-light">light</span>
+                    <span class="badge" id="badge-powersave">eco</span>
+                </div>
+            </div>
+
+            <div class="controls">
+                <h2>Control AC directly</h2>
+                <p class="hint">Sets the AC state directly on the simulator — every property the Gree protocol exposes, like a full remote control on the unit.</p>
+                <div class="control-row">
+                    <button id="ac-power" class="ctl-power">Toggle power</button>
+                    <div class="stepper">
+                        <button id="ac-temp-down" title="Cooler">−</button>
+                        <span id="ac-temp-val">--°C</span>
+                        <button id="ac-temp-up" title="Warmer">+</button>
+                    </div>
+                </div>
+                <div class="control-grid">
+                    <label>Mode
+                        <select id="ac-mode">
+                            <option value="0">auto</option>
+                            <option value="1">cool</option>
+                            <option value="2">dry</option>
+                            <option value="3">fan_only</option>
+                            <option value="4">heat</option>
+                        </select>
+                        <small class="fh">Operating mode of the unit.</small>
+                    </label>
+                    <label>Fan speed
+                        <select id="ac-fan">
+                            <option value="0">auto</option>
+                            <option value="1">low</option>
+                            <option value="2">mediumLow</option>
+                            <option value="3">medium</option>
+                            <option value="4">mediumHigh</option>
+                            <option value="5">high</option>
+                        </select>
+                        <small class="fh">Airflow level (3-speed units lack the medium-low/high steps).</small>
+                    </label>
+                    <label>Temperature unit
+                        <select id="ac-tempunit">
+                            <option value="0">celsius</option>
+                            <option value="1">fahrenheit</option>
+                        </select>
+                        <small class="fh">Unit the setpoint is expressed in.</small>
+                    </label>
+                    <label>Fresh-air valve
+                        <select id="ac-air">
+                            <option value="0">off</option>
+                            <option value="1">inside</option>
+                            <option value="2">outside</option>
+                            <option value="3">mode3</option>
+                        </select>
+                        <small class="fh">Exchange inside/outside air (units with a fresh-air intake).</small>
+                    </label>
+                    <label>Horizontal swing
+                        <select id="ac-swingh">
+                            <option value="0">default</option>
+                            <option value="1">full</option>
+                            <option value="2">fixedLeft</option>
+                            <option value="3">fixedMidLeft</option>
+                            <option value="4">fixedMid</option>
+                            <option value="5">fixedMidRight</option>
+                            <option value="6">fixedRight</option>
+                            <option value="7">fullAlt</option>
+                        </select>
+                        <small class="fh">Left–right louver position or swing.</small>
+                    </label>
+                    <label>Vertical swing
+                        <select id="ac-swingv">
+                            <option value="0">default</option>
+                            <option value="1">full</option>
+                            <option value="2">fixedTop</option>
+                            <option value="3">fixedMidTop</option>
+                            <option value="4">fixedMid</option>
+                            <option value="5">fixedMidBottom</option>
+                            <option value="6">fixedBottom</option>
+                            <option value="7">swingBottom</option>
+                            <option value="8">swingMidBottom</option>
+                            <option value="9">swingMid</option>
+                            <option value="10">swingMidTop</option>
+                            <option value="11">swingTop</option>
+                        </select>
+                        <small class="fh">Up–down louver position or swing.</small>
+                    </label>
+                    <label>Quiet
+                        <select id="ac-quiet">
+                            <option value="0">off</option>
+                            <option value="1">mode1</option>
+                            <option value="2">mode2</option>
+                            <option value="3">mode3</option>
+                        </select>
+                        <small class="fh">Slow the fan to its quietest (not in Dry/Fan).</small>
+                    </label>
+                    <label>Lights
+                        <select id="ac-lights">
+                            <option value="1">on</option>
+                            <option value="0">off</option>
+                        </select>
+                        <small class="fh">Unit display / indicator LEDs.</small>
+                    </label>
+                    <label>X-Fan (blow)
+                        <select id="ac-blow">
+                            <option value="1">on</option>
+                            <option value="0">off</option>
+                        </select>
+                        <small class="fh">Keep the fan running after shutdown to dry the coil.</small>
+                    </label>
+                    <label>Health (ionizer)
+                        <select id="ac-health">
+                            <option value="1">on</option>
+                            <option value="0">off</option>
+                        </select>
+                        <small class="fh">Cold-plasma ionizer — traps dust, kills bacteria.</small>
+                    </label>
+                    <label>Sleep
+                        <select id="ac-sleep">
+                            <option value="1">on</option>
+                            <option value="0">off</option>
+                        </select>
+                        <small class="fh">Gradually drift the setpoint overnight.</small>
+                    </label>
+                    <label>Turbo
+                        <select id="ac-turbo">
+                            <option value="1">on</option>
+                            <option value="0">off</option>
+                        </select>
+                        <small class="fh">Max fan to reach the setpoint fast (Cool/Dry only).</small>
+                    </label>
+                    <label>Power save
+                        <select id="ac-powersave">
+                            <option value="1">on</option>
+                            <option value="0">off</option>
+                        </select>
+                        <small class="fh">Eco / reduced-power operation.</small>
+                    </label>
+                    <label>Safety heating (8&nbsp;°C)
+                        <select id="ac-safety">
+                            <option value="1">on</option>
+                            <option value="0">off</option>
+                        </select>
+                        <small class="fh">Keep the room ≥&nbsp;8&nbsp;°C (anti-freeze).</small>
+                    </label>
+                </div>
+
+                <div class="subsection">
+                    <h2>Room temperature (internal sensor)</h2>
+                    <p class="hint">The unit's own temperature reading (vendor <code>TemSen</code>).</p>
+                    <div class="row">
+                        <input type="number" id="tempInput" value="25" min="-10" max="50" step="0.5" />
+                        <button id="tempBtn">Set</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="side">
+            <section class="panel">
+                <h2>Fault injection</h2>
+                <p class="hint">Simulate a flaky Wi-Fi link to the unit, to test client resilience.</p>
+                <div class="grid">
+                    <label>Drop probability (0-1)
+                        <input type="number" id="dropProb" step="0.05" min="0" max="1" />
+                        <small class="fh">Chance each reply is dropped.</small>
+                    </label>
+                    <label>Drop every Nth packet
+                        <input type="number" id="dropEvery" step="1" min="0" />
+                        <small class="fh">Deterministically drop every Nth reply.</small>
+                    </label>
+                    <label>Latency ms
+                        <input type="number" id="latency" step="10" min="0" />
+                        <small class="fh">Fixed delay before each reply.</small>
+                    </label>
+                    <label>Jitter ms
+                        <input type="number" id="jitter" step="10" min="0" />
+                        <small class="fh">Random extra delay added on top.</small>
+                    </label>
+                </div>
+                <button id="faultsBtn">Apply faults</button>
+            </section>
+
+            <section class="panel">
+                <div class="panel-head">
+                    <h2>Protocol stats</h2>
+                    <button id="statsResetBtn" class="ghost">Reset</button>
+                </div>
+                <p class="hint">Live UDP traffic between clients and the simulated unit.</p>
+                <div class="stat-summary" id="stat-summary"></div>
+                <pre id="stats">{}</pre>
+            </section>
+        </div>
+    </main>
+
+    <script src="/app.js"></script>
+</body>
+</html>

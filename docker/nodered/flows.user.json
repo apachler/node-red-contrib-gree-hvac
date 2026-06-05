@@ -1,0 +1,2125 @@
+[
+    {
+        "id": "556b70d1e6fd3dde",
+        "type": "tab",
+        "label": "Gree PV Surplus",
+        "disabled": false,
+        "info": "Controls the Gree air conditioner based on SOC, battery voltage and temperature.\n\nAfter import:\n1. Battery SOC node:     Service = Venus system, Path = /Dc/Battery/Soc\n2. Battery State node:   Service = Venus system, Path = /Dc/Battery/State\n3. Battery Voltage node: Service = Venus system, Path = /Dc/Battery/Voltage\n4. Ruuvi Inside node:    select inside sensor\n5. Ruuvi Outside node:   select outside sensor (optional)\n6. Deploy\n\nOutside-temperature logic (if a sensor is present):\n  Outside < 20C  switch-on temp +3C (ventilation is enough)\n  Outside 20-30C switch-on temp as configured\n  Outside > 30C  switch-on temp -2C (cool earlier)"
+    },
+    {
+        "id": "9a23fe76b52a0909",
+        "type": "comment",
+        "z": "556b70d1e6fd3dde",
+        "name": "═══════════════════ ⚙️ CONFIGURATION ═══════════════════",
+        "info": "",
+        "x": 315,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "668ee033d6c3e896",
+        "type": "function",
+        "z": "556b70d1e6fd3dde",
+        "name": "Config Init",
+        "func": "// SINGLE SOURCE OF TRUTH for all configuration defaults. Every other\n// node reads flow.get('config') and must NOT re-default values — change a\n// default here and it applies everywhere.\nvar defaults = {\n    // --- comfort / safe ---\n    targetTemp: 23,            // AC setpoint while running (°C)\n    insideOnThreshold: 20,     // turn on when inside reaches this (°C)\n    insideOffThreshold: 20,    // turn OFF when room cools to/below this (°C)\n    outsideOnThreshold: 24,    // …or pre-cool when outside reaches this (°C)\n    timeOnHour: 9,             // operating window start (hour)\n    timeOffHour: 19,           // operating window end (hour)\n    mode: 'cool',\n    fanSpeed: 'auto',\n    blow: 'on',                // X-Fan: dry the coil after shutdown\n    // --- full writeable device parameter set (asserted on every command) ---\n    temperatureUnit: 'celsius',\n    lights: 'off',\n    air: 'off',\n    health: 'off',\n    sleep: 'off',\n    swingHor: 'default',\n    swingVert: 'default',\n    quiet: 'off',\n    turbo: 'off',\n    powerSave: 'off',\n    safetyHeating: 'off',\n    // --- critical: battery & compressor protection ---\n    socOnThreshold: 70,        // start only above this SOC (%)\n    socOffThreshold: 65,       // stop below this SOC (%)\n    voltageOnThreshold: 53.5,  // PV-surplus voltage gate (V)\n    onDelay: 60,               // conditions sustained before ON (s)\n    offDelay: 60,              // conditions lost before OFF (s)\n    minOnTime: 300,            // minimum runtime once on (s)\n    minOffTime: 180            // minimum off before restart (s)\n};\nvar saved = flow.get('config', 'persistent');\nvar config = Object.assign({}, defaults, saved || {});\n// Device-parameter constants have no dashboard control — always take them\n// from the defaults above so editing a default here actually applies\n// (a previously-persisted snapshot must not shadow it).\n['temperatureUnit','lights','air','health','sleep','swingHor','swingVert','quiet','turbo','powerSave','safetyHeating'].forEach(function(k){ config[k] = defaults[k]; });\nflow.set('config', config);\nflow.set('config', config, 'persistent');\nif (!flow.get('acState')) {\n    flow.set('acState', {power:false,manualMode:false,conditionsMetSince:null,conditionsNotMetSince:null,lastOnAt:0,lastOffAt:0});\n}\nflow.set('currentValues', {soc:0,batteryVoltage:0,batteryState:'Unknown',batterySystemState:'Unknown',batterySystemStateNum:-1,temperature:0,tempReceived:false,outsideTemp:0,outsideTempReceived:false});\nnode.status({fill:'green',shape:'dot',text:'Config loaded'});\nmsg.payload = config;\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 400,
+        "y": 100,
+        "wires": [
+            [
+                "7557cd5b30fad266",
+                "ebf1278994cd765d",
+                "2f344f82894340b2"
+            ]
+        ]
+    },
+    {
+        "id": "f3742a6c1cf6e220",
+        "type": "inject",
+        "z": "556b70d1e6fd3dde",
+        "name": "Startup",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "2",
+        "payload": "startup",
+        "payloadType": "str",
+        "x": 200,
+        "y": 100,
+        "wires": [
+            [
+                "668ee033d6c3e896",
+                "hint-init"
+            ]
+        ]
+    },
+    {
+        "id": "hint-init",
+        "type": "function",
+        "z": "556b70d1e6fd3dde",
+        "name": "Dashboard hints",
+        "func": "// Static help texts. Dashboard 2.0 ui-text renders msg.payload, so the\n// warning + manual hint are pushed as payloads.\nnode.send([\n    { payload: '⚠️ These settings protect the battery and compressor. Wrong values can deep-discharge the battery or damage the AC. Unlock to change.' },\n    { payload: 'ℹ️ Buttons only active when Manual mode is on.' }\n]);\nreturn null;",
+        "outputs": 2,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 180,
+        "wires": [
+            [
+                "cfg-warning"
+            ],
+            [
+                "b53de9b45acbf61b"
+            ]
+        ]
+    },
+    {
+        "id": "4ff14f88c536b0fd",
+        "type": "inject",
+        "z": "556b70d1e6fd3dde",
+        "name": "Dashboard Refresh 5s",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "5",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "4",
+        "payload": "refresh",
+        "payloadType": "str",
+        "x": 150,
+        "y": 600,
+        "wires": [
+            [
+                "77981d7e2d91e28b",
+                "viz-feed"
+            ]
+        ]
+    },
+    {
+        "id": "viz-feed",
+        "type": "function",
+        "z": "556b70d1e6fd3dde",
+        "name": "Visualisation feed",
+        "func": "// Feeds the overview gauges + trend charts from currentValues/acState.\nvar v = flow.get('currentValues') || {};\nvar s = flow.get('acState') || {};\nvar inside  = v.tempReceived ? v.temperature : null;\nvar outside = v.outsideTempReceived ? v.outsideTemp : null;\nvar voltage = v.batteryVoltage || 0;\nvar soc = v.soc || 0;\nvar power = s.power ? 100 : 0;\nreturn [\n    outside !== null ? { payload: parseFloat(outside.toFixed(1)) } : null,\n    voltage > 0 ? { payload: parseFloat(voltage.toFixed(2)) } : null,\n    [\n        inside !== null ? { payload: parseFloat(inside.toFixed(1)), topic: 'Inside [°C]' } : null,\n        outside !== null ? { payload: parseFloat(outside.toFixed(1)), topic: 'Outside [°C]' } : null\n    ],\n    [\n        { payload: Math.round(soc), topic: 'SOC [%]' },\n        { payload: power, topic: 'AC [on/off]' }\n    ]\n];",
+        "outputs": 4,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 430,
+        "y": 680,
+        "wires": [
+            [
+                "ws-outside-gauge"
+            ],
+            [
+                "ws-voltage-gauge"
+            ],
+            [
+                "temp-chart"
+            ],
+            [
+                "soc-chart"
+            ]
+        ]
+    },
+    {
+        "id": "ws-outside-gauge",
+        "type": "ui-gauge",
+        "z": "556b70d1e6fd3dde",
+        "name": "Outside Gauge",
+        "group": "db-group-trends",
+        "order": 1,
+        "value": "payload",
+        "valueType": "msg",
+        "width": 3,
+        "height": 2,
+        "gtype": "gauge-half",
+        "gstyle": "needle",
+        "title": "Outside",
+        "alwaysShowTitle": false,
+        "units": "°C",
+        "icon": "mdi-weather-sunny",
+        "prefix": "",
+        "suffix": "",
+        "segments": [
+            {
+                "from": "-10",
+                "color": "#2196f3",
+                "text": "",
+                "textType": "label"
+            },
+            {
+                "from": "15",
+                "color": "#5eb300",
+                "text": "",
+                "textType": "label"
+            },
+            {
+                "from": "28",
+                "color": "#e6e600",
+                "text": "",
+                "textType": "label"
+            },
+            {
+                "from": "35",
+                "color": "#ca3838",
+                "text": "",
+                "textType": "label"
+            }
+        ],
+        "min": -10,
+        "max": 45,
+        "sizeThickness": 16,
+        "sizeGap": 4,
+        "sizeKeyThickness": 8,
+        "styleRounded": true,
+        "styleGlow": false,
+        "className": "",
+        "x": 1000,
+        "y": 580,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "ws-voltage-gauge",
+        "type": "ui-gauge",
+        "z": "556b70d1e6fd3dde",
+        "name": "Voltage Gauge",
+        "group": "db-group-trends",
+        "order": 2,
+        "value": "payload",
+        "valueType": "msg",
+        "width": 3,
+        "height": 2,
+        "gtype": "gauge-half",
+        "gstyle": "needle",
+        "title": "Voltage",
+        "alwaysShowTitle": false,
+        "units": "V",
+        "icon": "mdi-power-plug",
+        "prefix": "",
+        "suffix": "",
+        "segments": [
+            {
+                "from": "45",
+                "color": "#ca3838",
+                "text": "",
+                "textType": "label"
+            },
+            {
+                "from": "52",
+                "color": "#e6e600",
+                "text": "",
+                "textType": "label"
+            },
+            {
+                "from": "53.5",
+                "color": "#5eb300",
+                "text": "",
+                "textType": "label"
+            },
+            {
+                "from": "57",
+                "color": "#2196f3",
+                "text": "",
+                "textType": "label"
+            }
+        ],
+        "min": 45,
+        "max": 58,
+        "sizeThickness": 16,
+        "sizeGap": 4,
+        "sizeKeyThickness": 8,
+        "styleRounded": true,
+        "styleGlow": false,
+        "className": "",
+        "x": 1000,
+        "y": 620,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "temp-chart",
+        "type": "ui-chart",
+        "z": "556b70d1e6fd3dde",
+        "group": "db-group-trends",
+        "name": "Temperature trend",
+        "label": "Temperature",
+        "order": 3,
+        "chartType": "line",
+        "category": "topic",
+        "categoryType": "msg",
+        "xAxisLabel": "",
+        "xAxisProperty": "",
+        "xAxisPropertyType": "timestamp",
+        "xAxisType": "time",
+        "xAxisFormat": "",
+        "xAxisFormatType": "auto",
+        "yAxisLabel": "°C",
+        "yAxisProperty": "payload",
+        "yAxisPropertyType": "msg",
+        "ymin": "",
+        "ymax": "",
+        "action": "append",
+        "stackSeries": false,
+        "pointShape": "circle",
+        "pointRadius": 2,
+        "showLegend": true,
+        "removeOlder": 2,
+        "removeOlderUnit": "3600",
+        "removeOlderPoints": "",
+        "colors": [
+            "#4cc9f0",
+            "#f59e0b"
+        ],
+        "textColor": [
+            "#aab2c5"
+        ],
+        "textColorDefault": false,
+        "gridColor": [
+            "#2a3550"
+        ],
+        "gridColorDefault": false,
+        "width": 6,
+        "height": 5,
+        "className": "",
+        "interpolation": "linear",
+        "x": 1010,
+        "y": 660,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "soc-chart",
+        "type": "ui-chart",
+        "z": "556b70d1e6fd3dde",
+        "group": "db-group-trends",
+        "name": "SOC + AC runtime",
+        "label": "State",
+        "order": 4,
+        "chartType": "line",
+        "category": "topic",
+        "categoryType": "msg",
+        "xAxisLabel": "",
+        "xAxisProperty": "",
+        "xAxisPropertyType": "timestamp",
+        "xAxisType": "time",
+        "xAxisFormat": "",
+        "xAxisFormatType": "auto",
+        "yAxisLabel": "%",
+        "yAxisProperty": "payload",
+        "yAxisPropertyType": "msg",
+        "ymin": "0",
+        "ymax": "100",
+        "action": "append",
+        "stackSeries": false,
+        "pointShape": "circle",
+        "pointRadius": 2,
+        "showLegend": true,
+        "removeOlder": 8,
+        "removeOlderUnit": "3600",
+        "removeOlderPoints": "",
+        "colors": [
+            "#2dd47a",
+            "#4cc9f0"
+        ],
+        "textColor": [
+            "#aab2c5"
+        ],
+        "textColorDefault": false,
+        "gridColor": [
+            "#2a3550"
+        ],
+        "gridColorDefault": false,
+        "width": 6,
+        "height": 5,
+        "className": "",
+        "interpolation": "linear",
+        "x": 1010,
+        "y": 700,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "77981d7e2d91e28b",
+        "type": "function",
+        "z": "556b70d1e6fd3dde",
+        "name": "Dashboard Refresh",
+        "func": "var values = flow.get('currentValues') || {soc:0,batteryVoltage:0,batteryState:'Unknown',temperature:0,tempReceived:false,outsideTemp:0,outsideTempReceived:false};\nreturn {payload: values};",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 430,
+        "y": 600,
+        "wires": [
+            [
+                "b01830b89a5ffb3f"
+            ]
+        ]
+    },
+    {
+        "id": "ebf1278994cd765d",
+        "type": "function",
+        "z": "556b70d1e6fd3dde",
+        "name": "Init Dashboard",
+        "func": "var state = flow.get('acState') || {};\nreturn {payload: state.manualMode || false};",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 720,
+        "y": 100,
+        "wires": [
+            [
+                "8594a4df82975e15",
+                "sync-manual-btns"
+            ]
+        ]
+    },
+    {
+        "id": "7557cd5b30fad266",
+        "type": "debug",
+        "z": "556b70d1e6fd3dde",
+        "name": "Config Debug",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "x": 720,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "e8d7fa31a34e73c7",
+        "type": "comment",
+        "z": "556b70d1e6fd3dde",
+        "name": "═══════════════════ 📊 VICTRON DATA ═══════════════════",
+        "info": "",
+        "x": 305,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "cad3059780012676",
+        "type": "victron-input-system",
+        "z": "556b70d1e6fd3dde",
+        "service": "com.victronenergy.system/0",
+        "path": "/Dc/Battery/Soc",
+        "serviceObj": {
+            "service": "com.victronenergy.system/0",
+            "name": "Venus system",
+            "communityTag": "system"
+        },
+        "pathObj": {
+            "path": "/Dc/Battery/Soc",
+            "type": "float",
+            "name": "Battery State of Charge (%)"
+        },
+        "name": "Battery SOC",
+        "onlyChanges": false,
+        "conditionalMode": false,
+        "outputTrue": "",
+        "outputFalse": "",
+        "debounce": "",
+        "x": 190,
+        "y": 300,
+        "wires": [
+            [
+                "bc74c3718f91fdaa"
+            ]
+        ]
+    },
+    {
+        "id": "cb7dc46c0fd84234",
+        "type": "victron-input-system",
+        "z": "556b70d1e6fd3dde",
+        "service": "com.victronenergy.system/0",
+        "path": "/Dc/Battery/State",
+        "serviceObj": {
+            "service": "com.victronenergy.system/0",
+            "name": "Venus system",
+            "communityTag": "system"
+        },
+        "pathObj": {
+            "path": "/Dc/Battery/State",
+            "type": "enum",
+            "name": "Battery state",
+            "enum": {
+                "0": "idle",
+                "1": "charging",
+                "2": "discharging"
+            }
+        },
+        "name": "Battery State",
+        "onlyChanges": false,
+        "conditionalMode": false,
+        "outputTrue": "",
+        "outputFalse": "",
+        "debounce": "",
+        "x": 190,
+        "y": 340,
+        "wires": [
+            [
+                "bc74c3718f91fdaa"
+            ]
+        ]
+    },
+    {
+        "id": "f090eaa96a1a45ba",
+        "type": "victron-input-system",
+        "z": "556b70d1e6fd3dde",
+        "service": "com.victronenergy.system/0",
+        "path": "/Dc/Battery/Voltage",
+        "serviceObj": {
+            "service": "com.victronenergy.system/0",
+            "name": "Venus system",
+            "communityTag": "system"
+        },
+        "pathObj": {
+            "path": "/Dc/Battery/Voltage",
+            "type": "float",
+            "name": "Battery voltage (V)"
+        },
+        "name": "Battery Voltage",
+        "onlyChanges": false,
+        "conditionalMode": false,
+        "outputTrue": "",
+        "outputFalse": "",
+        "debounce": "",
+        "x": 180,
+        "y": 380,
+        "wires": [
+            [
+                "bc74c3718f91fdaa"
+            ]
+        ]
+    },
+    {
+        "id": "765ccd4566c91e28",
+        "type": "victron-input-temperature",
+        "z": "556b70d1e6fd3dde",
+        "service": "com.victronenergy.temperature/20",
+        "path": "/Temperature",
+        "serviceObj": {
+            "service": "com.victronenergy.temperature/20",
+            "name": "Inside",
+            "communityTag": "temperature"
+        },
+        "pathObj": {
+            "path": "/Temperature",
+            "type": "float",
+            "name": "Temperature (°C)"
+        },
+        "name": "Ruuvi Inside",
+        "onlyChanges": false,
+        "conditionalMode": false,
+        "outputTrue": "",
+        "outputFalse": "",
+        "debounce": "",
+        "x": 190,
+        "y": 420,
+        "wires": [
+            [
+                "bc74c3718f91fdaa"
+            ]
+        ]
+    },
+    {
+        "id": "f476fcd5c4791165",
+        "type": "victron-input-temperature",
+        "z": "556b70d1e6fd3dde",
+        "service": "com.victronenergy.temperature/21",
+        "path": "/Temperature",
+        "serviceObj": {
+            "service": "com.victronenergy.temperature/21",
+            "name": "Outside",
+            "communityTag": "temperature"
+        },
+        "pathObj": {
+            "path": "/Temperature",
+            "type": "float",
+            "name": "Temperature (°C)"
+        },
+        "name": "Ruuvi Outside",
+        "onlyChanges": false,
+        "conditionalMode": false,
+        "outputTrue": "",
+        "outputFalse": "",
+        "debounce": "",
+        "x": 190,
+        "y": 460,
+        "wires": [
+            [
+                "bc74c3718f91fdaa"
+            ]
+        ]
+    },
+    {
+        "id": "mock-sensor-linkin",
+        "type": "link in",
+        "z": "556b70d1e6fd3dde",
+        "name": "External sensors",
+        "links": [
+            "mock-sensor-linkout"
+        ],
+        "x": 245,
+        "y": 500,
+        "wires": [
+            [
+                "bc74c3718f91fdaa"
+            ]
+        ],
+        "info": "Generic sensor-injection entry point feeding 'Collect Data'. The simulator's mock sensor pump (Mocks tab) targets this link in place of the Victron/Ruuvi hardware nodes. On real hardware no link-out references it, so it stays idle and the victron-input-* nodes drive Collect Data directly — harmless to keep in the production flow."
+    },
+    {
+        "id": "bc74c3718f91fdaa",
+        "type": "function",
+        "z": "556b70d1e6fd3dde",
+        "name": "Collect Data",
+        "func": "var values = flow.get('currentValues') || {soc:0,batteryVoltage:0,batteryState:'Unknown',batterySystemState:'Unknown',batterySystemStateNum:-1,temperature:0,tempReceived:false,outsideTemp:0,outsideTempReceived:false};\n\nvar path = msg.path || msg.topic || '';\n\nif (path.indexOf('Battery SOC') !== -1) {\n    values.soc = (msg.payload !== null && msg.payload !== undefined) ? Number(msg.payload) : 0;\n}\nelse if (path.indexOf('Battery State') !== -1) {\n    var sysState = Number(msg.payload);\n    var sysNames = {0:'Idle',1:'Charging',2:'Discharging'};\n    values.batterySystemState    = sysNames[sysState] || ('State:' + sysState);\n    values.batterySystemStateNum = sysState;\n}\nelse if (path.indexOf('Battery Voltage') !== -1) {\n    values.batteryVoltage = (msg.payload !== null && msg.payload !== undefined) ? Number(msg.payload) : 0;\n    var v = values.batteryVoltage;\n    if      (v >= 56.0) { values.batteryState = 'Absorption'; }\n    else if (v >= 53.5) { values.batteryState = 'Float';      }\n    else if (v >  0)    { values.batteryState = 'Bulk';       }\n    else                { values.batteryState = 'Unknown';    }\n}\nelse if (path.indexOf('Ruuvi Inside') !== -1) {\n    if (msg.payload !== null && msg.payload !== undefined) {\n        values.temperature  = Number(msg.payload);\n        values.tempReceived = true;\n    }\n}\nelse if (path.indexOf('Ruuvi Outside') !== -1) {\n    if (msg.payload !== null && msg.payload !== undefined) {\n        values.outsideTemp         = Number(msg.payload);\n        values.outsideTempReceived = true;\n    }\n}\n\nflow.set('currentValues', values);\n\nvar inStr   = values.tempReceived        ? values.temperature.toFixed(1) + 'C' : '---';\nvar outStr  = values.outsideTempReceived ? values.outsideTemp.toFixed(1) + 'C' : '---';\nvar voltStr = values.batteryVoltage > 0  ? values.batteryVoltage.toFixed(2) + 'V' : '?V';\nnode.status({text:'SOC:' + Math.round(values.soc||0) + '% ' + voltStr + ' ' + (values.batteryState||'?') + ' In:' + inStr + ' Out:' + outStr});\n\nreturn {payload: values};",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 410,
+        "y": 420,
+        "wires": [
+            [
+                "58232d1a44507bde",
+                "b01830b89a5ffb3f"
+            ]
+        ]
+    },
+    {
+        "id": "b01830b89a5ffb3f",
+        "type": "function",
+        "z": "556b70d1e6fd3dde",
+        "name": "Dashboard Values",
+        "func": "// Pure presentation: maps currentValues to the dashboard widgets. The\n// status line + countdown come straight from the controllerStatus that\n// 'Main Logic' publishes — single source of truth, no duplicated logic.\nvar values = msg.payload || {};\nvar state  = flow.get('acState') || {};\n\nvar soc     = (values.soc !== undefined)            ? values.soc            : 0;\nvar temp    = (values.temperature !== undefined)    ? values.temperature    : 0;\nvar voltage = (values.batteryVoltage !== undefined) ? values.batteryVoltage : 0;\nvar battSt  = values.batteryState || '?';\nvar outside = values.outsideTempReceived ? values.outsideTemp : null;\n\nvar socMsg  = {payload: Math.round(soc)};\nvar tempMsg = {payload: parseFloat(temp.toFixed(1))};\nvar battDisplay = voltage > 0 ? battSt + ' (' + voltage.toFixed(2) + 'V)' : battSt;\nvar battStateMsg = {payload: battDisplay};\nvar acStatusMsg  = {payload: state.power ? 'ON' : 'OFF'};\nvar modeTextMsg  = {payload: state.manualMode ? 'MANUAL' : 'AUTOMATIC'};\nvar outsideTempMsg = {payload: outside !== null ? outside.toFixed(1) + '°C' : 'no sensor'};\n\nvar ctrl = global.get('controllerStatus') || {message: 'Starting…', etaSeconds: 0, since: Date.now()};\nvar statusText = ctrl.message || '';\nif (ctrl.etaSeconds > 0) {\n    var remain = Math.max(0, Math.ceil(ctrl.etaSeconds - (Date.now() - (ctrl.since || Date.now())) / 1000));\n    if (remain > 0) statusText += ' ' + remain + 's';\n}\nvar statusMsg = {payload: statusText};\n\nreturn [socMsg, tempMsg, battStateMsg, acStatusMsg, modeTextMsg, statusMsg, outsideTempMsg];",
+        "outputs": 7,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 730,
+        "y": 420,
+        "wires": [
+            [
+                "5c842271060cd209"
+            ],
+            [
+                "ef597ebd43ec0171"
+            ],
+            [
+                "46187663ce2f98e2"
+            ],
+            [
+                "7216cde8034cbf1f"
+            ],
+            [],
+            [
+                "478a2476306b47f0"
+            ],
+            [
+                "20bfb19f7a33e41b"
+            ]
+        ]
+    },
+    {
+        "id": "5c842271060cd209",
+        "type": "ui-gauge",
+        "z": "556b70d1e6fd3dde",
+        "name": "SOC Gauge",
+        "group": "db-group-status",
+        "order": 1,
+        "value": "payload",
+        "valueType": "msg",
+        "width": "3",
+        "height": "2",
+        "gtype": "gauge-half",
+        "gstyle": "needle",
+        "title": "SOC",
+        "alwaysShowTitle": false,
+        "units": "%",
+        "icon": "mdi-battery",
+        "prefix": "",
+        "suffix": "",
+        "segments": [
+            {
+                "from": "0",
+                "color": "#ca3838",
+                "text": "",
+                "textType": "label"
+            },
+            {
+                "from": "50",
+                "color": "#e6e600",
+                "text": "",
+                "textType": "label"
+            },
+            {
+                "from": "75",
+                "color": "#5eb300",
+                "text": "",
+                "textType": "label"
+            }
+        ],
+        "min": 0,
+        "max": 100,
+        "sizeThickness": 16,
+        "sizeGap": 4,
+        "sizeKeyThickness": 8,
+        "styleRounded": true,
+        "styleGlow": false,
+        "className": "",
+        "x": 990,
+        "y": 300,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "ef597ebd43ec0171",
+        "type": "ui-gauge",
+        "z": "556b70d1e6fd3dde",
+        "name": "Inside Gauge",
+        "group": "db-group-status",
+        "order": 2,
+        "value": "payload",
+        "valueType": "msg",
+        "width": "3",
+        "height": "2",
+        "gtype": "gauge-half",
+        "gstyle": "needle",
+        "title": "Inside",
+        "alwaysShowTitle": false,
+        "units": "°C",
+        "icon": "mdi-thermometer",
+        "prefix": "",
+        "suffix": "",
+        "segments": [
+            {
+                "from": "15",
+                "color": "#2196f3",
+                "text": "",
+                "textType": "label"
+            },
+            {
+                "from": "22",
+                "color": "#5eb300",
+                "text": "",
+                "textType": "label"
+            },
+            {
+                "from": "26",
+                "color": "#e6e600",
+                "text": "",
+                "textType": "label"
+            },
+            {
+                "from": "30",
+                "color": "#ca3838",
+                "text": "",
+                "textType": "label"
+            }
+        ],
+        "min": 15,
+        "max": 40,
+        "sizeThickness": 16,
+        "sizeGap": 4,
+        "sizeKeyThickness": 8,
+        "styleRounded": true,
+        "styleGlow": false,
+        "className": "",
+        "x": 990,
+        "y": 340,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "20bfb19f7a33e41b",
+        "type": "ui-text",
+        "z": "556b70d1e6fd3dde",
+        "group": "db-group-status",
+        "order": 3,
+        "width": "6",
+        "height": "1",
+        "name": "Outside Temp",
+        "label": "☀️ Outside:",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "style": false,
+        "font": "",
+        "fontSize": 14,
+        "color": "#717171",
+        "className": "",
+        "x": 1000,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "46187663ce2f98e2",
+        "type": "ui-text",
+        "z": "556b70d1e6fd3dde",
+        "group": "db-group-status",
+        "order": 4,
+        "width": "6",
+        "height": "1",
+        "name": "Battery State",
+        "label": "🔌 Battery:",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "style": false,
+        "font": "",
+        "fontSize": 14,
+        "color": "#717171",
+        "className": "",
+        "x": 990,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "7216cde8034cbf1f",
+        "type": "ui-text",
+        "z": "556b70d1e6fd3dde",
+        "group": "db-group-status",
+        "order": 5,
+        "width": "6",
+        "height": "1",
+        "name": "AC State",
+        "label": "❄️ AC:",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "style": false,
+        "font": "",
+        "fontSize": 14,
+        "color": "#717171",
+        "className": "",
+        "x": 980,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "478a2476306b47f0",
+        "type": "ui-text",
+        "z": "556b70d1e6fd3dde",
+        "group": "db-group-status",
+        "order": 6,
+        "width": "6",
+        "height": "1",
+        "name": "Status Text",
+        "label": "",
+        "format": "{{msg.payload}}",
+        "layout": "row-center",
+        "style": false,
+        "font": "",
+        "fontSize": 14,
+        "color": "#717171",
+        "className": "",
+        "x": 990,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "7425fd4236090706",
+        "type": "comment",
+        "z": "556b70d1e6fd3dde",
+        "name": "═══════════════════ 🧠 CONTROL LOGIC ═══════════════════",
+        "info": "",
+        "x": 315,
+        "y": 760,
+        "wires": []
+    },
+    {
+        "id": "58232d1a44507bde",
+        "type": "function",
+        "z": "556b70d1e6fd3dde",
+        "name": "Main Logic",
+        "func": "// Decides when the AC turns on/off from PV surplus + temperature, and\n// publishes a single controllerStatus (read by the Node-RED status text and\n// the simulator dashboard). All tunables come from flow.config (see\n// 'Config Init' for the single source of defaults) — no inline defaults.\nvar config = flow.get('config') || {};\nvar values = flow.get('currentValues') || {};\nvar state  = flow.get('acState') || {};\n\n// Test override (GLOBAL context, inert in production when unset) — mirrors\n// the simClock hook below. Lets the sim-only mocks tab shrink debounce\n// delays / force manual mode for e2e without reaching into this tab's flow\n// context. NEVER set on real hardware.\nvar testOverride = global.get('test');\nif (testOverride) {\n    if (testOverride.config) { config = Object.assign({}, config, testOverride.config); }\n    if (testOverride.manualMode !== undefined) { state.manualMode = testOverride.manualMode; }\n    if (testOverride.resetNonce && testOverride.resetNonce !== global.get('testResetSeen')) {\n        state = { power:false, manualMode: state.manualMode, conditionsMetSince:null, conditionsNotMetSince:null, lastOnAt:0, lastOffAt:0 };\n        flow.set('acState', state);\n        global.set('testResetSeen', testOverride.resetNonce);\n    }\n}\n\nvar now = Date.now();\n\n// Sim clock override (test tooling, GLOBAL context). Only the time-of-day\n// gate uses it; Date.now() (delays / min-times) stays real.\nvar simClock = global.get('simClock');\nvar hour = (simClock && simClock.enabled) ? Number(simClock.hour) : new Date().getHours();\n\nvar soc      = values.soc || 0;\nvar inside   = (values.temperature !== undefined) ? values.temperature : 0;\nvar voltage  = values.batteryVoltage || 0;\nvar stateNum = values.batterySystemStateNum;\nvar outside  = values.outsideTempReceived ? values.outsideTemp : null;\n\nfunction setCtrl(phase, message, eta) {\n    global.set('controllerStatus', {phase: phase, message: message, etaSeconds: Math.max(0, Math.round(eta || 0)), since: now});\n}\n\n// Manual mode: the controller stands down.\nif (state.manualMode) {\n    node.status({fill:'blue',shape:'dot',text:'Manual: ' + (state.power ? 'ON' : 'OFF')});\n    setCtrl('manual', 'Manual mode — AC ' + (state.power ? 'on' : 'off'), 0);\n    return null;\n}\n\n// Temperature gate (OR): start pre-emptively when the room is already\n// warming (inside >= insideOnThreshold) OR when it is hot enough outside\n// that the room will soon climb (outside >= outsideOnThreshold). Either\n// trigger is enough; the AC then holds at targetTemp.\nvar insideOK  = inside >= config.insideOnThreshold;\nvar outsideOK = (outside !== null) && (outside >= config.outsideOnThreshold);\n\nvar timeOK     = (hour >= config.timeOnHour && hour < config.timeOffHour);\nvar pvOK       = (stateNum === 0 || stateNum === 1);   // not discharging = PV surplus\nvar voltOK     = voltage >= config.voltageOnThreshold;\nvar socStartOK = soc >= config.socOnThreshold;\nvar socKeepOK  = soc >= config.socOffThreshold;\nvar tempOK     = insideOK || outsideOK;\n\n// ===== currently ON =====\nif (state.power) {\n    var onFor = (now - (state.lastOnAt || now)) / 1000;\n    var off = [];\n    if (!timeOK) off.push('quiet hours');\n    if (!socKeepOK) off.push('SOC ' + Math.round(soc) + '% < ' + config.socOffThreshold + '%');\n    if (!pvOK) off.push('battery discharging');\n    if (values.tempReceived && inside <= config.insideOffThreshold) off.push('room cooled to ' + inside.toFixed(1) + '°C ≤ ' + config.insideOffThreshold + '°C');\n\n    if (off.length) {\n        if (onFor < config.minOnTime) {\n            var holdOn = config.minOnTime - onFor;\n            node.status({fill:'green',shape:'dot',text:'Running, min on-time ' + Math.ceil(holdOn) + 's'});\n            setCtrl('on', 'Running, holding for compressor', holdOn);\n            return null;\n        }\n        if (!state.conditionsNotMetSince) { state.conditionsNotMetSince = now; flow.set('acState', state); }\n        var offWaited = (now - state.conditionsNotMetSince) / 1000;\n        if (offWaited >= config.offDelay) {\n            state.power = false; state.lastOffAt = now; state.conditionsNotMetSince = null; flow.set('acState', state);\n            node.status({fill:'red',shape:'dot',text:'OFF: ' + off.join(', ')});\n            setCtrl('off', 'AC off — ' + off.join(', '), 0);\n            return {payload: {action:'off', reason: off.join(', ')}};\n        }\n        node.status({fill:'yellow',shape:'dot',text:'OFF in ' + Math.ceil(config.offDelay - offWaited) + 's'});\n        setCtrl('disarming', 'AC OFF (' + off.join(', ') + ') in', config.offDelay - offWaited);\n        return null;\n    }\n    state.conditionsNotMetSince = null; flow.set('acState', state);\n    node.status({fill:'green',shape:'dot',text:'Running | ' + voltage.toFixed(2) + 'V | SOC ' + Math.round(soc) + '%'});\n    setCtrl('on', 'Running — SOC ' + Math.round(soc) + '% · ' + inside.toFixed(1) + '°C', 0);\n    return null;\n}\n\n// ===== currently OFF =====\nvar blockers = [];\nif (!timeOK) blockers.push('quiet hours');\nif (!socStartOK) blockers.push('SOC ' + Math.round(soc) + '% < ' + config.socOnThreshold + '%');\nif (!voltOK) blockers.push(voltage.toFixed(2) + 'V < ' + config.voltageOnThreshold + 'V');\nif (!pvOK) blockers.push('battery discharging');\nif (!tempOK) blockers.push('inside ' + inside.toFixed(1) + '°C < ' + config.insideOnThreshold + '°C & outside ' + (outside === null ? '?' : outside.toFixed(1) + '°C') + ' < ' + config.outsideOnThreshold + '°C');\n\nif (blockers.length) {\n    state.conditionsMetSince = null; flow.set('acState', state);\n    node.status({fill:'grey',shape:'ring',text:'Waiting: ' + blockers.join(' | ')});\n    setCtrl('idle', 'Waiting — ' + blockers.join(', '), 0);\n    return null;\n}\n\n// Compressor cooldown (min off-time) before a restart.\nvar offFor = (now - (state.lastOffAt || 0)) / 1000;\nif (state.lastOffAt && offFor < config.minOffTime) {\n    state.conditionsMetSince = null; flow.set('acState', state);\n    node.status({fill:'yellow',shape:'ring',text:'Compressor cooldown ' + Math.ceil(config.minOffTime - offFor) + 's'});\n    setCtrl('blocked', 'Compressor cooldown', config.minOffTime - offFor);\n    return null;\n}\n\nif (!state.conditionsMetSince) { state.conditionsMetSince = now; flow.set('acState', state); }\nvar onWaited = (now - state.conditionsMetSince) / 1000;\nif (onWaited >= config.onDelay) {\n    state.power = true; state.lastOnAt = now; state.conditionsMetSince = null; state.conditionsNotMetSince = null; flow.set('acState', state);\n    node.status({fill:'green',shape:'dot',text:'ON: SOC ' + Math.round(soc) + '% | ' + inside.toFixed(1) + '°C'});\n    setCtrl('on', 'AC on — cooling to ' + config.targetTemp + '°C', 0);\n    return {payload: {action:'on', reason:'SOC ' + Math.round(soc) + '% | ' + voltage.toFixed(2) + 'V | ' + inside.toFixed(1) + '°C'}};\n}\nnode.status({fill:'yellow',shape:'dot',text:'ON in ' + Math.ceil(config.onDelay - onWaited) + 's'});\nsetCtrl('arming', 'AC ON in', config.onDelay - onWaited);\nreturn null;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 410,
+        "y": 800,
+        "wires": [
+            [
+                "a77a1a38e609c269"
+            ]
+        ]
+    },
+    {
+        "id": "a77a1a38e609c269",
+        "type": "function",
+        "z": "556b70d1e6fd3dde",
+        "name": "→ Gree Command",
+        "func": "// Build the COMPLETE writeable parameter set on every command so the AC\n// is driven to a fully known state (no partial writes). Only 'power'\n// differs between on/off; everything else comes from flow.config.\nvar config = flow.get('config') || {};\nvar action = msg.payload.action;\nvar payload = {\n    power:           action === 'on' ? 'on' : 'off',\n    mode:            config.mode,\n    temperatureUnit: config.temperatureUnit,\n    temperature:     config.targetTemp,\n    fanSpeed:        config.fanSpeed,\n    air:             config.air,\n    blow:            config.blow,\n    health:          config.health,\n    sleep:           config.sleep,\n    lights:          config.lights,\n    swingHor:        config.swingHor,\n    swingVert:       config.swingVert,\n    quiet:           config.quiet,\n    turbo:           config.turbo,\n    powerSave:       config.powerSave,\n    safetyHeating:   config.safetyHeating\n};\nnode.status({fill: action === 'on' ? 'green' : 'red', shape:'dot', text: (action === 'on' ? 'ON @ ' + config.targetTemp + 'C' : 'OFF') + ' (full set)'});\nreturn {topic: action, payload: payload};",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 730,
+        "y": 800,
+        "wires": [
+            [
+                "72f57580f5a03db9"
+            ]
+        ]
+    },
+    {
+        "id": "72f57580f5a03db9",
+        "type": "gree-hvac",
+        "z": "556b70d1e6fd3dde",
+        "name": "Gree AC",
+        "device": "e178e5175abe1338",
+        "interval": 4,
+        "pollingTimeout": 8,
+        "connectTimeout": 8,
+        "connectingTimeout": 60,
+        "recoveryDelay": 30,
+        "maxBackoff": 300,
+        "unresponsiveTimeout": 60,
+        "noResponseThreshold": 3,
+        "commandRate": 500,
+        "maxQueueSize": 64,
+        "heartbeatInterval": 60,
+        "rejectIfOffline": false,
+        "validate": true,
+        "logLevel": "info",
+        "debug": false,
+        "x": 980,
+        "y": 800,
+        "wires": [
+            [
+                "d13970f74dda9f8d"
+            ],
+            [
+                "d13970f74dda9f8d"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "d13970f74dda9f8d",
+        "type": "debug",
+        "z": "556b70d1e6fd3dde",
+        "name": "Gree Status",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 1270,
+        "y": 800,
+        "wires": []
+    },
+    {
+        "id": "5e11e65430925f6a",
+        "type": "comment",
+        "z": "556b70d1e6fd3dde",
+        "name": "═══════════════════ 🎛️ DASHBOARD CONTROL ═══════════════════",
+        "info": "",
+        "x": 335,
+        "y": 880,
+        "wires": []
+    },
+    {
+        "id": "8594a4df82975e15",
+        "type": "ui-button-group",
+        "z": "556b70d1e6fd3dde",
+        "name": "Mode Select",
+        "group": "db-group-mode",
+        "order": 1,
+        "width": 6,
+        "height": 1,
+        "label": "",
+        "className": "",
+        "rounded": true,
+        "useThemeColors": true,
+        "passthru": false,
+        "options": [
+            {
+                "label": "🤖 Automatic",
+                "value": "false",
+                "valueType": "bool"
+            },
+            {
+                "label": "✋ Manual",
+                "value": "true",
+                "valueType": "bool"
+            }
+        ],
+        "topic": "mode",
+        "topicType": "str",
+        "x": 190,
+        "y": 920,
+        "wires": [
+            [
+                "f025d9275fd85cc4"
+            ]
+        ]
+    },
+    {
+        "id": "f025d9275fd85cc4",
+        "type": "function",
+        "z": "556b70d1e6fd3dde",
+        "name": "Mode Handler",
+        "func": "var state = flow.get('acState') || {};\nstate.manualMode = msg.payload;\nflow.set('acState', state);\nif (!state.manualMode) {\n    node.status({fill:'green',shape:'ring',text:'Automatic active'});\n} else {\n    node.status({fill:'blue',shape:'dot',text:'Manual active'});\n}\nvar values = flow.get('currentValues') || {};\nreturn {payload: values};",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 920,
+        "wires": [
+            [
+                "b01830b89a5ffb3f",
+                "sync-manual-btns"
+            ]
+        ]
+    },
+    {
+        "id": "sync-manual-btns",
+        "type": "function",
+        "z": "556b70d1e6fd3dde",
+        "name": "Grey Manual Buttons",
+        "func": "// D2 ui-button has no dynamic 'enabled', but it honours buttonColor /\n// textColor via msg.ui_update. Grey the manual AC buttons whenever we are\n// NOT in Manual mode so it is obvious they are inert; restore colour in\n// Manual. Reads acState so it works from any trigger (mode change / init).\nvar s = flow.get('acState') || {};\nvar on = !!s.manualMode;\nvar grey = {buttonColor:'#3a4254', textColor:'#8a93a6'};\nreturn [\n    {ui_update: on ? {buttonColor:'#2e9e6b', textColor:'#ffffff'} : grey},\n    {ui_update: on ? {buttonColor:'#cf5b54', textColor:'#ffffff'} : grey}\n];",
+        "outputs": 2,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 440,
+        "y": 960,
+        "wires": [
+            [
+                "1f1084ee1379f036"
+            ],
+            [
+                "7349dcb0f80c476b"
+            ]
+        ]
+    },
+    {
+        "id": "1f1084ee1379f036",
+        "type": "ui-button",
+        "z": "556b70d1e6fd3dde",
+        "group": "db-group-mode",
+        "name": "AC ON",
+        "label": "❄️ AC ON",
+        "order": 2,
+        "width": "6",
+        "height": "1",
+        "emulateClick": false,
+        "tooltip": "Turn AC on (manual mode only)",
+        "color": "#ffffff",
+        "bgcolor": "#2e9e6b",
+        "className": "",
+        "icon": "",
+        "iconPosition": "left",
+        "payload": "on",
+        "payloadType": "str",
+        "topic": "manual",
+        "topicType": "str",
+        "buttonColor": "#2e9e6b",
+        "textColor": "#ffffff",
+        "x": 200,
+        "y": 1020,
+        "wires": [
+            [
+                "9ef528e856991b18"
+            ]
+        ]
+    },
+    {
+        "id": "7349dcb0f80c476b",
+        "type": "ui-button",
+        "z": "556b70d1e6fd3dde",
+        "group": "db-group-mode",
+        "name": "AC OFF",
+        "label": "⏹️ AC OFF",
+        "order": 3,
+        "width": "6",
+        "height": "1",
+        "emulateClick": false,
+        "tooltip": "Turn AC off (manual mode only)",
+        "color": "#ffffff",
+        "bgcolor": "#cf5b54",
+        "className": "",
+        "icon": "",
+        "iconPosition": "left",
+        "payload": "off",
+        "payloadType": "str",
+        "topic": "manual",
+        "topicType": "str",
+        "buttonColor": "#cf5b54",
+        "textColor": "#ffffff",
+        "x": 200,
+        "y": 1060,
+        "wires": [
+            [
+                "9ef528e856991b18"
+            ]
+        ]
+    },
+    {
+        "id": "9ef528e856991b18",
+        "type": "function",
+        "z": "556b70d1e6fd3dde",
+        "name": "Manual AC Handler",
+        "func": "// Manual on/off — route the action through '→ Gree Command' so it sends\n// the same COMPLETE writeable parameter set as the automatic path.\nvar state = flow.get('acState') || {};\nvar cmd   = msg.payload;\nif (!state.manualMode) {\n    node.status({fill:'yellow',shape:'ring',text:'Enable Manual mode first!'});\n    return null;\n}\nvar now = Date.now();\nif (cmd === 'on') { state.power = true; state.lastOnAt = now; }\nelse if (cmd === 'off') { state.power = false; state.lastOffAt = now; }\nflow.set('acState', state);\nnode.status({fill: cmd === 'on' ? 'green' : 'red', shape:'dot', text: 'Manual ' + (cmd === 'on' ? 'ON' : 'OFF')});\nvar values = flow.get('currentValues') || {};\nreturn [{payload: {action: cmd}}, {payload: values}];",
+        "outputs": 2,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 430,
+        "y": 1020,
+        "wires": [
+            [
+                "a77a1a38e609c269"
+            ],
+            [
+                "b01830b89a5ffb3f"
+            ]
+        ]
+    },
+    {
+        "id": "b53de9b45acbf61b",
+        "type": "ui-text",
+        "z": "556b70d1e6fd3dde",
+        "group": "db-group-mode",
+        "order": 4,
+        "width": "6",
+        "height": "1",
+        "name": "Manual Hint",
+        "label": "",
+        "format": "{{msg.payload}}",
+        "layout": "row-center",
+        "style": true,
+        "font": "",
+        "fontSize": 11,
+        "color": "#8a93a6",
+        "className": "",
+        "x": 710,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "50e58b4706ecd88f",
+        "type": "comment",
+        "z": "556b70d1e6fd3dde",
+        "name": "═══════════════════ ⚙️ CONFIGURATION DASHBOARD ═══════════════════",
+        "info": "",
+        "x": 365,
+        "y": 1140,
+        "wires": []
+    },
+    {
+        "id": "2f344f82894340b2",
+        "type": "function",
+        "z": "556b70d1e6fd3dde",
+        "name": "Config → Widgets",
+        "func": "// Prefill every Config-page widget from the single flow.config so the\n// sliders/inputs reflect the live configuration on load. Order matches the\n// wires below.\nvar c = flow.get('config') || {};\nnode.send([\n    [{payload: c.targetTemp}],\n    [{payload: c.insideOnThreshold}],\n    [{payload: c.outsideOnThreshold}],\n    [{payload: c.timeOnHour}],\n    [{payload: c.timeOffHour}],\n    [{payload: c.mode}],\n    [{payload: c.fanSpeed}],\n    [{payload: c.blow}],\n    [{payload: c.socOnThreshold}],\n    [{payload: c.socOffThreshold}],\n    [{payload: c.voltageOnThreshold}],\n    [{payload: c.onDelay}],\n    [{payload: c.offDelay}],\n    [{payload: c.minOnTime}],\n    [{payload: c.minOffTime}],\n    [{payload: c.insideOffThreshold}]\n]);\nreturn null;",
+        "outputs": 16,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 170,
+        "y": 1320,
+        "wires": [
+            [
+                "4643398f1ff1b947"
+            ],
+            [
+                "37d9c50fc4d28ecc"
+            ],
+            [
+                "cfg-outsideon"
+            ],
+            [
+                "2d25cb97d5c3dcce"
+            ],
+            [
+                "daaec76772e3cfe6"
+            ],
+            [
+                "cfg-mode"
+            ],
+            [
+                "cfg-fan"
+            ],
+            [
+                "cfg-blow"
+            ],
+            [
+                "6378c71ecdb0f36e"
+            ],
+            [
+                "2ce06dc559769b19"
+            ],
+            [
+                "cfg-voltage"
+            ],
+            [
+                "cfg-ondelay"
+            ],
+            [
+                "cfg-offdelay"
+            ],
+            [
+                "cfg-minon"
+            ],
+            [
+                "cfg-minoff"
+            ],
+            [
+                "cfg-insideoff"
+            ]
+        ]
+    },
+    {
+        "id": "6132d49b22644866",
+        "type": "function",
+        "z": "556b70d1e6fd3dde",
+        "name": "Save Config",
+        "func": "// Persists one config key from a dashboard widget. String keys pass\n// through; numeric keys are validated; CRITICAL keys are gated behind the\n// 'Unlock critical settings' switch so they can't be changed by accident.\nvar config = flow.get('config') || {};\nvar key = msg.topic;\nif (!key) { return null; }\n\nvar STRING_KEYS = ['mode', 'fanSpeed', 'blow'];\nvar CRITICAL = ['socOnThreshold','socOffThreshold','voltageOnThreshold','onDelay','offDelay','minOnTime','minOffTime'];\n\nif (CRITICAL.indexOf(key) !== -1 && !flow.get('criticalUnlocked')) {\n    node.status({fill:'red',shape:'ring',text:'🔒 Unlock critical settings to change ' + key});\n    return null;\n}\n\nvar value;\nif (STRING_KEYS.indexOf(key) !== -1) {\n    value = String(msg.payload);\n} else {\n    value = Number(msg.payload);\n    if (!Number.isFinite(value)) { node.status({fill:'red',shape:'dot',text:'Invalid value for ' + key}); return null; }\n}\n\nif (key === 'socOffThreshold' && value >= config.socOnThreshold) {\n    node.status({fill:'red',shape:'dot',text:'OFF-SOC must be < ON-SOC (' + config.socOnThreshold + '%)'}); return null;\n}\nif (key === 'socOnThreshold' && value <= config.socOffThreshold) {\n    node.status({fill:'red',shape:'dot',text:'ON-SOC must be > OFF-SOC (' + config.socOffThreshold + '%)'}); return null;\n}\nif (key === 'timeOnHour' && value >= config.timeOffHour) {\n    node.status({fill:'red',shape:'dot',text:'From must be < Until (' + config.timeOffHour + 'h)'}); return null;\n}\nif (key === 'timeOffHour' && value <= config.timeOnHour) {\n    node.status({fill:'red',shape:'dot',text:'Until must be > From (' + config.timeOnHour + 'h)'}); return null;\n}\nif (['onDelay','offDelay','minOnTime','minOffTime','insideOnThreshold','insideOffThreshold','outsideOnThreshold'].indexOf(key) !== -1 && value < 0) {\n    node.status({fill:'red',shape:'dot',text: key + ' must be ≥ 0'}); return null;\n}\n\nconfig[key] = value;\nflow.set('config', config);\nflow.set('config', config, 'persistent');\nnode.status({fill:'green',shape:'dot',text: key + ' = ' + value + ' ✓'});\nreturn null;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 710,
+        "y": 1360,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "4643398f1ff1b947",
+        "type": "ui-number-input",
+        "z": "556b70d1e6fd3dde",
+        "group": "db-group-config",
+        "name": "Target temperature",
+        "label": "🎯 Target temp (°C) — setpoint while running",
+        "order": 1,
+        "width": 6,
+        "height": 1,
+        "topic": "targetTemp",
+        "topicType": "str",
+        "min": 16,
+        "max": 30,
+        "step": 0.5,
+        "tooltip": "",
+        "delay": 300,
+        "passthru": false,
+        "sendOnDelay": false,
+        "sendOnBlur": true,
+        "sendOnEnter": true,
+        "className": "",
+        "clearable": false,
+        "icon": "",
+        "iconPosition": "left",
+        "iconInnerPosition": "inside",
+        "spinner": "default",
+        "x": 430,
+        "y": 1220,
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
+    },
+    {
+        "id": "37d9c50fc4d28ecc",
+        "type": "ui-number-input",
+        "z": "556b70d1e6fd3dde",
+        "group": "db-group-config",
+        "name": "Inside switch-on temperature",
+        "label": "🌡️ Inside turn-on (°C) — start when room ≥ this",
+        "order": 2,
+        "width": 6,
+        "height": 1,
+        "topic": "insideOnThreshold",
+        "topicType": "str",
+        "min": 16,
+        "max": 35,
+        "step": 0.5,
+        "tooltip": "",
+        "delay": 300,
+        "passthru": false,
+        "sendOnDelay": false,
+        "sendOnBlur": true,
+        "sendOnEnter": true,
+        "className": "",
+        "clearable": false,
+        "icon": "",
+        "iconPosition": "left",
+        "iconInnerPosition": "inside",
+        "spinner": "default",
+        "x": 460,
+        "y": 1260,
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
+    },
+    {
+        "id": "cfg-outsideon",
+        "type": "ui-number-input",
+        "z": "556b70d1e6fd3dde",
+        "group": "db-group-config",
+        "name": "Outside switch-on temperature",
+        "label": "🌤️ Outside turn-on (°C) — pre-cool when outside ≥ this",
+        "order": 3,
+        "width": 6,
+        "height": 1,
+        "topic": "outsideOnThreshold",
+        "topicType": "str",
+        "min": 10,
+        "max": 45,
+        "step": 0.5,
+        "tooltip": "",
+        "delay": 300,
+        "passthru": false,
+        "sendOnDelay": false,
+        "sendOnBlur": true,
+        "sendOnEnter": true,
+        "className": "",
+        "clearable": false,
+        "icon": "",
+        "iconPosition": "left",
+        "iconInnerPosition": "inside",
+        "spinner": "default",
+        "x": 470,
+        "y": 1300,
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
+    },
+    {
+        "id": "cfg-insideoff",
+        "type": "ui-number-input",
+        "z": "556b70d1e6fd3dde",
+        "group": "db-group-config",
+        "name": "Deactivate temperature",
+        "label": "🔽 Deactivate (°C) — stop when room ≤ this",
+        "order": 4,
+        "width": 6,
+        "height": 1,
+        "topic": "insideOffThreshold",
+        "topicType": "str",
+        "min": 10,
+        "max": 30,
+        "step": 0.5,
+        "tooltip": "",
+        "delay": 300,
+        "passthru": false,
+        "sendOnDelay": false,
+        "sendOnBlur": true,
+        "sendOnEnter": true,
+        "className": "",
+        "clearable": false,
+        "icon": "",
+        "iconPosition": "left",
+        "iconInnerPosition": "inside",
+        "spinner": "default",
+        "x": 450,
+        "y": 1820,
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
+    },
+    {
+        "id": "2d25cb97d5c3dcce",
+        "type": "ui-number-input",
+        "z": "556b70d1e6fd3dde",
+        "group": "grp-acset",
+        "name": "Operate from",
+        "label": "⏰ Operate from (hour) — window start",
+        "order": 1,
+        "width": 6,
+        "height": 1,
+        "topic": "timeOnHour",
+        "topicType": "str",
+        "min": 0,
+        "max": 23,
+        "step": 1,
+        "tooltip": "",
+        "delay": 300,
+        "passthru": false,
+        "sendOnDelay": false,
+        "sendOnBlur": true,
+        "sendOnEnter": true,
+        "className": "",
+        "clearable": false,
+        "icon": "",
+        "iconPosition": "left",
+        "iconInnerPosition": "inside",
+        "spinner": "default",
+        "x": 410,
+        "y": 1340,
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
+    },
+    {
+        "id": "daaec76772e3cfe6",
+        "type": "ui-number-input",
+        "z": "556b70d1e6fd3dde",
+        "group": "grp-acset",
+        "name": "Operate until",
+        "label": "⏰ Operate until (hour) — window end",
+        "order": 2,
+        "width": 6,
+        "height": 1,
+        "topic": "timeOffHour",
+        "topicType": "str",
+        "min": 0,
+        "max": 23,
+        "step": 1,
+        "tooltip": "",
+        "delay": 300,
+        "passthru": false,
+        "sendOnDelay": false,
+        "sendOnBlur": true,
+        "sendOnEnter": true,
+        "className": "",
+        "clearable": false,
+        "icon": "",
+        "iconPosition": "left",
+        "iconInnerPosition": "inside",
+        "spinner": "default",
+        "x": 410,
+        "y": 1380,
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
+    },
+    {
+        "id": "6378c71ecdb0f36e",
+        "type": "ui-number-input",
+        "z": "556b70d1e6fd3dde",
+        "group": "db-group-advanced",
+        "name": "SOC turn on",
+        "label": "🔋 SOC turn on (%) — min charge to start",
+        "order": 3,
+        "width": 6,
+        "height": 1,
+        "topic": "socOnThreshold",
+        "topicType": "str",
+        "min": 50,
+        "max": 95,
+        "step": 1,
+        "tooltip": "",
+        "delay": 300,
+        "passthru": false,
+        "sendOnDelay": false,
+        "sendOnBlur": true,
+        "sendOnEnter": true,
+        "className": "",
+        "clearable": false,
+        "icon": "",
+        "iconPosition": "left",
+        "iconInnerPosition": "inside",
+        "spinner": "default",
+        "x": 410,
+        "y": 1540,
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
+    },
+    {
+        "id": "2ce06dc559769b19",
+        "type": "ui-number-input",
+        "z": "556b70d1e6fd3dde",
+        "group": "db-group-advanced",
+        "name": "SOC turn off",
+        "label": "🔋 SOC turn off (%) — stop to protect battery",
+        "order": 4,
+        "width": 6,
+        "height": 1,
+        "topic": "socOffThreshold",
+        "topicType": "str",
+        "min": 40,
+        "max": 90,
+        "step": 1,
+        "tooltip": "",
+        "delay": 300,
+        "passthru": false,
+        "sendOnDelay": false,
+        "sendOnBlur": true,
+        "sendOnEnter": true,
+        "className": "",
+        "clearable": false,
+        "icon": "",
+        "iconPosition": "left",
+        "iconInnerPosition": "inside",
+        "spinner": "default",
+        "x": 410,
+        "y": 1580,
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
+    },
+    {
+        "id": "cfg-mode",
+        "type": "ui-dropdown",
+        "z": "556b70d1e6fd3dde",
+        "group": "grp-acset",
+        "name": "Mode",
+        "label": "❄️ Mode — sent when the AC turns on",
+        "tooltip": "",
+        "order": 3,
+        "width": 6,
+        "height": 1,
+        "passthru": false,
+        "multiple": false,
+        "chips": false,
+        "clearable": false,
+        "options": [
+            {
+                "value": "auto",
+                "label": "auto"
+            },
+            {
+                "value": "cool",
+                "label": "cool"
+            },
+            {
+                "value": "dry",
+                "label": "dry"
+            },
+            {
+                "value": "fan_only",
+                "label": "fan only"
+            },
+            {
+                "value": "heat",
+                "label": "heat"
+            }
+        ],
+        "payload": "",
+        "topic": "mode",
+        "topicType": "str",
+        "className": "",
+        "typeIsComboBox": false,
+        "msgTrigger": "onChange",
+        "x": 390,
+        "y": 1420,
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
+    },
+    {
+        "id": "cfg-fan",
+        "type": "ui-dropdown",
+        "z": "556b70d1e6fd3dde",
+        "group": "grp-acset",
+        "name": "Fan speed",
+        "label": "💨 Fan speed — sent when the AC turns on",
+        "tooltip": "",
+        "order": 4,
+        "width": 6,
+        "height": 1,
+        "passthru": false,
+        "multiple": false,
+        "chips": false,
+        "clearable": false,
+        "options": [
+            {
+                "value": "auto",
+                "label": "auto"
+            },
+            {
+                "value": "low",
+                "label": "low"
+            },
+            {
+                "value": "mediumLow",
+                "label": "medium low"
+            },
+            {
+                "value": "medium",
+                "label": "medium"
+            },
+            {
+                "value": "mediumHigh",
+                "label": "medium high"
+            },
+            {
+                "value": "high",
+                "label": "high"
+            }
+        ],
+        "payload": "",
+        "topic": "fanSpeed",
+        "topicType": "str",
+        "className": "",
+        "typeIsComboBox": false,
+        "msgTrigger": "onChange",
+        "x": 410,
+        "y": 1460,
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
+    },
+    {
+        "id": "cfg-blow",
+        "type": "ui-dropdown",
+        "z": "556b70d1e6fd3dde",
+        "group": "grp-acset",
+        "name": "X-Fan",
+        "label": "🌬️ X-Fan — dry the coil after shutdown",
+        "tooltip": "",
+        "order": 5,
+        "width": 6,
+        "height": 1,
+        "passthru": false,
+        "multiple": false,
+        "chips": false,
+        "clearable": false,
+        "options": [
+            {
+                "value": "on",
+                "label": "on"
+            },
+            {
+                "value": "off",
+                "label": "off"
+            }
+        ],
+        "payload": "",
+        "topic": "blow",
+        "topicType": "str",
+        "className": "",
+        "typeIsComboBox": false,
+        "msgTrigger": "onChange",
+        "x": 390,
+        "y": 1500,
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
+    },
+    {
+        "id": "cfg-warning",
+        "type": "ui-text",
+        "z": "556b70d1e6fd3dde",
+        "group": "db-group-advanced",
+        "order": 1,
+        "width": 6,
+        "height": 1,
+        "name": "Critical warning",
+        "label": "",
+        "format": "{{msg.payload}}",
+        "layout": "row-left",
+        "style": true,
+        "font": "",
+        "fontSize": 11,
+        "color": "#e08a8a",
+        "className": "",
+        "x": 720,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "cfg-unlock",
+        "type": "ui-switch",
+        "z": "556b70d1e6fd3dde",
+        "name": "Unlock critical",
+        "label": "🔓 Unlock critical settings",
+        "group": "db-group-advanced",
+        "order": 2,
+        "width": 6,
+        "height": 1,
+        "passthru": false,
+        "decouple": false,
+        "topic": "criticalUnlocked",
+        "topicType": "str",
+        "style": "",
+        "className": "",
+        "layout": "",
+        "clickableArea": "switch",
+        "onvalue": "true",
+        "onvalueType": "bool",
+        "onicon": "",
+        "oncolor": "#e74c3c",
+        "offvalue": "false",
+        "offvalueType": "bool",
+        "officon": "",
+        "offcolor": "#4caf50",
+        "x": 180,
+        "y": 1880,
+        "wires": [
+            [
+                "crit-lock-handler"
+            ]
+        ]
+    },
+    {
+        "id": "crit-lock-handler",
+        "type": "function",
+        "z": "556b70d1e6fd3dde",
+        "name": "Critical lock",
+        "func": "// Gate for the critical config parameters. 'Save Config' refuses to write\n// critical keys unless this is true.\nflow.set('criticalUnlocked', !!msg.payload);\nnode.status({fill: msg.payload ? 'red' : 'green', shape: 'dot', text: msg.payload ? '⚠️ Critical UNLOCKED' : '🔒 Critical locked'});\nreturn null;",
+        "outputs": 0,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 410,
+        "y": 1880,
+        "wires": []
+    },
+    {
+        "id": "cfg-voltage",
+        "type": "ui-number-input",
+        "z": "556b70d1e6fd3dde",
+        "group": "db-group-advanced",
+        "name": "Voltage threshold",
+        "label": "🔌 Voltage gate (V) — min before start",
+        "order": 5,
+        "width": 6,
+        "height": 1,
+        "topic": "voltageOnThreshold",
+        "topicType": "str",
+        "min": 40,
+        "max": 60,
+        "step": 0.1,
+        "tooltip": "",
+        "delay": 300,
+        "passthru": false,
+        "sendOnDelay": false,
+        "sendOnBlur": true,
+        "sendOnEnter": true,
+        "className": "",
+        "clearable": false,
+        "icon": "",
+        "iconPosition": "left",
+        "iconInnerPosition": "inside",
+        "spinner": "default",
+        "x": 430,
+        "y": 1620,
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
+    },
+    {
+        "id": "cfg-ondelay",
+        "type": "ui-number-input",
+        "z": "556b70d1e6fd3dde",
+        "group": "db-group-advanced",
+        "name": "On-delay",
+        "label": "⏱️ On-delay (s) — hold before switching on",
+        "order": 6,
+        "width": 6,
+        "height": 1,
+        "topic": "onDelay",
+        "topicType": "str",
+        "min": 0,
+        "max": 600,
+        "step": 10,
+        "tooltip": "",
+        "delay": 300,
+        "passthru": false,
+        "sendOnDelay": false,
+        "sendOnBlur": true,
+        "sendOnEnter": true,
+        "className": "",
+        "clearable": false,
+        "icon": "",
+        "iconPosition": "left",
+        "iconInnerPosition": "inside",
+        "spinner": "default",
+        "x": 400,
+        "y": 1660,
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
+    },
+    {
+        "id": "cfg-offdelay",
+        "type": "ui-number-input",
+        "z": "556b70d1e6fd3dde",
+        "group": "db-group-advanced",
+        "name": "Off-delay",
+        "label": "⏱️ Off-delay (s) — hold before switching off",
+        "order": 7,
+        "width": 6,
+        "height": 1,
+        "topic": "offDelay",
+        "topicType": "str",
+        "min": 0,
+        "max": 600,
+        "step": 10,
+        "tooltip": "",
+        "delay": 300,
+        "passthru": false,
+        "sendOnDelay": false,
+        "sendOnBlur": true,
+        "sendOnEnter": true,
+        "className": "",
+        "clearable": false,
+        "icon": "",
+        "iconPosition": "left",
+        "iconInnerPosition": "inside",
+        "spinner": "default",
+        "x": 400,
+        "y": 1700,
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
+    },
+    {
+        "id": "cfg-minon",
+        "type": "ui-number-input",
+        "z": "556b70d1e6fd3dde",
+        "group": "db-group-advanced",
+        "name": "Min on-time",
+        "label": "🛡️ Min on-time (s) — compressor protection",
+        "order": 8,
+        "width": 6,
+        "height": 1,
+        "topic": "minOnTime",
+        "topicType": "str",
+        "min": 0,
+        "max": 1800,
+        "step": 30,
+        "tooltip": "",
+        "delay": 300,
+        "passthru": false,
+        "sendOnDelay": false,
+        "sendOnBlur": true,
+        "sendOnEnter": true,
+        "className": "",
+        "clearable": false,
+        "icon": "",
+        "iconPosition": "left",
+        "iconInnerPosition": "inside",
+        "spinner": "default",
+        "x": 410,
+        "y": 1740,
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
+    },
+    {
+        "id": "cfg-minoff",
+        "type": "ui-number-input",
+        "z": "556b70d1e6fd3dde",
+        "group": "db-group-advanced",
+        "name": "Min off-time",
+        "label": "🛡️ Min off-time (s) — compressor protection",
+        "order": 9,
+        "width": 6,
+        "height": 1,
+        "topic": "minOffTime",
+        "topicType": "str",
+        "min": 0,
+        "max": 1800,
+        "step": 30,
+        "tooltip": "",
+        "delay": 300,
+        "passthru": false,
+        "sendOnDelay": false,
+        "sendOnBlur": true,
+        "sendOnEnter": true,
+        "className": "",
+        "clearable": false,
+        "icon": "",
+        "iconPosition": "left",
+        "iconInnerPosition": "inside",
+        "spinner": "default",
+        "x": 410,
+        "y": 1780,
+        "wires": [
+            [
+                "6132d49b22644866"
+            ]
+        ]
+    },
+    {
+        "id": "db-group-status",
+        "type": "ui-group",
+        "name": "📊 System Status",
+        "page": "db-page",
+        "width": "6",
+        "height": "1",
+        "order": 1,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false"
+    },
+    {
+        "id": "db-group-trends",
+        "type": "ui-group",
+        "name": "📈 Trends",
+        "page": "db-page",
+        "width": "6",
+        "height": "1",
+        "order": 4,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false"
+    },
+    {
+        "id": "db-group-mode",
+        "type": "ui-group",
+        "name": "🎛️ Operating Mode",
+        "page": "db-page",
+        "width": "6",
+        "height": "1",
+        "order": 2,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false"
+    },
+    {
+        "id": "e178e5175abe1338",
+        "type": "gree-hvac-config",
+        "name": "Gree AC",
+        "host": "gree.lan"
+    },
+    {
+        "id": "db-group-config",
+        "type": "ui-group",
+        "name": "🌡️ Temperature & turn-on",
+        "page": "db-config-page",
+        "width": "6",
+        "height": "1",
+        "order": 1,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false"
+    },
+    {
+        "id": "grp-acset",
+        "type": "ui-group",
+        "name": "⏰ Schedule & AC settings",
+        "page": "db-config-page",
+        "width": "6",
+        "height": "1",
+        "order": 2,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false"
+    },
+    {
+        "id": "db-group-advanced",
+        "type": "ui-group",
+        "name": "⚠️ Critical — compressor & battery (handle with care)",
+        "page": "db-config-page",
+        "width": "6",
+        "height": "1",
+        "order": 3,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false"
+    },
+    {
+        "id": "db-page",
+        "type": "ui-page",
+        "name": "Gree AC",
+        "ui": "db-base",
+        "path": "/home",
+        "icon": "home",
+        "layout": "notebook",
+        "theme": "db-theme",
+        "breakpoints": [
+            {
+                "name": "Default",
+                "px": "0",
+                "cols": "3"
+            },
+            {
+                "name": "Tablet",
+                "px": "576",
+                "cols": "6"
+            },
+            {
+                "name": "Small Desktop",
+                "px": "768",
+                "cols": "9"
+            },
+            {
+                "name": "Desktop",
+                "px": "1024",
+                "cols": "12"
+            }
+        ],
+        "order": 1,
+        "className": "",
+        "visible": "true",
+        "disabled": "false"
+    },
+    {
+        "id": "db-config-page",
+        "type": "ui-page",
+        "name": "Config",
+        "ui": "db-base",
+        "path": "/config",
+        "icon": "cog",
+        "layout": "notebook",
+        "theme": "db-theme",
+        "breakpoints": [
+            {
+                "name": "Default",
+                "px": "0",
+                "cols": "3"
+            },
+            {
+                "name": "Tablet",
+                "px": "576",
+                "cols": "6"
+            },
+            {
+                "name": "Small Desktop",
+                "px": "768",
+                "cols": "9"
+            },
+            {
+                "name": "Desktop",
+                "px": "1024",
+                "cols": "12"
+            }
+        ],
+        "order": 2,
+        "className": "",
+        "visible": "true",
+        "disabled": "false"
+    },
+    {
+        "id": "db-base",
+        "type": "ui-base",
+        "name": "TinyHouse Dashboard",
+        "path": "/dashboard",
+        "includeClientData": true,
+        "acceptsClientConfig": [
+            "ui-notification",
+            "ui-control"
+        ],
+        "showPathInSidebar": false
+    },
+    {
+        "id": "db-theme",
+        "type": "ui-theme",
+        "name": "TinyHouse Dark",
+        "colors": {
+            "surface": "#161c27",
+            "primary": "#4cc9f0",
+            "bgPage": "#0e131b",
+            "groupBg": "#1a2230",
+            "groupOutline": "#2b3851"
+        },
+        "sizes": {
+            "pagePadding": "14px",
+            "groupGap": "14px",
+            "groupBorderRadius": "8px",
+            "widgetGap": "12px"
+        }
+    },
+    {
+        "id": "db-theme-light-doc",
+        "type": "comment",
+        "z": "556b70d1e6fd3dde",
+        "name": "🎨 Light palette — paste into the 'TinyHouse Dark' theme node to switch",
+        "info": "Dashboard 2.0 has no per-user light/dark toggle; the theme colours are fixed by the theme node. To switch the whole dashboard to light mode, set the 'TinyHouse Dark' theme colours to:\n\n  surface:      #ffffff\n  primary:      #0094ce\n  bgPage:       #eef1f5\n  groupBg:      #ffffff\n  groupOutline: #d4dae3\n\n(The current dark palette is surface #161c27, primary #4cc9f0, bgPage #0e131b, groupBg #1a2230, groupOutline #2b3851.)",
+        "x": 285,
+        "y": 2200,
+        "wires": []
+    },
+    {
+        "id": "246ab47def5693a2",
+        "type": "global-config",
+        "env": []
+    },
+    {
+        "id": "mock-cmd-linkin",
+        "type": "link in",
+        "z": "556b70d1e6fd3dde",
+        "name": "⇠ Test command (sim only)",
+        "links": [
+            "mock-cmd-linkout"
+        ],
+        "x": 805,
+        "y": 840,
+        "wires": [
+            [
+                "72f57580f5a03db9"
+            ]
+        ]
+    }
+]

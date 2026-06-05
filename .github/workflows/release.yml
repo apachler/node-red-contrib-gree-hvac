@@ -1,0 +1,38 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - master
+
+# semantic-release pushes the release commit + tag, creates the GitHub Release
+# (with the packed .tgz asset), and comments on released issues/PRs. No npm
+# publish — this package ships via Git + GitHub Releases only (same model as
+# the gree-hvac-client fork it depends on).
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+# Never cancel an in-flight release.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: "npm"
+      - run: npm ci
+      - run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

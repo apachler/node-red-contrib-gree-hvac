@@ -1,0 +1,849 @@
+[
+    {
+        "id": "mocks-tab",
+        "type": "tab",
+        "label": "🧪 Mocks (sim only)",
+        "disabled": false,
+        "info": "Pumps mock Victron + Ruuvi sensor values from the simulator container into the 'Collect Data' function in the main flow. This tab replaces the role of the Victron + Ruuvi input nodes when there is no Venus OS / dbus available.\n\nReads values from the simulator's HTTP API:\n  GET http://gree.lan:8080/api/sensors\n\nFor the dashboard / control logic to react, set values on the simulator dashboard at http://localhost:8080/, or use the 'Sim Sensors' dashboard page."
+    },
+    {
+        "id": "mock-tick",
+        "type": "inject",
+        "z": "mocks-tab",
+        "name": "Every 5s",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "5",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "1",
+        "topic": "",
+        "payload": "",
+        "payloadType": "str",
+        "x": 200,
+        "y": 120,
+        "wires": [
+            [
+                "mock-fetch"
+            ]
+        ]
+    },
+    {
+        "id": "mock-fetch",
+        "type": "http request",
+        "z": "mocks-tab",
+        "name": "GET /api/sensors",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://gree.lan:8080/api/sensors",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 410,
+        "y": 120,
+        "wires": [
+            [
+                "mock-fanout",
+                "mock-debug"
+            ]
+        ]
+    },
+    {
+        "id": "mock-fanout",
+        "type": "function",
+        "z": "mocks-tab",
+        "name": "Fan out to Daten sammeln",
+        "func": "// Receives { soc, batteryVoltage, batterySystemStateNum, insideC, outsideC }\n// from the simulator's /api/sensors endpoint and emits one message per\n// sensor with a `path` field that matches the dispatch logic in the\n// 'Collect Data' function (which keys off substring matches in msg.path).\nvar s = msg.payload || {};\nif (typeof s !== 'object') {\n    node.warn('expected object payload from /api/sensors, got ' + typeof s);\n    return null;\n}\n\nif (typeof s.soc === 'number') {\n    node.send({ path: 'Battery SOC', payload: s.soc });\n}\nif (typeof s.batterySystemStateNum === 'number') {\n    node.send({ path: 'Battery State', payload: s.batterySystemStateNum });\n}\nif (typeof s.batteryVoltage === 'number') {\n    node.send({ path: 'Battery Voltage', payload: s.batteryVoltage });\n}\nif (typeof s.insideC === 'number') {\n    node.send({ path: 'Ruuvi Inside', payload: s.insideC });\n}\nif (typeof s.outsideC === 'number') {\n    node.send({ path: 'Ruuvi Outside', payload: s.outsideC });\n}\nnode.status({ fill: 'green', shape: 'dot', text: 'pumped ' + new Date().toISOString().slice(11,19) });\nreturn null;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 720,
+        "y": 120,
+        "wires": [
+            [
+                "mock-sensor-linkout"
+            ]
+        ]
+    },
+    {
+        "id": "mock-sensor-linkout",
+        "type": "link out",
+        "z": "mocks-tab",
+        "name": "→ Collect Data",
+        "mode": "link",
+        "links": [
+            "mock-sensor-linkin"
+        ],
+        "x": 935,
+        "y": 120,
+        "wires": [],
+        "info": "Editor-safe cross-tab link to the user flow's 'Collect Data' node. The previous direct wire from this tab to the user tab was silently dropped whenever the flow was edited + redeployed in the browser editor (the editor can't draw cross-tab wires); link nodes survive that round-trip. Targets the 'mock-sensor-linkin' link-in on the user-flow tab."
+    },
+    {
+        "id": "mock-debug",
+        "type": "debug",
+        "z": "mocks-tab",
+        "name": "sensor payload",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "x": 680,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "mock-test-ac-on",
+        "type": "inject",
+        "z": "mocks-tab",
+        "name": "Test: AC ON",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "on",
+        "payload": "{\"power\":\"on\",\"mode\":\"cool\",\"temperature\":21,\"fanSpeed\":\"high\"}",
+        "payloadType": "json",
+        "x": 190,
+        "y": 340,
+        "wires": [
+            [
+                "mock-cmd-linkout"
+            ]
+        ],
+        "info": "e2e hook. The dashboard ui-button/ui-switch nodes can't be triggered over the admin /inject API (only plain inject nodes can), so this inject feeds the Gree node directly with an ON command. The e2e suite POSTs to /inject/mock-test-ac-on and asserts the simulator's AC turns on."
+    },
+    {
+        "id": "mock-test-ac-off",
+        "type": "inject",
+        "z": "mocks-tab",
+        "name": "Test: AC OFF",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "off",
+        "payload": "{\"power\":\"off\"}",
+        "payloadType": "json",
+        "x": 190,
+        "y": 400,
+        "wires": [
+            [
+                "mock-cmd-linkout"
+            ]
+        ],
+        "info": "e2e hook — feeds the Gree node directly with an OFF command. See 'Test: AC ON'."
+    },
+    {
+        "id": "ss-soc",
+        "type": "ui-number-input",
+        "z": "mocks-tab",
+        "group": "sim-sensors-group",
+        "name": "Mock SOC",
+        "label": "Battery SOC (%)",
+        "order": 1,
+        "width": 6,
+        "height": 1,
+        "topic": "soc",
+        "topicType": "str",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "tooltip": "",
+        "delay": 300,
+        "passthru": false,
+        "sendOnDelay": false,
+        "sendOnBlur": true,
+        "sendOnEnter": true,
+        "className": "",
+        "clearable": false,
+        "icon": "",
+        "iconPosition": "left",
+        "iconInnerPosition": "inside",
+        "spinner": "default",
+        "x": 950,
+        "y": 520,
+        "wires": [
+            [
+                "ss-apply"
+            ]
+        ]
+    },
+    {
+        "id": "ss-volt",
+        "type": "ui-number-input",
+        "z": "mocks-tab",
+        "group": "sim-sensors-group",
+        "name": "Mock Battery Voltage",
+        "label": "Battery voltage (V)",
+        "order": 2,
+        "width": 6,
+        "height": 1,
+        "topic": "batteryVoltage",
+        "topicType": "str",
+        "min": 0,
+        "max": 60,
+        "step": 0.1,
+        "tooltip": "",
+        "delay": 300,
+        "passthru": false,
+        "sendOnDelay": false,
+        "sendOnBlur": true,
+        "sendOnEnter": true,
+        "className": "",
+        "clearable": false,
+        "icon": "",
+        "iconPosition": "left",
+        "iconInnerPosition": "inside",
+        "spinner": "default",
+        "x": 980,
+        "y": 560,
+        "wires": [
+            [
+                "ss-apply"
+            ]
+        ]
+    },
+    {
+        "id": "ss-state",
+        "type": "ui-dropdown",
+        "z": "mocks-tab",
+        "group": "sim-sensors-group",
+        "name": "Mock Battery State",
+        "label": "Battery state",
+        "tooltip": "",
+        "order": 3,
+        "width": 6,
+        "height": 1,
+        "passthru": false,
+        "multiple": false,
+        "chips": false,
+        "clearable": false,
+        "options": [
+            {
+                "value": 0,
+                "label": "idle"
+            },
+            {
+                "value": 1,
+                "label": "charging"
+            },
+            {
+                "value": 2,
+                "label": "discharging"
+            }
+        ],
+        "payload": "",
+        "topic": "batterySystemStateNum",
+        "topicType": "str",
+        "className": "",
+        "typeIsComboBox": false,
+        "msgTrigger": "onChange",
+        "x": 970,
+        "y": 600,
+        "wires": [
+            [
+                "ss-apply"
+            ]
+        ]
+    },
+    {
+        "id": "ss-inside",
+        "type": "ui-number-input",
+        "z": "mocks-tab",
+        "group": "sim-sensors-group",
+        "name": "Mock Inside Temp",
+        "label": "Inside temp (°C)",
+        "order": 4,
+        "width": 6,
+        "height": 1,
+        "topic": "insideC",
+        "topicType": "str",
+        "min": -20,
+        "max": 60,
+        "step": 0.1,
+        "tooltip": "",
+        "delay": 300,
+        "passthru": false,
+        "sendOnDelay": false,
+        "sendOnBlur": true,
+        "sendOnEnter": true,
+        "className": "",
+        "clearable": false,
+        "icon": "",
+        "iconPosition": "left",
+        "iconInnerPosition": "inside",
+        "spinner": "default",
+        "x": 970,
+        "y": 640,
+        "wires": [
+            [
+                "ss-apply"
+            ]
+        ]
+    },
+    {
+        "id": "ss-outside",
+        "type": "ui-number-input",
+        "z": "mocks-tab",
+        "group": "sim-sensors-group",
+        "name": "Mock Outside Temp",
+        "label": "Outside temp (°C)",
+        "order": 5,
+        "width": 6,
+        "height": 1,
+        "topic": "outsideC",
+        "topicType": "str",
+        "min": -30,
+        "max": 60,
+        "step": 0.1,
+        "tooltip": "",
+        "delay": 300,
+        "passthru": false,
+        "sendOnDelay": false,
+        "sendOnBlur": true,
+        "sendOnEnter": true,
+        "className": "",
+        "clearable": false,
+        "icon": "",
+        "iconPosition": "left",
+        "iconInnerPosition": "inside",
+        "spinner": "default",
+        "x": 970,
+        "y": 680,
+        "wires": [
+            [
+                "ss-apply"
+            ]
+        ]
+    },
+    {
+        "id": "ss-result",
+        "type": "ui-text",
+        "z": "mocks-tab",
+        "group": "sim-sensors-group",
+        "order": 6,
+        "width": 6,
+        "height": 1,
+        "name": "Stored in sim",
+        "label": "Stored in sim:",
+        "format": "{{msg.payload}}",
+        "layout": "col-center",
+        "style": false,
+        "font": "",
+        "fontSize": 13,
+        "color": "#717171",
+        "className": "",
+        "x": 950,
+        "y": 780,
+        "wires": []
+    },
+    {
+        "id": "ss-apply",
+        "type": "function",
+        "z": "mocks-tab",
+        "name": "Apply one value",
+        "func": "// Each sensor widget emits { topic: <sensor key>, payload: <value> } on\n// change. Build a single-key patch and POST it to the simulator, which\n// applies a partial update. passthru is off on the widgets, so prefilling\n// them from the simulator does NOT re-trigger this.\nvar key = msg.topic;\nvar val = Number(msg.payload);\nif (!key || !Number.isFinite(val)) { return null; }\nvar body = {};\nbody[key] = val;\nmsg.payload = body;\nmsg.headers = { 'content-type': 'application/json' };\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1260,
+        "y": 580,
+        "wires": [
+            [
+                "ss-post"
+            ]
+        ]
+    },
+    {
+        "id": "ss-post",
+        "type": "http request",
+        "z": "mocks-tab",
+        "name": "POST /api/sensors",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://gree.lan:8080/api/sensors",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 1510,
+        "y": 580,
+        "wires": [
+            [
+                "ss-fmt"
+            ]
+        ]
+    },
+    {
+        "id": "ss-fmt",
+        "type": "function",
+        "z": "mocks-tab",
+        "name": "Format stored values",
+        "func": "// Build a plain display string. Dashboard 2.0 ui-text renders the whole\n// payload object as '[object Object]' if you reference nested fields in\n// its format template, so we format here and show {{msg.payload}}.\nvar s = msg.payload || {};\nvar f = function (v) { return (v === undefined || v === null) ? '?' : v; };\nmsg.payload = 'SOC ' + f(s.soc) + '% · ' + f(s.batteryVoltage) + 'V · state ' + f(s.batterySystemStateNum) + ' · in ' + f(s.insideC) + '°C · out ' + f(s.outsideC) + '°C';\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 700,
+        "y": 780,
+        "wires": [
+            [
+                "ss-result"
+            ]
+        ]
+    },
+    {
+        "id": "ss-load",
+        "type": "inject",
+        "z": "mocks-tab",
+        "name": "Load current on startup",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "2.5",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 150,
+        "y": 560,
+        "wires": [
+            [
+                "ss-load-fetch"
+            ]
+        ],
+        "info": "Prefills the widgets with the simulator's current sensor values once at startup, so they start from reality rather than hard-coded defaults. Does NOT refresh periodically — that would overwrite values while you are editing. The :8080 dashboard is the live view."
+    },
+    {
+        "id": "ss-load-fetch",
+        "type": "http request",
+        "z": "mocks-tab",
+        "name": "GET /api/sensors",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://gree.lan:8080/api/sensors",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 410,
+        "y": 560,
+        "wires": [
+            [
+                "ss-fanout",
+                "ss-fmt"
+            ]
+        ]
+    },
+    {
+        "id": "ss-fanout",
+        "type": "function",
+        "z": "mocks-tab",
+        "name": "Prefill widgets",
+        "func": "// Push the simulator's current values into each widget (passthru off, so\n// this does not trigger an apply/POST).\nvar s = msg.payload || {};\nreturn [\n    [{ payload: s.soc }],\n    [{ payload: s.batteryVoltage }],\n    [{ payload: s.batterySystemStateNum }],\n    [{ payload: s.insideC }],\n    [{ payload: s.outsideC }]\n];",
+        "outputs": 5,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 680,
+        "y": 560,
+        "wires": [
+            [
+                "ss-soc"
+            ],
+            [
+                "ss-volt"
+            ],
+            [
+                "ss-state"
+            ],
+            [
+                "ss-inside"
+            ],
+            [
+                "ss-outside"
+            ]
+        ]
+    },
+    {
+        "id": "ss-clock-switch",
+        "type": "ui-switch",
+        "z": "mocks-tab",
+        "name": "Use simulated clock",
+        "label": "Use simulated clock",
+        "group": "sim-clock-group",
+        "order": 1,
+        "width": 6,
+        "height": 1,
+        "passthru": false,
+        "decouple": false,
+        "topic": "enabled",
+        "topicType": "str",
+        "style": "",
+        "className": "",
+        "layout": "",
+        "clickableArea": "switch",
+        "onvalue": "true",
+        "onvalueType": "bool",
+        "onicon": "",
+        "oncolor": "#2196f3",
+        "offvalue": "false",
+        "offvalueType": "bool",
+        "officon": "",
+        "offcolor": "",
+        "x": 160,
+        "y": 840,
+        "wires": [
+            [
+                "ss-clock-handler"
+            ]
+        ]
+    },
+    {
+        "id": "ss-clock-hour",
+        "type": "ui-slider",
+        "z": "mocks-tab",
+        "group": "sim-clock-group",
+        "name": "Sim hour",
+        "label": "Hour of day (0–23)",
+        "order": 2,
+        "width": 6,
+        "height": 1,
+        "passthru": false,
+        "outs": "all",
+        "topic": "hour",
+        "topicType": "str",
+        "thumbLabel": "true",
+        "showTicks": "false",
+        "min": "0",
+        "max": "23",
+        "step": "1",
+        "className": "",
+        "iconPrepend": "",
+        "iconAppend": "",
+        "color": "#0094ce",
+        "colorTrack": "#eeeeee",
+        "colorThumb": "#0094ce",
+        "showTextField": true,
+        "x": 200,
+        "y": 900,
+        "wires": [
+            [
+                "ss-clock-handler"
+            ]
+        ]
+    },
+    {
+        "id": "ss-clock-handler",
+        "type": "function",
+        "z": "mocks-tab",
+        "name": "Sim clock handler",
+        "func": "// Maintains the GLOBAL-context sim-clock override read by the example\n// flow's 'Main Logic' and 'Dashboard Values' functions:\n//   global.simClock = { enabled: <bool>, hour: <0-23> }\n// Global (not flow) context is required because this handler lives on the\n// mocks tab while the readers live on the user-flow tab — flow context is\n// scoped per-tab and would not be shared. When disabled the flow falls\n// back to the real wall clock.\nvar sc = global.get('simClock') || { enabled: false, hour: 12 };\nif (msg.topic === 'enabled') {\n    sc.enabled = !!msg.payload;\n} else if (msg.topic === 'hour') {\n    sc.hour = Math.max(0, Math.min(23, Number(msg.payload)));\n}\nglobal.set('simClock', sc);\nnode.status({ fill: sc.enabled ? 'blue' : 'grey', shape: 'dot', text: sc.enabled ? ('Sim clock ' + sc.hour + ':00') : 'Real clock' });\nreturn { payload: sc.enabled ? ('🕐 Simulated ' + sc.hour + ':00 — flow uses this for the time-of-day gate') : '🕐 Real clock (enable the switch to simulate a time of day)' };",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 410,
+        "y": 860,
+        "wires": [
+            [
+                "ss-clock-info"
+            ]
+        ]
+    },
+    {
+        "id": "ss-clock-info",
+        "type": "ui-text",
+        "z": "mocks-tab",
+        "group": "sim-clock-group",
+        "order": 3,
+        "width": 6,
+        "height": 1,
+        "name": "Clock state",
+        "label": "",
+        "format": "{{msg.payload}}",
+        "layout": "row-center",
+        "style": false,
+        "font": "",
+        "fontSize": 13,
+        "color": "#717171",
+        "className": "",
+        "x": 670,
+        "y": 860,
+        "wires": []
+    },
+    {
+        "id": "sim-sensors-page",
+        "type": "ui-page",
+        "name": "Sim Sensors",
+        "ui": "db-base",
+        "path": "/sim-sensors",
+        "icon": "flask-outline",
+        "layout": "grid",
+        "theme": "db-theme",
+        "breakpoints": [
+            {
+                "name": "Default",
+                "px": "0",
+                "cols": "3"
+            },
+            {
+                "name": "Tablet",
+                "px": "576",
+                "cols": "6"
+            },
+            {
+                "name": "Small Desktop",
+                "px": "768",
+                "cols": "9"
+            },
+            {
+                "name": "Desktop",
+                "px": "1024",
+                "cols": "12"
+            }
+        ],
+        "order": 3,
+        "className": "",
+        "visible": "true",
+        "disabled": "false"
+    },
+    {
+        "id": "sim-sensors-group",
+        "type": "ui-group",
+        "name": "🧪 Mock Victron + Ruuvi (sim only)",
+        "page": "sim-sensors-page",
+        "width": "6",
+        "height": "1",
+        "order": 1,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false"
+    },
+    {
+        "id": "sim-clock-group",
+        "type": "ui-group",
+        "name": "🕐 Sim Clock (sim only)",
+        "page": "sim-sensors-page",
+        "width": "6",
+        "height": "1",
+        "order": 2,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false"
+    },
+    {
+        "id": "mock-cmt-pump",
+        "type": "comment",
+        "z": "mocks-tab",
+        "name": "SENSOR PUMP  →  Collect Data  (Victron/Ruuvi mock)",
+        "info": "",
+        "x": 220,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "mock-cmt-test",
+        "type": "comment",
+        "z": "mocks-tab",
+        "name": "E2E TEST INJECTS  →  Gree node",
+        "info": "",
+        "x": 160,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "mock-cmt-sensors",
+        "type": "comment",
+        "z": "mocks-tab",
+        "name": "SIM SENSORS PAGE   prefill → widgets → POST /api/sensors",
+        "info": "",
+        "x": 240,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "mock-cmt-clock",
+        "type": "comment",
+        "z": "mocks-tab",
+        "name": "SIM CLOCK  →  global.simClock",
+        "info": "",
+        "x": 150,
+        "y": 760,
+        "wires": []
+    },
+    {
+        "id": "mock-cmt-e2e",
+        "type": "comment",
+        "z": "mocks-tab",
+        "name": "E2E CONTROL HOOKS  →  global.test / global.simClock  (sim only)",
+        "info": "HTTP hooks the e2e suite uses to drive the control logic without the dashboard:\n  POST /test       set { config, manualMode, simClock } overrides (POST {} to clear)\n  GET  /test/status read back controllerStatus + active overrides\nMain Logic honours global.test the same way it honours global.simClock; both are inert in production when unset.",
+        "x": 260,
+        "y": 980,
+        "wires": []
+    },
+    {
+        "id": "test-apply-in",
+        "type": "http in",
+        "z": "mocks-tab",
+        "name": "POST /test",
+        "url": "/test",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 200,
+        "y": 1020,
+        "wires": [
+            [
+                "test-apply-fn"
+            ]
+        ]
+    },
+    {
+        "id": "test-apply-fn",
+        "type": "function",
+        "z": "mocks-tab",
+        "name": "apply test override",
+        "func": "// e2e control hook (sim only). Body:\n//   { config?: {onDelay,offDelay,minOnTime,minOffTime,...},\n//     manualMode?: bool, simClock?: {enabled, hour} }\n// Stores config + manualMode under global.test (honoured by Main Logic's\n// test override) and, when present, sets global.simClock (the existing clock\n// hook). POST {} clears the overrides. Sim-only — never deployed to hardware.\nvar b = msg.payload || {};\nglobal.set('test', { config: b.config || null, manualMode: b.manualMode, resetNonce: b.resetNonce });\nif (b.simClock) {\n    global.set('simClock', b.simClock);\n}\nmsg.payload = { ok: true, test: global.get('test'), simClock: global.get('simClock') };\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 410,
+        "y": 1020,
+        "wires": [
+            [
+                "test-apply-res"
+            ]
+        ]
+    },
+    {
+        "id": "test-apply-res",
+        "type": "http response",
+        "z": "mocks-tab",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 650,
+        "y": 1020,
+        "wires": []
+    },
+    {
+        "id": "test-status-in",
+        "type": "http in",
+        "z": "mocks-tab",
+        "name": "GET /test/status",
+        "url": "/test/status",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 180,
+        "y": 1080,
+        "wires": [
+            [
+                "test-status-fn"
+            ]
+        ]
+    },
+    {
+        "id": "test-status-fn",
+        "type": "function",
+        "z": "mocks-tab",
+        "name": "read controller status",
+        "func": "// e2e read hook (sim only). Exposes the controller's published decision\n// and the active overrides so tests can assert phase/reason directly.\nmsg.payload = {\n    controllerStatus: global.get('controllerStatus') || null,\n    test: global.get('test') || null,\n    simClock: global.get('simClock') || null\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 1080,
+        "wires": [
+            [
+                "test-status-res"
+            ]
+        ]
+    },
+    {
+        "id": "test-status-res",
+        "type": "http response",
+        "z": "mocks-tab",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 650,
+        "y": 1080,
+        "wires": []
+    },
+    {
+        "id": "mock-cmd-linkout",
+        "type": "link out",
+        "z": "mocks-tab",
+        "name": "→ Gree AC",
+        "mode": "link",
+        "links": [
+            "mock-cmd-linkin"
+        ],
+        "x": 430,
+        "y": 370,
+        "wires": []
+    }
+]

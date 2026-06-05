@@ -1,0 +1,52 @@
+services:
+  gree-sim:
+    build:
+      context: ./sim
+      dockerfile: Dockerfile
+    image: gree-hvac-sim:dev
+    container_name: gree-sim
+    hostname: gree-sim
+    environment:
+      GREE_SIM_UDP_PORT: "7000"
+      GREE_SIM_HTTP_PORT: "8080"
+      GREE_SIM_CIPHER: "ecb"
+      GREE_SIM_VERBOSE: "1"
+      GREE_SIM_NAME: "TinyHouse-AC"
+      # Initial mock sensor readings (overridable from the dashboard)
+      GREE_SIM_SOC: "78"
+      GREE_SIM_BATT_V: "53.7"
+      GREE_SIM_BATT_STATE: "1"
+      GREE_SIM_INSIDE_C: "24.5"
+      GREE_SIM_OUTSIDE_C: "22.0"
+    ports:
+      - "7000:7000/udp"
+      - "8080:8080/tcp"
+    networks:
+      sim-net:
+        # The Node-RED flow points at host "gree.lan" for the AC; this alias
+        # makes the sim container resolvable under that name on the docker
+        # network so the sample flow works unmodified.
+        aliases:
+          - gree.lan
+    restart: unless-stopped
+
+  node-red:
+    build:
+      context: .
+      dockerfile: docker/nodered/Dockerfile
+    image: gree-hvac-nodered:dev
+    container_name: gree-nodered
+    depends_on:
+      gree-sim:
+        condition: service_healthy
+    ports:
+      - "1880:1880"
+    networks:
+      - sim-net
+    environment:
+      TZ: "Europe/Vienna"
+    restart: unless-stopped
+
+networks:
+  sim-net:
+    driver: bridge

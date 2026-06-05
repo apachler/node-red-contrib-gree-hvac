@@ -1,0 +1,7 @@
+{
+    "name": "node-red-gree-sim",
+    "private": true,
+    "version": "1.0.0",
+    "description": "Node-RED user dir for the Gree HVAC simulator stack",
+    "dependencies": {}
+}

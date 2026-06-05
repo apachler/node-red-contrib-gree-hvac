@@ -1,0 +1,36 @@
+# Development override — bind-mounts the host's contrib package source
+# over the image's installed copy and wraps Node-RED in nodemon so edits
+# to gree-hvac/*.js or gree-hvac/*.html restart the runtime within a few
+# seconds. Use with:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# or via the convenience script:  npm run sim:dev
+#
+# Edits to the Node-RED flow (via the editor) still persist into the
+# anonymous /data volume the way they would in the default stack.
+
+services:
+  node-red:
+    volumes:
+      # Mount source over the npm-installed copy so changes show up live.
+      # The package.json + gree-hvac dir are what Node-RED actually loads
+      # (the registerType entry points live there).
+      - ./gree-hvac:/data/node_modules/node-red-contrib-gree-hvac/gree-hvac:ro
+      - ./package.json:/data/node_modules/node-red-contrib-gree-hvac/package.json:ro
+    # nodemon watches the mounted dir and restarts node-red on .js/.html
+    # changes. --signal SIGTERM lets node-red shut down gracefully.
+    # --legacy-watch is needed when the host filesystem doesn't deliver
+    # inotify events (Docker Desktop on Windows / macOS).
+    command: >-
+      nodemon
+      --watch /data/node_modules/node-red-contrib-gree-hvac
+      --ext js,html,json
+      --delay 1
+      --signal SIGTERM
+      --legacy-watch
+      --exec node /usr/src/node-red/red.js --userDir /data
+    # Drop the healthcheck during dev so restart loops don't churn the
+    # status; you can still curl :1880 yourself.
+    healthcheck:
+      disable: true

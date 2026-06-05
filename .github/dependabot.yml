@@ -12,3 +12,10 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+  # Keep the digest-pinned base images current.
+  - package-ecosystem: "docker"
+    directories:
+      - "/sim"
+      - "/docker/nodered"
+    schedule:
+      interval: "weekly"

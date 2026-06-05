@@ -1,2 +1,10 @@
 node_modules/
 sandbox/
+.idea/
+.vscode/
+*.tgz
+release/
+coverage/
+.nyc_output/
+HAPPY-CODING.md
+*.tmp.*
