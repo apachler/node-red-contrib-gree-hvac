@@ -1,3 +1,32 @@
+# [1.5.0](https://github.com/apachler/node-red-contrib-gree-hvac/compare/v1.4.0...v1.5.0) (2026-06-05)
+
+
+### Bug Fixes
+
+* **deps:** clear dev-toolchain audit advisories (npm audit fix) ([6e0d113](https://github.com/apachler/node-red-contrib-gree-hvac/commit/6e0d113e4a8782dc865bff398aac6781a3af6202))
+* **e2e:** drop Node-20-only --test-timeout flag; cap e2e job runtime ([5240efc](https://github.com/apachler/node-red-contrib-gree-hvac/commit/5240efc2dfcc1cac1983d9d2a915f3f1a0037cfe))
+* **e2e:** make the docker-compose suite pass end-to-end ([8e1f1ab](https://github.com/apachler/node-red-contrib-gree-hvac/commit/8e1f1abab5b6238c05139711d97b4788afb42294))
+* **e2e:** pass explicit test files (node --test glob is Node 21+) ([dc0be0b](https://github.com/apachler/node-red-contrib-gree-hvac/commit/dc0be0ba42e1c70d9e8c3ce819cdeb1efc72d304))
+* **flow:** restore mock sensor pump + harden cross-tab link; dark-mode polish ([b22d5d2](https://github.com/apachler/node-red-contrib-gree-hvac/commit/b22d5d2421b41de4af8cb5485d9feac22c66f883))
+* **security:** resolve CodeQL alerts in sim + flow tooling ([c9c4b57](https://github.com/apachler/node-red-contrib-gree-hvac/commit/c9c4b573b6e541bf10ea188602c6ed6c4ef196db))
+* **sim:** Sim Sensors 'Stored in sim' showed [object Object] ([f6543f5](https://github.com/apachler/node-red-contrib-gree-hvac/commit/f6543f528443c0eb2f5682d2c67daf54f8b24fd1))
+
+
+### Features
+
+* docker-compose stack with simulator and Node-RED ([3069d60](https://github.com/apachler/node-red-contrib-gree-hvac/commit/3069d60ff0e59dda1fd977b76815ea6245e206d4))
+* **flow:** add flow:push to deploy source flows live without rebuild ([e161efa](https://github.com/apachler/node-red-contrib-gree-hvac/commit/e161efa0d85b309373e59392f8ea1c4b233e6b55))
+* **flow:** deactivate-temp shutoff, segmented mode control, dashboard polish ([96df204](https://github.com/apachler/node-red-contrib-gree-hvac/commit/96df204c05355962ae1db7c777d98954548900ff))
+* **flow:** thematic config groups + X-Fan as dropdown ([59281a9](https://github.com/apachler/node-red-contrib-gree-hvac/commit/59281a938415f41ce0dc0e16e9c096ba4f738c0b))
+* full AC control + per-field hints + trends + complete param sets ([9f52500](https://github.com/apachler/node-red-contrib-gree-hvac/commit/9f52500368f5fb85c40d7c0358a17291633e5917))
+* hot-reload dev mode for the Node-RED container ([1851d1f](https://github.com/apachler/node-red-contrib-gree-hvac/commit/1851d1fba57ccfee89eda02b3ac66554d7eae2d6))
+* redesign control logic + split Config dashboard page ([ee91879](https://github.com/apachler/node-red-contrib-gree-hvac/commit/ee918791d55a81be80bce3dc0b98c12c6b219c04))
+* remove flow watchdog, full AC control on sim, dark theme, consistent config inputs + hints ([2f7167d](https://github.com/apachler/node-red-contrib-gree-hvac/commit/2f7167d52c5824a3a0664c5278ad3af9f2331c7c))
+* **sim:** clock override, prefillable sensor form, change-source display ([b7a25f6](https://github.com/apachler/node-red-contrib-gree-hvac/commit/b7a25f6416edbbfdd0cb9712eae2b9b813299046))
+* **sim:** direct AC controls on the dashboard + Node-RED sensor form ([3de548b](https://github.com/apachler/node-red-contrib-gree-hvac/commit/3de548b5a82ac1f256dfbfb59ded6a0f72ccbfa0))
+* **sim:** Gree HVAC software simulator with HTTP dashboard ([c16872e](https://github.com/apachler/node-red-contrib-gree-hvac/commit/c16872ee35980fd4a919efe53316757ab052246b))
+* **sim:** verbose protocol logging (GREE_SIM_VERBOSE) ([fa7df2e](https://github.com/apachler/node-red-contrib-gree-hvac/commit/fa7df2e98c727fc563734bc79c3c558c3d7ee8e5))
+
 # Changelog
 
 All notable changes to this project are tracked here. The format follows
