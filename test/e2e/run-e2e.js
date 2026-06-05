@@ -18,6 +18,7 @@
 
 const { spawn } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 const {
     up,
     down,
@@ -75,11 +76,20 @@ async function main() {
         // a single sim, and fault-recovery.e2e.test.js injects packet drops
         // that would break the other files' assertions if they ran in
         // parallel against the same container.
-        // No --test-timeout: it's Node 20+ only and the e2e CI floor is Node
-        // 18, which rejects the flag. The test files carry their own waits and
+        // `node --test` does not expand globs before Node 21, so pass explicit
+        // file paths (works on the Node 18 e2e floor too). No --test-timeout
+        // either: it's Node 20+ only; the test files carry their own waits and
         // the e2e CI job has a timeout-minutes cap as the safety net.
+        const e2eFiles = fs
+            .readdirSync(__dirname)
+            .filter(f => f.endsWith('.e2e.test.js'))
+            .sort()
+            .map(f => path.join(__dirname, f));
+        if (e2eFiles.length === 0) {
+            throw new Error('no *.e2e.test.js files found in test/e2e');
+        }
         exitCode = await runNodeTest(
-            ['--test', '--test-concurrency=1', 'test/e2e/*.e2e.test.js'],
+            ['--test', '--test-concurrency=1', ...e2eFiles],
             { ...process.env, E2E_STACK_UP: '1' }
         );
     } catch (err) {
