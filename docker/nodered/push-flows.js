@@ -30,6 +30,11 @@ const NR_URL = (process.env.NR_URL || 'http://127.0.0.1:1880').replace(
     /\/$/,
     ''
 );
+// Validate the env-supplied base URL (plain http(s) origin, no path/query) so
+// the deploy request below has a sanitized, non-tainted target.
+if (!/^https?:\/\/[A-Za-z0-9.-]+(:\d{1,5})?$/.test(NR_URL)) {
+    throw new Error(`invalid NR_URL: ${NR_URL}`);
+}
 const HERE = __dirname;
 const USER_PATH = path.join(HERE, 'flows.user.json');
 const MOCKS_PATH = path.join(HERE, 'flows.mocks.json');

@@ -44,6 +44,11 @@ const NR_URL = (process.env.NR_URL || 'http://127.0.0.1:1880').replace(
     /\/$/,
     ''
 );
+// Validate the env-supplied base URL (plain http(s) origin, no path/query) so
+// the admin-API request below has a sanitized, non-tainted target.
+if (!/^https?:\/\/[A-Za-z0-9.-]+(:\d{1,5})?$/.test(NR_URL)) {
+    throw new Error(`invalid NR_URL: ${NR_URL}`);
+}
 const HERE = __dirname;
 const OUT_DIR = process.env.OUT_DIR || HERE;
 const MOCKS_PATH = path.join(OUT_DIR, 'flows.mocks.json');
@@ -155,8 +160,15 @@ function classify(deployed, existingMockIds) {
  * @returns {object[]}
  */
 function preserveOrder(nodes, existingPath) {
-    if (!fs.existsSync(existingPath)) return nodes;
-    const prev = JSON.parse(fs.readFileSync(existingPath, 'utf8'));
+    // Read-and-handle-ENOENT rather than existsSync-then-read, which is a
+    // time-of-check/time-of-use race.
+    let prev;
+    try {
+        prev = JSON.parse(fs.readFileSync(existingPath, 'utf8'));
+    } catch (e) {
+        if (e.code === 'ENOENT') return nodes;
+        throw e;
+    }
     const rank = new Map(prev.map((n, i) => [n.id, i]));
     return nodes
         .map((n, i) => ({ n, i }))
@@ -197,11 +209,14 @@ async function main() {
         process.exit(2);
     }
 
-    const existingMockIds = fs.existsSync(MOCKS_PATH)
-        ? new Set(
-              JSON.parse(fs.readFileSync(MOCKS_PATH, 'utf8')).map(n => n.id)
-          )
-        : new Set();
+    let existingMockIds = new Set();
+    try {
+        existingMockIds = new Set(
+            JSON.parse(fs.readFileSync(MOCKS_PATH, 'utf8')).map(n => n.id)
+        );
+    } catch (e) {
+        if (e.code !== 'ENOENT') throw e;
+    }
 
     const deployed = await loadDeployed();
     const { userNodes, mockNodes } = classify(deployed, existingMockIds);

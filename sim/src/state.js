@@ -54,6 +54,17 @@ class DeviceState extends EventEmitter {
         const changed = {};
         for (let i = 0; i < opts.length; i++) {
             const key = opts[i];
+            // Keys arrive off the wire (Gree protocol opt[]). Accept only plain
+            // property identifiers and reject prototype-polluting names, so the
+            // dynamic writes below can't be driven by a crafted key.
+            if (
+                typeof key !== 'string' ||
+                !/^[A-Za-z][A-Za-z0-9_]*$/.test(key) ||
+                key === 'constructor' ||
+                key === 'prototype'
+            ) {
+                continue;
+            }
             const val = values[i];
             if (!Object.prototype.hasOwnProperty.call(this._state, key)) {
                 this._state[key] = val;

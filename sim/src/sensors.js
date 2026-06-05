@@ -22,9 +22,13 @@ class MockSensors extends EventEmitter {
 
     update(patch) {
         const changed = {};
-        for (const [k, v] of Object.entries(patch || {})) {
-            if (!Object.prototype.hasOwnProperty.call(DEFAULTS, k)) continue;
-            const num = Number(v);
+        const input = patch || {};
+        // Iterate the known DEFAULTS keys (a module constant) rather than the
+        // caller-supplied keys, so the property name written below is never
+        // derived from remote input (avoids remote-property-injection).
+        for (const k of Object.keys(DEFAULTS)) {
+            if (!Object.prototype.hasOwnProperty.call(input, k)) continue;
+            const num = Number(input[k]);
             if (!Number.isFinite(num)) continue;
             if (this._state[k] !== num) {
                 this._state[k] = num;
