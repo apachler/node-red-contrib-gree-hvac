@@ -51,7 +51,8 @@
         "y": 120,
         "wires": [
             [
-                "mock-fanout"
+                "mock-fanout",
+                "mock-debug"
             ]
         ]
     },
