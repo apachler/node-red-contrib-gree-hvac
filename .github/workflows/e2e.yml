@@ -86,13 +86,13 @@ jobs:
           exit-code: "0"
       - name: Upload Trivy SARIF (gree-sim)
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-sim.sarif
           category: trivy-gree-sim
       - name: Upload Trivy SARIF (node-red)
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-nodered.sarif
           category: trivy-nodered
