@@ -25,6 +25,7 @@ async function main() {
         cid: process.env.GREE_SIM_CID,
         name: process.env.GREE_SIM_NAME,
         cipherMode: (process.env.GREE_SIM_CIPHER || 'ecb').toLowerCase(),
+        verbose: /^(1|true|yes)$/i.test(process.env.GREE_SIM_VERBOSE || ''),
         deviceKey: process.env.GREE_SIM_DEVICE_KEY,
         faults: {
             dropProbability: num(process.env.GREE_SIM_DROP_PROB, 0),

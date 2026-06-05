@@ -25,6 +25,7 @@ class Simulator extends EventEmitter {
         this.brand = opts.brand || DEFAULT_BRAND;
         this.model = opts.model || DEFAULT_MODEL;
         this.cipherMode = opts.cipherMode || 'ecb'; // 'ecb' | 'gcm'
+        this.verbose = opts.verbose || false; // log every protocol event
         this._deviceKey = opts.deviceKey || randomDeviceKey();
         this._state = opts.state || new DeviceState(opts.initialState || {});
         this._faults = new FaultInjector(opts.faults || {});
@@ -51,6 +52,13 @@ class Simulator extends EventEmitter {
         this._lastActivityAt = null;
 
         this._state.on('change', payload => this.emit('state-change', payload));
+    }
+
+    _log(...args) {
+        if (this.verbose) {
+            // eslint-disable-next-line no-console
+            console.log('[sim]', ...args);
+        }
     }
 
     get state() {
@@ -134,6 +142,7 @@ class Simulator extends EventEmitter {
             // Unencrypted discovery probe
             if (msg.t === 'scan') {
                 this._stats.scans++;
+                this._log('discover ←', `${rinfo.address}:${rinfo.port}`);
                 return this._respondScan(rinfo);
             }
 
@@ -143,14 +152,31 @@ class Simulator extends EventEmitter {
 
                 if (inner.t === 'bind') {
                     this._stats.binds++;
+                    this._log(
+                        'bind     ←',
+                        `${rinfo.address}:${rinfo.port}`,
+                        '→ issuing device key'
+                    );
                     return this._respondBind(inner, rinfo);
                 }
                 if (inner.t === 'status') {
                     this._stats.statusRequests++;
+                    this._log(
+                        'status   ←',
+                        `${rinfo.address}:${rinfo.port}`,
+                        `cols=${(inner.cols || []).length}`
+                    );
                     return this._respondStatus(inner, rinfo);
                 }
                 if (inner.t === 'cmd') {
                     this._stats.commands++;
+                    this._log(
+                        'cmd      ←',
+                        `${rinfo.address}:${rinfo.port}`,
+                        `opt=${JSON.stringify(inner.opt)} val=${JSON.stringify(
+                            inner.p
+                        )}`
+                    );
                     return this._respondCmd(inner, rinfo);
                 }
                 this.emit('protocol-error', {
@@ -194,6 +220,7 @@ class Simulator extends EventEmitter {
     _send(envelope, rinfo) {
         if (this._faults.shouldDrop()) {
             this._stats.packetsDropped++;
+            this._log('drop     ✗ response withheld (fault injection)');
             this.emit('packet-dropped', { envelope, rinfo });
             return;
         }
