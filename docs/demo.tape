@@ -3,8 +3,10 @@
 #   docker compose build           # pre-build so the GIF isn't dominated by image builds
 #   vhs docs/demo.tape             # writes docs/demo.gif
 #
-# Shows the headline pitch: bring up a simulated Gree AC + Node-RED and run
-# the end-to-end suite green — all without any hardware.
+# Headline pitch: stand up a full simulated Gree AC + Node-RED stack and prove
+# the UDP/AES protocol green — all without any hardware. Deliberately uses the
+# fast in-process simulator tests (`npm run test:sim`), not the long docker
+# e2e, so it records reliably and stays short.
 
 Output docs/demo.gif
 
@@ -23,25 +25,30 @@ Hide
 Type "clear" Enter
 Show
 
-Type "# A full Gree HVAC stack — simulator + Node-RED — tested without hardware"
+Type "# A full Gree HVAC stack — simulator + Node-RED — no hardware needed"
 Enter
 Sleep 1200ms
 
 Type "npm run sim:up"
 Enter
-Wait+Screen@180s /Started|Healthy|done/
+# Match the compose up-phase summary. Covers a cold start ("Started"/"Healthy")
+# AND a warm stack where containers already exist ("Running"). Avoid "done",
+# which falsely matches build-layer output during --build.
+Wait+Screen@180s /Started|Healthy|Running/
 Sleep 1500ms
 
-Type "# Dashboard on :8080, Node-RED on :1880. Now drive it end-to-end:"
+Type "# Sim dashboard on :8080, Node-RED on :1880 are live. Now prove the"
+Enter
+Type "# Gree UDP/AES protocol — discover, bind, status, cmd, fault injection:"
 Enter
 Sleep 1000ms
 
-Type "E2E_SKIP_BUILD=1 npm run test:e2e"
+Type "npm run test:sim"
 Enter
-Wait+Screen@240s /pass 8/
-Sleep 1200ms
+Wait+Screen@60s /fail 0/
+Sleep 1500ms
 
-Type "# 8/8 green against the simulated AC. Tear down:"
+Type "# All green against the simulated AC — no hardware involved. Tear down:"
 Enter
 Sleep 800ms
 Type "npm run sim:down"
