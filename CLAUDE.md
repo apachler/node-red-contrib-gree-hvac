@@ -45,6 +45,8 @@ npm run sim:up     # docker compose up -d --build (sim + node-red)
 npm run sim:down   # tear down + remove volumes
 npm run sim:logs   # tail container logs
 npm run test:e2e   # bring stack up, run e2e suite, tear down
+npm run flow:push  # deploy host flow sources to the running editor (no rebuild)
+npm run flow:pull  # capture the editor's deployed flow back into the source files
 ```
 
 While iterating on e2e tests: `E2E_SKIP_BUILD=1 E2E_KEEP_UP=1 npm run test:e2e` to reuse images and leave the stack running.
@@ -87,6 +89,35 @@ The workflow sets `package.json` version from the tag, runs `npm publish` (needs
 - **`docker/nodered/flows.user.json` is the production flow** — the one to import into a real Node-RED (e.g. on Venus OS) driving real Gree hardware. It contains only the control logic + dashboards; no simulator/mock dependencies.
 - **`docker/nodered/flows.mocks.json` is simulator-only.** `merge-flows.js` appends it to the user flow at image build time to produce the `flows.json` that runs *inside the docker stack* (mock Victron/Ruuvi sensors, the Sim Sensors + Sim Clock pages). It must **not** be deployed to real hardware.
 - For real hardware: import `flows.user.json`, point the `gree-hvac-config` node at the AC's real host/IP (the sample uses `gree.lan`), and wire the real Victron/Ruuvi input nodes (named `Battery SOC`, `Battery State`, `Battery Voltage`, `Ruuvi Inside`, `Ruuvi Outside`) into `Collect Data`.
+
+## Editing the flow (merge / push / pull)
+
+The flow source is split across two files (`flows.user.json` = production, `flows.mocks.json` = sim-only mocks tab). Three scripts in `docker/nodered/` move between those sources and the runtime. They are inverses of each other:
+
+| Script | npm | Direction | What it does |
+| ------ | --- | --------- | ------------ |
+| `merge-flows.js` | — (build step) | sources → image | Concatenates `flows.user.json` + `flows.mocks.json` into `flows.json`, baked into the node-red image at **build time**. Run automatically in the Dockerfile. |
+| `push-flows.js` | `npm run flow:push` | sources → **running** editor | Merges the two sources and full-deploys them to the running Node-RED via `POST /flows`. Loads instantly, persists to `/data` — **no rebuild**. |
+| `pull-flows.js` | `npm run flow:pull` | running editor → sources | Fetches the deployed flow from `GET /flows` and splits it back into `flows.user.json` + `flows.mocks.json`, classifying nodes by tab membership + config reachability (shared `ui-base`/`ui-theme` stay with the user flow so the files never collide on merge). Order-preserving, so a one-widget edit is a one-line diff. |
+
+**Inner loop for editing flow source on the host** (no rebuild needed):
+
+```bash
+# edit flows.user.json / flows.mocks.json, then:
+npm run flow:push        # deploy to the running stack
+# …then refresh the editor in the browser
+```
+
+**Inner loop for editing in the browser editor**, then capturing it back to the repo:
+
+```bash
+# edit + Deploy in the editor at :1880, then:
+npm run flow:pull        # writes both source files; review with git diff
+```
+
+`flow:pull[:user|:mocks]` and `flow:push[both|user]` accept a target arg to limit which side they touch. Both default to the full set and target `http://127.0.0.1:1880` (override with `NR_URL`). A rebuild (`npm run sim:dev`) is only needed when the **contrib node code** (`gree-hvac/*.js`) or the image changes — not for flow edits.
+
+Caveats: `flow:push` overwrites whatever is deployed (warn dialog if you have unsaved editor edits). A `flow:pull` round-trip introduces harmless Node-RED normalisation (it reorders nodes — undone by the script — clamps long comment positions, drops redundant `outputs`, adds an empty trailing output array); none of it changes behaviour, so just skim the `git diff`.
 
 ## Things to know
 

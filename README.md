@@ -138,6 +138,28 @@ What's mounted: `./gree-hvac/` → `/data/node_modules/node-red-contrib-gree-hva
 
 Node-RED does not hot-reload nodes in place — `nodemon` restarts the whole runtime on change, so the editor will briefly lose its WebSocket and reconnect. The browser tab survives the restart; just re-deploy if you were mid-edit. Use `npm run sim:up` (the production-like mode) when you want stable behavior for the e2e suite or for letting flows run unattended.
 
+### Editing the flow without rebuilding
+
+The flow source lives in two files — [`docker/nodered/flows.user.json`](docker/nodered/flows.user.json) (production) and `flows.mocks.json` (sim-only mocks tab) — that are concatenated by `merge-flows.js` and baked into the image at **build time**. Three scripts move between those source files and the running editor so you don't have to rebuild for every flow tweak:
+
+| Command | Direction | What it does |
+| ------- | --------- | ------------ |
+| `npm run flow:push` | sources → running editor | Merges both source files and full-deploys them to the running Node-RED over its admin API. Loads instantly and persists to `/data` — **no rebuild**. |
+| `npm run flow:pull` | running editor → sources | Captures the deployed flow and splits it back into the two source files (mock nodes detected by tab membership; shared dashboard config stays with the production flow so the files never collide). Order-preserving, so a small edit is a small diff. |
+| `merge-flows.js` | sources → image | Build step only; runs in the Dockerfile. |
+
+```bash
+# Editing the source files on the host:
+#   edit flows.user.json / flows.mocks.json, then:
+npm run flow:push        # …and refresh the editor in the browser
+
+# Editing in the browser editor, then saving it back to the repo:
+#   edit + Deploy at http://localhost:1880, then:
+npm run flow:pull        # writes both source files — review with `git diff`
+```
+
+Both default to the full flow and target `http://127.0.0.1:1880` (override with `NR_URL`); each takes an optional target arg (`flow:push:user`, `flow:pull:user`, `flow:pull:mocks`). `flow:push` overwrites whatever is deployed, so refresh the editor afterward (and expect the usual "flows changed" warning if you had unsaved edits open). You still need a rebuild (`npm run sim:dev`) when the contrib node code or the image itself changes — but not for flow edits.
+
 ### Run the tests
 
 **Unit tests of the simulator itself** (no docker required):
