@@ -64,7 +64,7 @@ jobs:
       - name: Build images
         run: docker compose build
       - name: Scan gree-hvac-sim image
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: gree-hvac-sim:dev
           format: sarif
@@ -75,7 +75,7 @@ jobs:
           # non-zero exit-code once the baseline is clean (backlog #2).
           exit-code: "0"
       - name: Scan gree-hvac-nodered image
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: gree-hvac-nodered:dev
           format: sarif
