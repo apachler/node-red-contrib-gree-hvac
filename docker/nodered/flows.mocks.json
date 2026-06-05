@@ -129,7 +129,9 @@
         "x": 190,
         "y": 340,
         "wires": [
-            []
+            [
+                "mock-cmd-linkout"
+            ]
         ],
         "info": "e2e hook. The dashboard ui-button/ui-switch nodes can't be triggered over the admin /inject API (only plain inject nodes can), so this inject feeds the Gree node directly with an ON command. The e2e suite POSTs to /inject/mock-test-ac-on and asserts the simulator's AC turns on."
     },
@@ -157,7 +159,9 @@
         "x": 190,
         "y": 400,
         "wires": [
-            []
+            [
+                "mock-cmd-linkout"
+            ]
         ],
         "info": "e2e hook — feeds the Gree node directly with an OFF command. See 'Test: AC ON'."
     },
@@ -721,6 +725,125 @@
         "info": "",
         "x": 150,
         "y": 760,
+        "wires": []
+    },
+    {
+        "id": "mock-cmt-e2e",
+        "type": "comment",
+        "z": "mocks-tab",
+        "name": "E2E CONTROL HOOKS  →  global.test / global.simClock  (sim only)",
+        "info": "HTTP hooks the e2e suite uses to drive the control logic without the dashboard:\n  POST /test       set { config, manualMode, simClock } overrides (POST {} to clear)\n  GET  /test/status read back controllerStatus + active overrides\nMain Logic honours global.test the same way it honours global.simClock; both are inert in production when unset.",
+        "x": 300,
+        "y": 980,
+        "wires": []
+    },
+    {
+        "id": "test-apply-in",
+        "type": "http in",
+        "z": "mocks-tab",
+        "name": "POST /test",
+        "url": "/test",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 160,
+        "y": 1020,
+        "wires": [
+            [
+                "test-apply-fn"
+            ]
+        ]
+    },
+    {
+        "id": "test-apply-fn",
+        "type": "function",
+        "z": "mocks-tab",
+        "name": "apply test override",
+        "func": "// e2e control hook (sim only). Body:\n//   { config?: {onDelay,offDelay,minOnTime,minOffTime,...},\n//     manualMode?: bool, simClock?: {enabled, hour} }\n// Stores config + manualMode under global.test (honoured by Main Logic's\n// test override) and, when present, sets global.simClock (the existing clock\n// hook). POST {} clears the overrides. Sim-only — never deployed to hardware.\nvar b = msg.payload || {};\nglobal.set('test', { config: b.config || null, manualMode: b.manualMode, resetNonce: b.resetNonce });\nif (b.simClock) {\n    global.set('simClock', b.simClock);\n}\nmsg.payload = { ok: true, test: global.get('test'), simClock: global.get('simClock') };\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 1020,
+        "wires": [
+            [
+                "test-apply-res"
+            ]
+        ]
+    },
+    {
+        "id": "test-apply-res",
+        "type": "http response",
+        "z": "mocks-tab",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 660,
+        "y": 1020,
+        "wires": []
+    },
+    {
+        "id": "test-status-in",
+        "type": "http in",
+        "z": "mocks-tab",
+        "name": "GET /test/status",
+        "url": "/test/status",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 170,
+        "y": 1080,
+        "wires": [
+            [
+                "test-status-fn"
+            ]
+        ]
+    },
+    {
+        "id": "test-status-fn",
+        "type": "function",
+        "z": "mocks-tab",
+        "name": "read controller status",
+        "func": "// e2e read hook (sim only). Exposes the controller's published decision\n// and the active overrides so tests can assert phase/reason directly.\nmsg.payload = {\n    controllerStatus: global.get('controllerStatus') || null,\n    test: global.get('test') || null,\n    simClock: global.get('simClock') || null\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 430,
+        "y": 1080,
+        "wires": [
+            [
+                "test-status-res"
+            ]
+        ]
+    },
+    {
+        "id": "test-status-res",
+        "type": "http response",
+        "z": "mocks-tab",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 660,
+        "y": 1080,
+        "wires": []
+    },
+    {
+        "id": "mock-cmd-linkout",
+        "type": "link out",
+        "z": "mocks-tab",
+        "name": "→ Gree AC",
+        "mode": "link",
+        "links": [
+            "mock-cmd-linkin"
+        ],
+        "x": 430,
+        "y": 370,
         "wires": []
     }
 ]
