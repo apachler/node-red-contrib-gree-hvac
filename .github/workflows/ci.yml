@@ -14,8 +14,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  ci:
-    name: Lint & test (Node ${{ matrix.node-version }})
+  # The lint toolchain (ESLint 10 + eslint-plugin-jsdoc) requires Node 22+,
+  # so linting runs on its own job. Runtime tests still cover Node 18/20.
+  lint:
+    name: Lint (Node 22)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Use Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22.x"
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci
+      - name: Linters
+        run: npm run lint
+
+  test:
+    name: Test (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
 
     strategy:
@@ -32,8 +49,6 @@ jobs:
           cache: "npm"
       - name: Install dependencies
         run: npm ci
-      - name: Linters
-        run: npm run lint
       - name: Tests
         run: npm test
       - name: Flow logic tests
