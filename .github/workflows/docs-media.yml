@@ -70,7 +70,7 @@ jobs:
         run: npm run sim:down || true
 
       - name: Upload screenshots (review, not auto-committed)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: docs-screenshots
           path: |
