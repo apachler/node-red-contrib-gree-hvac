@@ -12,7 +12,7 @@
         "z": "556b70d1e6fd3dde",
         "name": "═══════════════════ ⚙️ CONFIGURATION ═══════════════════",
         "info": "",
-        "x": 40,
+        "x": 315,
         "y": 40,
         "wires": []
     },
@@ -28,7 +28,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 440,
+        "x": 400,
         "y": 100,
         "wires": [
             [
@@ -54,7 +54,7 @@
         "onceDelay": "2",
         "payload": "startup",
         "payloadType": "str",
-        "x": 160,
+        "x": 200,
         "y": 100,
         "wires": [
             [
@@ -75,7 +75,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 440,
+        "x": 420,
         "y": 180,
         "wires": [
             [
@@ -102,7 +102,7 @@
         "onceDelay": "4",
         "payload": "refresh",
         "payloadType": "str",
-        "x": 160,
+        "x": 150,
         "y": 640,
         "wires": [
             [
@@ -123,7 +123,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 440,
+        "x": 430,
         "y": 680,
         "wires": [
             [
@@ -304,7 +304,7 @@
         "height": 5,
         "className": "",
         "interpolation": "linear",
-        "x": 1280,
+        "x": 1290,
         "y": 460,
         "wires": [
             []
@@ -356,7 +356,7 @@
         "height": 5,
         "className": "",
         "interpolation": "linear",
-        "x": 1280,
+        "x": 1290,
         "y": 580,
         "wires": [
             []
@@ -373,7 +373,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 440,
+        "x": 430,
         "y": 600,
         "wires": [
             [
@@ -421,7 +421,7 @@
         "z": "556b70d1e6fd3dde",
         "name": "═══════════════════ 📊 VICTRON DATA ═══════════════════",
         "info": "",
-        "x": 40,
+        "x": 305,
         "y": 240,
         "wires": []
     },
@@ -443,12 +443,11 @@
         },
         "name": "Battery SOC",
         "onlyChanges": false,
-        "outputs": 1,
         "conditionalMode": false,
         "outputTrue": "",
         "outputFalse": "",
         "debounce": "",
-        "x": 160,
+        "x": 190,
         "y": 300,
         "wires": [
             [
@@ -479,12 +478,11 @@
         },
         "name": "Battery State",
         "onlyChanges": false,
-        "outputs": 1,
         "conditionalMode": false,
         "outputTrue": "",
         "outputFalse": "",
         "debounce": "",
-        "x": 160,
+        "x": 190,
         "y": 360,
         "wires": [
             [
@@ -510,12 +508,11 @@
         },
         "name": "Battery Voltage",
         "onlyChanges": false,
-        "outputs": 1,
         "conditionalMode": false,
         "outputTrue": "",
         "outputFalse": "",
         "debounce": "",
-        "x": 160,
+        "x": 180,
         "y": 420,
         "wires": [
             [
@@ -541,12 +538,11 @@
         },
         "name": "Ruuvi Inside",
         "onlyChanges": false,
-        "outputs": 1,
         "conditionalMode": false,
         "outputTrue": "",
         "outputFalse": "",
         "debounce": "",
-        "x": 160,
+        "x": 190,
         "y": 480,
         "wires": [
             [
@@ -572,12 +568,11 @@
         },
         "name": "Ruuvi Outside",
         "onlyChanges": false,
-        "outputs": 1,
         "conditionalMode": false,
         "outputTrue": "",
         "outputFalse": "",
         "debounce": "",
-        "x": 160,
+        "x": 190,
         "y": 540,
         "wires": [
             [
@@ -597,7 +592,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 440,
+        "x": 410,
         "y": 420,
         "wires": [
             [
@@ -617,7 +612,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 720,
+        "x": 730,
         "y": 440,
         "wires": [
             [
@@ -690,7 +685,7 @@
         "styleRounded": true,
         "styleGlow": false,
         "className": "",
-        "x": 1000,
+        "x": 990,
         "y": 300,
         "wires": [
             []
@@ -749,7 +744,7 @@
         "styleRounded": true,
         "styleGlow": false,
         "className": "",
-        "x": 1000,
+        "x": 990,
         "y": 360,
         "wires": [
             []
@@ -793,7 +788,7 @@
         "fontSize": 14,
         "color": "#717171",
         "className": "",
-        "x": 1000,
+        "x": 990,
         "y": 480,
         "wires": []
     },
@@ -814,7 +809,7 @@
         "fontSize": 14,
         "color": "#717171",
         "className": "",
-        "x": 1000,
+        "x": 980,
         "y": 540,
         "wires": []
     },
@@ -835,7 +830,7 @@
         "fontSize": 16,
         "color": "#717171",
         "className": "",
-        "x": 1000,
+        "x": 990,
         "y": 600,
         "wires": []
     },
@@ -856,7 +851,7 @@
         "fontSize": 14,
         "color": "#717171",
         "className": "",
-        "x": 1000,
+        "x": 990,
         "y": 660,
         "wires": []
     },
@@ -866,7 +861,7 @@
         "z": "556b70d1e6fd3dde",
         "name": "═══════════════════ 🧠 CONTROL LOGIC ═══════════════════",
         "info": "",
-        "x": 40,
+        "x": 315,
         "y": 760,
         "wires": []
     },
@@ -882,7 +877,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 440,
+        "x": 410,
         "y": 800,
         "wires": [
             [
@@ -901,7 +896,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 720,
+        "x": 730,
         "y": 800,
         "wires": [
             [
@@ -930,7 +925,7 @@
         "validate": true,
         "logLevel": "info",
         "debug": false,
-        "x": 1000,
+        "x": 980,
         "y": 800,
         "wires": [
             [
@@ -938,7 +933,8 @@
             ],
             [
                 "d13970f74dda9f8d"
-            ]
+            ],
+            []
         ]
     },
     {
@@ -954,7 +950,7 @@
         "targetType": "full",
         "statusVal": "payload",
         "statusType": "auto",
-        "x": 1280,
+        "x": 1270,
         "y": 800,
         "wires": []
     },
@@ -964,7 +960,7 @@
         "z": "556b70d1e6fd3dde",
         "name": "═══════════════════ 🎛️ DASHBOARD CONTROL ═══════════════════",
         "info": "",
-        "x": 40,
+        "x": 335,
         "y": 880,
         "wires": []
     },
@@ -994,7 +990,7 @@
         "offvalueType": "bool",
         "officon": "mdi-robot",
         "offcolor": "#4caf50",
-        "x": 160,
+        "x": 190,
         "y": 920,
         "wires": [
             [
@@ -1013,7 +1009,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 440,
+        "x": 420,
         "y": 920,
         "wires": [
             [
@@ -1034,7 +1030,7 @@
         "emulateClick": false,
         "tooltip": "Turn AC on (manual mode only)",
         "color": "#ffffff",
-        "bgcolor": "#4caf50",
+        "bgcolor": "#2e9e6b",
         "className": "",
         "icon": "",
         "iconPosition": "left",
@@ -1042,7 +1038,7 @@
         "payloadType": "str",
         "topic": "manual",
         "topicType": "str",
-        "x": 160,
+        "x": 200,
         "y": 1000,
         "wires": [
             [
@@ -1063,7 +1059,7 @@
         "emulateClick": false,
         "tooltip": "Turn AC off (manual mode only)",
         "color": "#ffffff",
-        "bgcolor": "#f44336",
+        "bgcolor": "#cf5b54",
         "className": "",
         "icon": "",
         "iconPosition": "left",
@@ -1071,7 +1067,7 @@
         "payloadType": "str",
         "topic": "manual",
         "topicType": "str",
-        "x": 160,
+        "x": 200,
         "y": 1060,
         "wires": [
             [
@@ -1090,8 +1086,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 440,
-        "y": 1030,
+        "x": 430,
+        "y": 1040,
         "wires": [
             [
                 "a77a1a38e609c269"
@@ -1118,7 +1114,7 @@
         "fontSize": 11,
         "color": "#8a93a6",
         "className": "",
-        "x": 720,
+        "x": 710,
         "y": 1000,
         "wires": []
     },
@@ -1143,7 +1139,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 160,
+        "x": 170,
         "y": 1320,
         "wires": [
             [
@@ -1217,7 +1213,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1280,
+        "x": 1270,
         "y": 1380,
         "wires": [
             []
@@ -1227,9 +1223,9 @@
         "id": "4643398f1ff1b947",
         "type": "ui-number-input",
         "z": "556b70d1e6fd3dde",
+        "group": "db-group-config",
         "name": "Target temperature",
         "label": "🎯 Target temp (°C) — setpoint while running",
-        "group": "db-group-config",
         "order": 1,
         "width": 6,
         "height": 1,
@@ -1250,7 +1246,7 @@
         "iconPosition": "left",
         "iconInnerPosition": "inside",
         "spinner": "default",
-        "x": 440,
+        "x": 430,
         "y": 1200,
         "wires": [
             [
@@ -1262,9 +1258,9 @@
         "id": "37d9c50fc4d28ecc",
         "type": "ui-number-input",
         "z": "556b70d1e6fd3dde",
+        "group": "db-group-config",
         "name": "Switch-on temperature",
         "label": "🌡️ Turn on above inside (°C) — starts cooling",
-        "group": "db-group-config",
         "order": 2,
         "width": 6,
         "height": 1,
@@ -1297,9 +1293,9 @@
         "id": "2d25cb97d5c3dcce",
         "type": "ui-number-input",
         "z": "556b70d1e6fd3dde",
+        "group": "grp-acset",
         "name": "Operate from",
         "label": "⏰ Operate from (hour) — window start",
-        "group": "grp-acset",
         "order": 1,
         "width": 6,
         "height": 1,
@@ -1320,7 +1316,7 @@
         "iconPosition": "left",
         "iconInnerPosition": "inside",
         "spinner": "default",
-        "x": 720,
+        "x": 710,
         "y": 1200,
         "wires": [
             [
@@ -1332,9 +1328,9 @@
         "id": "daaec76772e3cfe6",
         "type": "ui-number-input",
         "z": "556b70d1e6fd3dde",
+        "group": "grp-acset",
         "name": "Operate until",
         "label": "⏰ Operate until (hour) — window end",
-        "group": "grp-acset",
         "order": 2,
         "width": 6,
         "height": 1,
@@ -1355,7 +1351,7 @@
         "iconPosition": "left",
         "iconInnerPosition": "inside",
         "spinner": "default",
-        "x": 720,
+        "x": 710,
         "y": 1260,
         "wires": [
             [
@@ -1367,9 +1363,9 @@
         "id": "6378c71ecdb0f36e",
         "type": "ui-number-input",
         "z": "556b70d1e6fd3dde",
+        "group": "db-group-advanced",
         "name": "SOC turn on",
         "label": "🔋 SOC turn on (%) — min charge to start",
-        "group": "db-group-advanced",
         "order": 3,
         "width": 6,
         "height": 1,
@@ -1390,7 +1386,7 @@
         "iconPosition": "left",
         "iconInnerPosition": "inside",
         "spinner": "default",
-        "x": 1000,
+        "x": 990,
         "y": 1320,
         "wires": [
             [
@@ -1402,9 +1398,9 @@
         "id": "2ce06dc559769b19",
         "type": "ui-number-input",
         "z": "556b70d1e6fd3dde",
+        "group": "db-group-advanced",
         "name": "SOC turn off",
         "label": "🔋 SOC turn off (%) — stop to protect battery",
-        "group": "db-group-advanced",
         "order": 4,
         "width": 6,
         "height": 1,
@@ -1425,7 +1421,7 @@
         "iconPosition": "left",
         "iconInnerPosition": "inside",
         "spinner": "default",
-        "x": 1000,
+        "x": 990,
         "y": 1380,
         "wires": [
             [
@@ -1437,10 +1433,10 @@
         "id": "cfg-mode",
         "type": "ui-dropdown",
         "z": "556b70d1e6fd3dde",
+        "group": "grp-acset",
         "name": "Mode",
         "label": "❄️ Mode — sent when the AC turns on",
         "tooltip": "",
-        "group": "grp-acset",
         "order": 3,
         "width": 6,
         "height": 1,
@@ -1476,7 +1472,7 @@
         "className": "",
         "typeIsComboBox": false,
         "msgTrigger": "onChange",
-        "x": 720,
+        "x": 690,
         "y": 1320,
         "wires": [
             [
@@ -1488,10 +1484,10 @@
         "id": "cfg-fan",
         "type": "ui-dropdown",
         "z": "556b70d1e6fd3dde",
+        "group": "grp-acset",
         "name": "Fan speed",
         "label": "💨 Fan speed — sent when the AC turns on",
         "tooltip": "",
-        "group": "grp-acset",
         "order": 4,
         "width": 6,
         "height": 1,
@@ -1531,7 +1527,7 @@
         "className": "",
         "typeIsComboBox": false,
         "msgTrigger": "onChange",
-        "x": 720,
+        "x": 710,
         "y": 1380,
         "wires": [
             [
@@ -1543,10 +1539,10 @@
         "id": "cfg-blow",
         "type": "ui-dropdown",
         "z": "556b70d1e6fd3dde",
+        "group": "grp-acset",
         "name": "X-Fan",
         "label": "🌬️ X-Fan — dry the coil after shutdown",
         "tooltip": "",
-        "group": "grp-acset",
         "order": 5,
         "width": 6,
         "height": 1,
@@ -1570,7 +1566,7 @@
         "className": "",
         "typeIsComboBox": false,
         "msgTrigger": "onChange",
-        "x": 720,
+        "x": 690,
         "y": 1440,
         "wires": [
             [
@@ -1582,9 +1578,9 @@
         "id": "cfg-ventmargin",
         "type": "ui-number-input",
         "z": "556b70d1e6fd3dde",
+        "group": "db-group-config",
         "name": "Vent margin",
         "label": "🪟 Vent margin (°C) — hint when outside is cooler",
-        "group": "db-group-config",
         "order": 3,
         "width": 6,
         "height": 1,
@@ -1605,7 +1601,7 @@
         "iconPosition": "left",
         "iconInnerPosition": "inside",
         "spinner": "default",
-        "x": 440,
+        "x": 410,
         "y": 1320,
         "wires": [
             [
@@ -1617,9 +1613,9 @@
         "id": "cfg-coldbelow",
         "type": "ui-number-input",
         "z": "556b70d1e6fd3dde",
+        "group": "db-group-config",
         "name": "Outside cold below",
         "label": "🌥️ Outside cold below (°C) — raises turn-on",
-        "group": "db-group-config",
         "order": 4,
         "width": 6,
         "height": 1,
@@ -1640,7 +1636,7 @@
         "iconPosition": "left",
         "iconInnerPosition": "inside",
         "spinner": "default",
-        "x": 440,
+        "x": 430,
         "y": 1380,
         "wires": [
             [
@@ -1652,9 +1648,9 @@
         "id": "cfg-coldadjust",
         "type": "ui-number-input",
         "z": "556b70d1e6fd3dde",
+        "group": "db-group-config",
         "name": "Cold raise by",
         "label": "↑ Raise turn-on by (°C) — when cold out",
-        "group": "db-group-config",
         "order": 5,
         "width": 6,
         "height": 1,
@@ -1675,7 +1671,7 @@
         "iconPosition": "left",
         "iconInnerPosition": "inside",
         "spinner": "default",
-        "x": 440,
+        "x": 410,
         "y": 1440,
         "wires": [
             [
@@ -1687,9 +1683,9 @@
         "id": "cfg-hotabove",
         "type": "ui-number-input",
         "z": "556b70d1e6fd3dde",
+        "group": "db-group-config",
         "name": "Outside hot above",
         "label": "🔥 Outside hot above (°C) — lowers turn-on",
-        "group": "db-group-config",
         "order": 6,
         "width": 6,
         "height": 1,
@@ -1710,7 +1706,7 @@
         "iconPosition": "left",
         "iconInnerPosition": "inside",
         "spinner": "default",
-        "x": 440,
+        "x": 430,
         "y": 1500,
         "wires": [
             [
@@ -1722,9 +1718,9 @@
         "id": "cfg-hotadjust",
         "type": "ui-number-input",
         "z": "556b70d1e6fd3dde",
+        "group": "db-group-config",
         "name": "Hot lower by",
         "label": "↓ Lower turn-on by (°C) — when hot out",
-        "group": "db-group-config",
         "order": 7,
         "width": 6,
         "height": 1,
@@ -1745,7 +1741,7 @@
         "iconPosition": "left",
         "iconInnerPosition": "inside",
         "spinner": "default",
-        "x": 440,
+        "x": 410,
         "y": 1560,
         "wires": [
             [
@@ -1820,7 +1816,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1280,
+        "x": 1270,
         "y": 1620,
         "wires": []
     },
@@ -1828,9 +1824,9 @@
         "id": "cfg-voltage",
         "type": "ui-number-input",
         "z": "556b70d1e6fd3dde",
+        "group": "db-group-advanced",
         "name": "Voltage threshold",
         "label": "🔌 Voltage gate (V) — min before start",
-        "group": "db-group-advanced",
         "order": 5,
         "width": 6,
         "height": 1,
@@ -1851,7 +1847,7 @@
         "iconPosition": "left",
         "iconInnerPosition": "inside",
         "spinner": "default",
-        "x": 1000,
+        "x": 1010,
         "y": 1440,
         "wires": [
             [
@@ -1863,9 +1859,9 @@
         "id": "cfg-ondelay",
         "type": "ui-number-input",
         "z": "556b70d1e6fd3dde",
+        "group": "db-group-advanced",
         "name": "On-delay",
         "label": "⏱️ On-delay (s) — hold before switching on",
-        "group": "db-group-advanced",
         "order": 6,
         "width": 6,
         "height": 1,
@@ -1886,7 +1882,7 @@
         "iconPosition": "left",
         "iconInnerPosition": "inside",
         "spinner": "default",
-        "x": 1000,
+        "x": 980,
         "y": 1500,
         "wires": [
             [
@@ -1898,9 +1894,9 @@
         "id": "cfg-offdelay",
         "type": "ui-number-input",
         "z": "556b70d1e6fd3dde",
+        "group": "db-group-advanced",
         "name": "Off-delay",
         "label": "⏱️ Off-delay (s) — hold before switching off",
-        "group": "db-group-advanced",
         "order": 7,
         "width": 6,
         "height": 1,
@@ -1921,7 +1917,7 @@
         "iconPosition": "left",
         "iconInnerPosition": "inside",
         "spinner": "default",
-        "x": 1000,
+        "x": 980,
         "y": 1560,
         "wires": [
             [
@@ -1933,9 +1929,9 @@
         "id": "cfg-minon",
         "type": "ui-number-input",
         "z": "556b70d1e6fd3dde",
+        "group": "db-group-advanced",
         "name": "Min on-time",
         "label": "🛡️ Min on-time (s) — compressor protection",
-        "group": "db-group-advanced",
         "order": 8,
         "width": 6,
         "height": 1,
@@ -1956,7 +1952,7 @@
         "iconPosition": "left",
         "iconInnerPosition": "inside",
         "spinner": "default",
-        "x": 1000,
+        "x": 990,
         "y": 1620,
         "wires": [
             [
@@ -1968,9 +1964,9 @@
         "id": "cfg-minoff",
         "type": "ui-number-input",
         "z": "556b70d1e6fd3dde",
+        "group": "db-group-advanced",
         "name": "Min off-time",
         "label": "🛡️ Min off-time (s) — compressor protection",
-        "group": "db-group-advanced",
         "order": 9,
         "width": 6,
         "height": 1,
@@ -1991,7 +1987,7 @@
         "iconPosition": "left",
         "iconInnerPosition": "inside",
         "spinner": "default",
-        "x": 1000,
+        "x": 990,
         "y": 1680,
         "wires": [
             [
@@ -2204,18 +2200,13 @@
         "z": "556b70d1e6fd3dde",
         "name": "🎨 Light palette — paste into the 'TinyHouse Dark' theme node to switch",
         "info": "Dashboard 2.0 has no per-user light/dark toggle; the theme colours are fixed by the theme node. To switch the whole dashboard to light mode, set the 'TinyHouse Dark' theme colours to:\n\n  surface:      #ffffff\n  primary:      #0094ce\n  bgPage:       #eef1f5\n  groupBg:      #ffffff\n  groupOutline: #d4dae3\n\n(The current dark palette is surface #161c27, primary #4cc9f0, bgPage #0e131b, groupBg #1a2230, groupOutline #2b3851.)",
-        "x": 40,
+        "x": 285,
         "y": 1780,
         "wires": []
     },
     {
         "id": "246ab47def5693a2",
         "type": "global-config",
-        "env": [],
-        "modules": {
-            "@victronenergy/node-red-contrib-victron": "1.6.63",
-            "@flowfuse/node-red-dashboard": "1.30.2",
-            "node-red-contrib-gree-hvac": "0.3.0"
-        }
+        "env": []
     }
 ]
