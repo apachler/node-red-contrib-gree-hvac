@@ -56,7 +56,6 @@ class Simulator extends EventEmitter {
 
     _log(...args) {
         if (this.verbose) {
-            // eslint-disable-next-line no-console
             console.log('[sim]', ...args);
         }
     }
