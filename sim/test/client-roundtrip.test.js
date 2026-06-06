@@ -77,3 +77,44 @@ test('real gree-hvac-client can connect, bind, status, and set against simulator
     assert.equal(sim.state.all.SetTem, 21);
     assert.equal(sim.state.all.WdSpd, 5);
 });
+
+// Regression for inwaar/node-red-contrib-gree-hvac#7: toggling sleep must
+// write the paired SwhSlp + SlpMod vendor fields together, otherwise the
+// unit ignores {sleep:'off'}. Exercised through the real installed client.
+test('sleep on/off writes the paired SwhSlp + SlpMod fields', async t => {
+    const sim = await startSim({ cid: 'aabbccddeeff' });
+
+    const client = new Gree.Client({
+        host: '127.0.0.1',
+        port: portOf(sim),
+        autoConnect: false,
+        poll: false,
+        connectTimeout: 4000,
+        pollingTimeout: 4000,
+    });
+
+    t.after(async () => {
+        try {
+            await client.disconnect();
+        } catch (_) {
+            /* already disconnected */
+        }
+        await sim.stop();
+    });
+
+    const connected = onceWithTimeout(client, 'connect', 4000);
+    await client.connect();
+    await connected;
+
+    const sleepOn = onceWithTimeout(client, 'success', 4000);
+    await client.setProperties({ sleep: 'on' });
+    await sleepOn;
+    assert.equal(sim.state.all.SwhSlp, 1);
+    assert.equal(sim.state.all.SlpMod, 1);
+
+    const sleepOff = onceWithTimeout(client, 'success', 4000);
+    await client.setProperties({ sleep: 'off' });
+    await sleepOff;
+    assert.equal(sim.state.all.SwhSlp, 0);
+    assert.equal(sim.state.all.SlpMod, 0);
+});

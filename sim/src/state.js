@@ -14,6 +14,7 @@ const DEFAULT_STATE = {
     Blo: 1,
     Health: 0,
     SwhSlp: 0,
+    SlpMod: 0, // sleep mode; moves in lockstep with SwhSlp (paired write)
     Lig: 0,
     SwingLfRig: 0,
     SwUpDn: 0,
