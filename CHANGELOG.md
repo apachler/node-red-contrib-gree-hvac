@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/apachler/node-red-contrib-gree-hvac/compare/v1.5.2...v1.6.0) (2026-06-06)
+
+
+### Features
+
+* resolve device by MAC to follow DHCP IP changes ([#25](https://github.com/apachler/node-red-contrib-gree-hvac/issues/25)) ([fd31daf](https://github.com/apachler/node-red-contrib-gree-hvac/commit/fd31daf015d7863c14a219633b4fa199249d8423))
+
 ## [1.5.2](https://github.com/apachler/node-red-contrib-gree-hvac/compare/v1.5.1...v1.5.2) (2026-06-06)
 
 
