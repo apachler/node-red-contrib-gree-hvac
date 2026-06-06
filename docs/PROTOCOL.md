@@ -153,6 +153,22 @@ TemSen   = real °C + 40       (to encode)
 The simulator follows this exactly: its default `TemSen` of `65` decodes to
 **25 °C**, and `POST /api/temperature {"celsius":N}` stores `N + 40`.
 
+### Firmware variants (the −9 °C bug)
+
+Not every firmware applies the offset. Some report `TemSen` **already in real
+°C**, so the blind `TemSen − 40` yields an impossible reading — a 31 °C room
+arrives as `31` and decodes to `31 − 40 = −9 °C` (the exact value reported in
+upstream `inwaar/node-red-contrib-gree-hvac#10`). The `gree-hvac-client` fork
+(v3.0.3+) guards against this: an internal sensor never legitimately reads below
+**0 °C** in service, so when subtracting the offset would drop below that floor,
+the raw value is treated as already-real and passed through unchanged; `0` stays
+"unavailable". Run the node at `logLevel: "debug"` to see the raw `TemSen` logged
+alongside the decoded value.
+
+The simulator can model a non-offset firmware for testing via the
+`temSenOffset: 0` option on the `Simulator`/`DeviceState` (default `40`), so
+`setCurrentTemperature(31)` puts a raw `31` on the wire instead of `71`.
+
 ---
 
 This document is the human-readable companion to the machine implementations

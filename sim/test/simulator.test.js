@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const dgram = require('dgram');
 
 const { Simulator } = require('../src/simulator');
+const { DeviceState } = require('../src/state');
 const { EcbCipher } = require('../src/cipher');
 
 const startEphemeralSim = async (opts = {}) => {
@@ -202,4 +203,16 @@ test('fault injection: dropEvery drops Nth response', async () => {
         client.close();
         await sim.stop();
     }
+});
+
+test('setCurrentTemperature applies the +40 offset by default', () => {
+    const state = new DeviceState();
+    state.setCurrentTemperature(25);
+    assert.equal(state.all.TemSen, 65);
+});
+
+test('temSenOffset:0 models a firmware that reports real °C on the wire (#10)', () => {
+    const state = new DeviceState({}, { temSenOffset: 0 });
+    state.setCurrentTemperature(31);
+    assert.equal(state.all.TemSen, 31);
 });
