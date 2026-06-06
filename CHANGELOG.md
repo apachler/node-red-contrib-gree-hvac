@@ -1,3 +1,10 @@
+## [1.5.2](https://github.com/apachler/node-red-contrib-gree-hvac/compare/v1.5.1...v1.5.2) (2026-06-06)
+
+
+### Bug Fixes
+
+* adopt gree-hvac-client v3.0.3 (TemSen offset guard for non-offset firmwares) ([#24](https://github.com/apachler/node-red-contrib-gree-hvac/issues/24)) ([ddbc5a9](https://github.com/apachler/node-red-contrib-gree-hvac/commit/ddbc5a9a4ee6d00fa96cd0007bfb0026030da139)), closes [inwaar/node-red-contrib-gree-hvac#10](https://github.com/inwaar/node-red-contrib-gree-hvac/issues/10)
+
 ## [1.5.1](https://github.com/apachler/node-red-contrib-gree-hvac/compare/v1.5.0...v1.5.1) (2026-06-06)
 
 
