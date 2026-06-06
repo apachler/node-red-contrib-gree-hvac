@@ -27,7 +27,11 @@ class Simulator extends EventEmitter {
         this.cipherMode = opts.cipherMode || 'ecb'; // 'ecb' | 'gcm'
         this.verbose = opts.verbose || false; // log every protocol event
         this._deviceKey = opts.deviceKey || randomDeviceKey();
-        this._state = opts.state || new DeviceState(opts.initialState || {});
+        this._state =
+            opts.state ||
+            new DeviceState(opts.initialState || {}, {
+                temSenOffset: opts.temSenOffset,
+            });
         this._faults = new FaultInjector(opts.faults || {});
 
         this._genericEcb = new EcbCipher(ECB_GENERIC_KEY);

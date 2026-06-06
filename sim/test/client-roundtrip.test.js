@@ -118,3 +118,73 @@ test('sleep on/off writes the paired SwhSlp + SlpMod fields', async t => {
     assert.equal(sim.state.all.SwhSlp, 0);
     assert.equal(sim.state.all.SlpMod, 0);
 });
+
+// U#10 round-trip through the real installed client. The default simulator
+// behaves like a normal +40-offset firmware: a 22 °C room is on the wire as
+// TemSen=62 and the client must decode it back to 22.
+test('currentTemperature decodes the +40 offset for a normal firmware', async t => {
+    const sim = await startSim({ cid: '0102030a0b0c' });
+    sim.state.setCurrentTemperature(22); // TemSen = 22 + 40 = 62
+    assert.equal(sim.state.all.TemSen, 62);
+
+    const client = new Gree.Client({
+        host: '127.0.0.1',
+        port: portOf(sim),
+        autoConnect: false,
+        poll: false,
+        connectTimeout: 4000,
+        pollingTimeout: 4000,
+    });
+
+    t.after(async () => {
+        try {
+            await client.disconnect();
+        } catch (_) {
+            /* already disconnected */
+        }
+        await sim.stop();
+    });
+
+    const connected = onceWithTimeout(client, 'connect', 4000);
+    await client.connect();
+    await connected;
+
+    const initial = await onceWithTimeout(client, 'update', 4000);
+    assert.equal(initial.currentTemperature, 22);
+});
+
+// U#10 regression: some firmwares report TemSen already in real °C (no offset).
+// Modelled with temSenOffset:0, a 31 °C room is on the wire as TemSen=31. The
+// blind 'TemSen - 40' would yield -9 °C (the exact value users reported); the
+// client's decode guard must pass the already-real value through as 31.
+test('currentTemperature passes through a non-offset firmware reading (no -9 °C)', async t => {
+    const sim = await startSim({ cid: '0102030a0b0d', temSenOffset: 0 });
+    sim.state.setCurrentTemperature(31); // non-offset firmware: TemSen = 31
+    assert.equal(sim.state.all.TemSen, 31);
+
+    const client = new Gree.Client({
+        host: '127.0.0.1',
+        port: portOf(sim),
+        autoConnect: false,
+        poll: false,
+        connectTimeout: 4000,
+        pollingTimeout: 4000,
+    });
+
+    t.after(async () => {
+        try {
+            await client.disconnect();
+        } catch (_) {
+            /* already disconnected */
+        }
+        await sim.stop();
+    });
+
+    const connected = onceWithTimeout(client, 'connect', 4000);
+    await client.connect();
+    await connected;
+
+    const initial = await onceWithTimeout(client, 'update', 4000);
+    assert.equal(initial.currentTemperature, 31);
+    assert.notEqual(initial.currentTemperature, -9);
+});

@@ -25,9 +25,20 @@ const DEFAULT_STATE = {
 };
 
 class DeviceState extends EventEmitter {
-    constructor(initial = {}) {
+    /**
+     * @param {object} [initial] Vendor-keyed overrides for the default state.
+     * @param {object} [options] Device options.
+     * @param {number} [options.temSenOffset] Offset the device adds to the real
+     *   internal temperature when encoding `TemSen`. Real Gree units use `40`
+     *   (the documented +40 quirk). Some firmwares report `TemSen` already in
+     *   real °C — model those with `0` to exercise the client's decode guard
+     *   (inwaar/node-red-contrib-gree-hvac#10).
+     */
+    constructor(initial = {}, options = {}) {
         super();
         this._state = { ...DEFAULT_STATE, ...initial };
+        this._temSenOffset =
+            options.temSenOffset === undefined ? 40 : options.temSenOffset;
         /**
          * Origin of the most recent state change, so consumers (the
          * dashboard) can tell apart changes driven by the Node-RED flow
@@ -99,7 +110,7 @@ class DeviceState extends EventEmitter {
     }
 
     setCurrentTemperature(celsius, source = 'sim') {
-        const encoded = celsius + 40;
+        const encoded = celsius + this._temSenOffset;
         if (this._state.TemSen !== encoded) {
             this._state.TemSen = encoded;
             this._lastChange = {
