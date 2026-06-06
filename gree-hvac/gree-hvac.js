@@ -2,6 +2,7 @@
 
 const Gree = require('gree-hvac-client');
 const { ConnectionManager } = require('./lib/connection-manager');
+const { MacResolver } = require('./lib/mac-resolver');
 const { validateProperties } = require('./lib/validation');
 
 module.exports = function (RED) {
@@ -30,9 +31,13 @@ module.exports = function (RED) {
         const node = this;
         const device = RED.nodes.getNode(config.device);
 
-        if (!device || !device.host) {
+        const resolveByMac = !!(device && device.resolveByMac && device.mac);
+
+        if (!device || (!device.host && !resolveByMac)) {
             node.status({ fill: 'red', shape: 'ring', text: 'no device' });
-            node.error('Gree HVAC device configuration is missing a host');
+            node.error(
+                'Gree HVAC device configuration is missing a host (or a MAC to resolve)'
+            );
             return;
         }
 
@@ -72,7 +77,7 @@ module.exports = function (RED) {
 
         const manager = new ConnectionManager({
             ClientCtor: Gree.Client,
-            host: device.host,
+            host: device.host || null,
             port: num(device.port, 7000),
             pollingIntervalMs,
             pollingTimeoutMs,
@@ -300,20 +305,81 @@ module.exports = function (RED) {
             }
         });
 
+        // Optional resolve-by-MAC: follow the device across DHCP IP changes by
+        // periodically discovering it and re-pointing the manager when its IP
+        // moves. When no initial host is configured we defer the first connect
+        // until the MAC first resolves to an address.
+        let resolver = null;
+        let started = false;
+        const startManager = () => {
+            if (started) {
+                return;
+            }
+            started = true;
+            manager.start();
+        };
+
+        if (resolveByMac) {
+            resolver = new MacResolver({
+                mac: device.mac,
+                port: num(device.port, 7000),
+                broadcastAddress: device.broadcastAddress,
+                intervalMs:
+                    Math.max(5, num(device.rediscoverInterval, 60)) * 1000,
+                initialAddress: device.host || null,
+            });
+            resolver.on('resolved', (addr, from) => {
+                node.log(
+                    'Resolved ' +
+                        device.mac +
+                        ' -> ' +
+                        addr +
+                        (from ? ' (was ' + from + ')' : '')
+                );
+                if (!started) {
+                    manager.opts.host = addr;
+                    startManager();
+                } else {
+                    manager.setHost(addr);
+                }
+            });
+            resolver.on('log', (level, message, meta) => {
+                if (config.debug || level === 'error') {
+                    const payload = meta
+                        ? message + ' ' + JSON.stringify(meta)
+                        : message;
+                    if (level === 'warn') {
+                        node.warn(payload);
+                    } else {
+                        node.log(payload);
+                    }
+                }
+            });
+            resolver.start();
+        }
+
+        node.status({ fill: 'yellow', shape: 'dot', text: 'connecting...' });
+        writeMetrics();
+
+        // Start now if we have an address; otherwise wait for the resolver.
+        if (device.host || !resolveByMac) {
+            startManager();
+        }
+
         this.on('close', done => {
             if (heartbeatTimer) {
                 clearInterval(heartbeatTimer);
                 heartbeatTimer = null;
+            }
+            if (resolver) {
+                resolver.stop();
+                resolver = null;
             }
             manager
                 .stop()
                 .catch(() => {})
                 .finally(() => done && done());
         });
-
-        node.status({ fill: 'yellow', shape: 'dot', text: 'connecting...' });
-        writeMetrics();
-        manager.start();
     }
 
     RED.nodes.registerType('gree-hvac', GreeHvacNode);

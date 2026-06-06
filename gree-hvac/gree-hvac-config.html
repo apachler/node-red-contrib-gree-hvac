@@ -3,12 +3,39 @@
         category: 'config',
         defaults: {
             name: { value: "", required: true, validate: RED.validators.regex(/^[a-zA-Z0-9-_\s]+$/) },
-            host: { value: "", required: true },
-            port: { value: 7000, required: false, validate: RED.validators.number() }
+            host: {
+                value: "",
+                required: false,
+                // Host is optional only when resolve-by-MAC is on and a MAC is set.
+                validate: function (v) {
+                    if (v) return true;
+                    return this.resolveByMac === true && !!(this.mac || '').trim();
+                }
+            },
+            port: { value: 7000, required: false, validate: RED.validators.number() },
+            resolveByMac: { value: false },
+            mac: {
+                value: "",
+                required: false,
+                validate: function (v) {
+                    if (this.resolveByMac !== true) return true;
+                    return /^[0-9a-fA-F]{12}$/.test(String(v || '').replace(/[^0-9a-fA-F]/g, ''));
+                }
+            },
+            broadcastAddress: { value: "255.255.255.255", required: false },
+            rediscoverInterval: { value: 60, required: false, validate: RED.validators.number() }
         },
         label: function () {
             return this.name;
         },
+        oneditprepare: function () {
+            const toggle = function () {
+                const on = $("#node-config-input-resolveByMac").is(":checked");
+                $(".gree-mac-row").toggle(on);
+            };
+            $("#node-config-input-resolveByMac").on("change", toggle);
+            toggle();
+        }
     });
 </script>
 
@@ -24,5 +51,27 @@
     <div class="form-row">
         <label for="node-config-input-port"><i class="fa fa-plug"></i> UDP port</label>
         <input type="number" id="node-config-input-port" min="1" max="65535" step="1" placeholder="7000" style="width:100px">
+    </div>
+    <hr/>
+    <div class="form-row">
+        <label for="node-config-input-resolveByMac" style="width:auto"><i class="fa fa-random"></i> Resolve by MAC</label>
+        <input type="checkbox" id="node-config-input-resolveByMac" style="display:inline-block; width:auto; vertical-align:top">
+    </div>
+    <div class="form-tips gree-mac-row" style="margin-bottom:8px">
+        Periodically discovers the device by its MAC/cid and follows it when its
+        IP changes (DHCP). The IP Address above is used as the last-known address;
+        leave it blank to wait for the first discovery.
+    </div>
+    <div class="form-row gree-mac-row">
+        <label for="node-config-input-mac"><i class="fa fa-id-card-o"></i> Device MAC</label>
+        <input type="text" id="node-config-input-mac" placeholder="aabbccddeeff (cid from discovery)">
+    </div>
+    <div class="form-row gree-mac-row">
+        <label for="node-config-input-broadcastAddress"><i class="fa fa-bullhorn"></i> Broadcast</label>
+        <input type="text" id="node-config-input-broadcastAddress" placeholder="255.255.255.255">
+    </div>
+    <div class="form-row gree-mac-row">
+        <label for="node-config-input-rediscoverInterval"><i class="fa fa-clock-o"></i> Rescan (s)</label>
+        <input type="number" id="node-config-input-rediscoverInterval" min="5" step="1" placeholder="60" style="width:100px">
     </div>
 </script>

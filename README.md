@@ -28,7 +28,7 @@ Nodes
   2. **Snapshot** — full current property map.
   3. **Diagnostics** — structured events (`state`, `error`, `queue_overflow`, `heartbeat`, `update`, `write_ack`) with metrics for alerting and dashboards.
 - `gree-hvac-discover` — broadcast-scans the subnet and returns the list of responding devices for populating config nodes.
-- `gree-hvac-config` — host + UDP port of a single device.
+- `gree-hvac-config` — host + UDP port of a single device, with optional **resolve-by-MAC** to follow the device across DHCP IP changes.
 
 The node also publishes a live metrics snapshot under `context().get('gree')` (state, uptime, last contact, queue size, reset counters).
 
@@ -71,6 +71,22 @@ The package gives you the three nodes above — wire `gree-hvac` into whatever d
 </p>
 
 For what each property and value means, see the [**Gree protocol & property reference**](docs/PROTOCOL.md).
+
+### Following a device across DHCP changes (resolve by MAC)
+
+If your AC gets its address from DHCP, its IP can change and break a hard-coded
+host. Enable **Resolve by MAC** on the `gree-hvac-config` node and enter the
+device's **MAC/cid** (the `cid` field returned by `gree-hvac-discover`). The node
+then periodically broadcast-discovers that MAC, maps it to the device's current
+IP, and re-points the connection automatically when it moves — no flow edits, no
+restart.
+
+- The **IP Address** field is used as the last-known address; leave it blank to
+  wait for the first discovery before connecting.
+- **Broadcast** (default `255.255.255.255`) and **Rescan (s)** (default `60`)
+  tune the discovery sweep — set Broadcast to your subnet's broadcast address if
+  global broadcast is filtered.
+- A re-point is surfaced as a `rehome` diagnostic event on output 3.
 
 <details>
 <summary>Minimal control panel for the classic Node-RED Dashboard (v1)</summary>
