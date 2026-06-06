@@ -1,3 +1,10 @@
+## [1.5.1](https://github.com/apachler/node-red-contrib-gree-hvac/compare/v1.5.0...v1.5.1) (2026-06-06)
+
+
+### Bug Fixes
+
+* adopt gree-hvac-client v3.0.2 (sleep on/off + parser hardening) ([#23](https://github.com/apachler/node-red-contrib-gree-hvac/issues/23)) ([9f0b6f5](https://github.com/apachler/node-red-contrib-gree-hvac/commit/9f0b6f5c3b7b1cacd7fa52151a0cbc225240f73c)), closes [inwaar/node-red-contrib-gree-hvac#7](https://github.com/inwaar/node-red-contrib-gree-hvac/issues/7) [inwaar/node-red-contrib-gree-hvac#11](https://github.com/inwaar/node-red-contrib-gree-hvac/issues/11) [#12](https://github.com/apachler/node-red-contrib-gree-hvac/issues/12)
+
 # [1.5.0](https://github.com/apachler/node-red-contrib-gree-hvac/compare/v1.4.0...v1.5.0) (2026-06-05)
 
 
