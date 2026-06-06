@@ -319,3 +319,69 @@ test('stuck-connecting watchdog forces reset', async () => {
     assert.notEqual(FakeClient.last, c1);
     await mgr.stop();
 });
+
+test('setHost re-points to a new address by rebuilding the client', async () => {
+    FakeClient.reset();
+    const mgr = makeManager();
+    mgr.start();
+    await tick(0);
+    const c1 = FakeClient.last;
+    c1.simulateConnect();
+    await tick(5);
+    assert.equal(c1.opts.host, '10.0.0.1');
+
+    const changed = mgr.setHost('10.0.0.2');
+    assert.equal(changed, true);
+    // teardown -> rebuild happens async
+    await tick(10);
+    assert.notEqual(FakeClient.last, c1);
+    assert.equal(FakeClient.last.opts.host, '10.0.0.2');
+    assert.equal(c1.disconnectCalls, 1);
+    await mgr.stop();
+});
+
+test('setHost is a no-op when the address is unchanged', async () => {
+    FakeClient.reset();
+    const mgr = makeManager();
+    mgr.start();
+    await tick(0);
+    const c1 = FakeClient.last;
+    c1.simulateConnect();
+    await tick(5);
+
+    assert.equal(mgr.setHost('10.0.0.1'), false);
+    assert.equal(mgr.setHost(''), false);
+    await tick(10);
+    assert.equal(FakeClient.last, c1); // no rebuild
+    await mgr.stop();
+});
+
+test('setHost resets the backoff so the move connects promptly', async () => {
+    FakeClient.reset();
+    const mgr = makeManager({ recoveryDelayMs: 10 });
+    mgr.start();
+    await tick(0);
+    FakeClient.last.simulateError(new Error('boom'));
+    await tick(20);
+    assert.ok(mgr.backoffMs > 10, 'backoff grew after a failure');
+
+    mgr.setHost('10.0.0.2');
+    assert.equal(mgr.backoffMs, 10, 'setHost reset backoff to recoveryDelayMs');
+    await tick(10);
+    assert.equal(mgr.opts.host, '10.0.0.2');
+    await mgr.stop();
+});
+
+test('setHost while stopped updates host without rebuilding', async () => {
+    FakeClient.reset();
+    const mgr = makeManager();
+    mgr.start();
+    await tick(0);
+    await mgr.stop();
+    const lastBefore = FakeClient.last;
+
+    assert.equal(mgr.setHost('10.0.0.9'), true);
+    assert.equal(mgr.opts.host, '10.0.0.9');
+    await tick(10);
+    assert.equal(FakeClient.last, lastBefore); // stopped: no new client
+});

@@ -127,6 +127,51 @@ class ConnectionManager extends EventEmitter {
     }
 
     /**
+     * Re-point the manager at a new device address — e.g. after the device's
+     * DHCP lease moved it to a new IP (resolve-by-MAC). No-op when the host is
+     * unchanged. On a real change we tear the current client down and rebuild
+     * against the new address immediately rather than waiting for the stale
+     * connection to time out, and reset the backoff since this is an
+     * intentional move, not a fault.
+     *
+     * Intended to be called after `start()`.
+     * @param {string} host New device host/IP
+     * @returns {boolean} true if the host changed and a re-point was triggered
+     */
+    setHost(host) {
+        if (!host || host === this.opts.host) {
+            return false;
+        }
+        const from = this.opts.host;
+        this.opts.host = host;
+        this.emit('log', 'info', 'Device address changed, re-pointing', {
+            from,
+            to: host,
+        });
+        this.emit('diagnostic', {
+            event: 'rehome',
+            at: Date.now(),
+            from,
+            to: host,
+        });
+        if (this.stopped) {
+            return true;
+        }
+        // Intentional move: connect promptly and cancel any pending backoff.
+        this.backoffMs = this.opts.recoveryDelayMs;
+        this._clearTimer('reconnectTimer');
+        this._teardownClient()
+            .catch(() => {})
+            .finally(() => {
+                if (this.stopped) {
+                    return;
+                }
+                this._buildClient();
+            });
+        return true;
+    }
+
+    /**
      * Snapshot for diagnostics output / runtime context.
      * @returns {object} metrics snapshot
      */
