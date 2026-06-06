@@ -65,8 +65,15 @@ jobs:
           cache: "npm"
       - name: Install dependencies
         run: npm ci
-      - name: Unit + sim coverage
-        run: npm run coverage
+      - name: Coverage (enforce thresholds + PR summary)
+        run: |
+          {
+            echo '### Coverage'
+            echo ''
+            echo '```text'
+          } >> "$GITHUB_STEP_SUMMARY"
+          npm run --silent coverage:check 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
 
   audit:
     name: Dependency audit
