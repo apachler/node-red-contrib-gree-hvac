@@ -125,7 +125,7 @@ The dashboard shows live AC state and the **source** of each change ("Gree UDP p
 ### Requirements
 
 - Docker + Docker Compose v2 (`docker compose` subcommand)
-- Node.js 18+ on the host (only for running the e2e tests; the containers ship their own Node)
+- Node.js 22 LTS on the host (matches `.nvmrc`; needed for the dev toolchain and e2e tests — the containers ship their own Node)
 
 ### Bring up the stack
 
