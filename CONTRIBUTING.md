@@ -23,10 +23,18 @@ npm install
 ```
 
 `npm install` runs the `prepare` script, which points `core.hooksPath` at
-`./.githooks/`. The **pre-push hook** runs `eslint --fix` over the repo and
-refuses the push if ESLint reports unfixable errors, or if `--fix` produced
-changes you haven't committed (so the fix lands in a reviewable commit). Skip it
-for an emergency push with `GREE_SKIP_LINT=1 git push ...`.
+`./.githooks/`. Two hooks are installed:
+
+- **commit-msg** — checks the commit subject is a [Conventional
+  Commit](https://www.conventionalcommits.org/) (`<type>[scope][!]: subject`).
+  Zero-dependency (a small shell script, no commitlint). Merge/revert/fixup
+  subjects pass through.
+- **pre-push** — runs `eslint --fix` over the repo and refuses the push if
+  ESLint reports unfixable errors, or if `--fix` produced changes you haven't
+  committed (so the fix lands in a reviewable commit).
+
+Skip either with `GREE_SKIP_LINT=1` (e.g. `GREE_SKIP_LINT=1 git commit ...` or
+`GREE_SKIP_LINT=1 git push ...`) for an emergency / WIP commit.
 
 ## Development workflow
 

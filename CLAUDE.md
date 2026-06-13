@@ -41,6 +41,7 @@ Iterating on e2e: `E2E_SKIP_BUILD=1 E2E_KEEP_UP=1 npm run test:e2e` reuses image
 - Node 22 LTS for development (`.nvmrc`, CI, docker images); the lint toolchain (ESLint 10) requires Node 22+. Published runtime still supports Node 18+ (`engines.node`), and CI runs the tests on 18/20/22.
 - Tests: `node --test` (no jest/mocha), beside what they cover.
 - Style: ESLint + Prettier (`npm run lint`). Single quotes, 4-space JS, 2-space JSON/YAML. The pre-push hook runs `eslint --fix`; `GREE_SKIP_LINT=1 git push` to skip.
+- Git hooks (`.githooks/`, installed by `prepare`): **commit-msg** enforces a Conventional-Commit subject (zero-dep shell regex, no commitlint; merge/revert/fixup pass through), **pre-push** runs `eslint --fix`. Both honor `GREE_SKIP_LINT=1`.
 - Each node takes a `logLevel`; the contrib node forwards it into the client.
 
 ## Editing the flow (the non-obvious part)
