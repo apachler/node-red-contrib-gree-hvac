@@ -234,9 +234,10 @@ Contributing
 ------------
 
 Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for the dev
-setup, the pre-push lint hook, the testing commands, and the Conventional-Commit
+setup, the git hooks, the testing commands, and the Conventional-Commit
 PR-title convention that drives the release notes. Please also read the
-[Code of Conduct](CODE_OF_CONDUCT.md).
+[Code of Conduct](CODE_OF_CONDUCT.md). For where the project is headed see the
+[Roadmap](ROADMAP.md), and for how it's run see [Governance](GOVERNANCE.md).
 
 Support
 -------
