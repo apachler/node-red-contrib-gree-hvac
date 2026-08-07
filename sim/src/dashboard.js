@@ -14,7 +14,7 @@ class Dashboard extends EventEmitter {
         super();
         this.simulator = simulator;
         this.sensors = opts.sensors || null;
-        this.port = opts.port || 8080;
+        this.port = opts.port ?? 8080;
         this.bindAddress = opts.bindAddress || '0.0.0.0';
         this._server = null;
         this._sseClients = new Set();
@@ -40,6 +40,8 @@ class Dashboard extends EventEmitter {
             server.on('error', reject);
             server.listen(this.port, this.bindAddress, () => {
                 this._server = server;
+                // reflect the actual port for port-0 (ephemeral) binds
+                this.port = server.address().port;
                 this.emit('listening', {
                     address: this.bindAddress,
                     port: this.port,

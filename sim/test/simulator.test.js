@@ -37,6 +37,24 @@ const waitForMessage = sock =>
         });
     });
 
+// Regression: `opts.port || 7000` turned the ephemeral `port: 0` into the
+// fixed default, so every sim in every test process bound 7000 (silently,
+// via reuseAddr) and parallel test files stole each other's packets.
+test('port 0 binds a real ephemeral port, distinct per sim', async () => {
+    const a = await startEphemeralSim();
+    const b = await startEphemeralSim();
+    try {
+        assert.notEqual(portOf(a), 7000);
+        assert.notEqual(portOf(b), 7000);
+        assert.notEqual(portOf(a), portOf(b));
+        // the public property reflects the actual bound port
+        assert.equal(a.port, portOf(a));
+    } finally {
+        await a.stop();
+        await b.stop();
+    }
+});
+
 test('responds to discovery scan with encrypted dev packet', async () => {
     const sim = await startEphemeralSim({ cid: 'aabbccddeeff' });
     const client = dgram.createSocket('udp4');
