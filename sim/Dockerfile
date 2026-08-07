@@ -1,7 +1,7 @@
 # Pinned to an immutable digest for bit-for-bit reproducible builds; the
 # Dependabot docker ecosystem keeps the digest current. The tag is retained
 # alongside the digest for human readability.
-FROM node:22.22-alpine@sha256:757ec364de4d37cedf30871be2988927660834e656e9aa52aad9ac194814c30c
+FROM node:26.4-alpine@sha256:725aeba2364a9b16beae49e180d83bd597dbd0b15c47f1f28875c290bfd255b9
 
 WORKDIR /app
 
