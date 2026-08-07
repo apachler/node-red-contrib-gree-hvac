@@ -18,7 +18,9 @@ const DEFAULT_MODEL = 'sim-1.0';
 class Simulator extends EventEmitter {
     constructor(opts = {}) {
         super();
-        this.port = opts.port || 7000;
+        // ?? not ||: port 0 means "bind an ephemeral port" (the unit tests
+        // rely on it) and must not silently become the fixed default.
+        this.port = opts.port ?? 7000;
         this.bindAddress = opts.bindAddress || '0.0.0.0';
         this.cid = opts.cid || generateCid();
         this.name = opts.name || `gree-sim-${this.cid.slice(-4)}`;
@@ -94,10 +96,11 @@ class Simulator extends EventEmitter {
 
     start() {
         return new Promise((resolve, reject) => {
-            const sock = dgram.createSocket({
-                type: 'udp4',
-                reuseAddr: true,
-            });
+            // No reuseAddr: UDP has no TIME_WAIT, so it buys nothing on
+            // restart — but it lets a second sim (e.g. another test process)
+            // bind the same port without EADDRINUSE, silently stealing that
+            // port's packets. A port clash must fail loudly.
+            const sock = dgram.createSocket('udp4');
             sock.on('error', err => {
                 this._stats.errors++;
                 this.emit('error', err);
@@ -111,6 +114,8 @@ class Simulator extends EventEmitter {
                     /* may fail on non-broadcast interfaces; ignore */
                 }
                 this._socket = sock;
+                // reflect the actual port for port-0 (ephemeral) binds
+                this.port = sock.address().port;
                 this.emit('listening', {
                     address: this.bindAddress,
                     port: this.port,
