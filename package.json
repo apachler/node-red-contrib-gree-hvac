@@ -67,9 +67,9 @@
     "gree-hvac-client": "https://github.com/apachler/gree-hvac-client/releases/download/v3.0.3/gree-hvac-client-3.0.3.tgz"
   },
   "devDependencies": {
-    "@semantic-release/changelog": "^6.0.3",
-    "@semantic-release/git": "^10.0.1",
-    "c8": "^11.0.0",
+    "@semantic-release/changelog": "^7.0.0",
+    "@semantic-release/git": "^11.0.1",
+    "c8": "^12.0.0",
     "eslint": "^10.4.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-jsdoc": "^63.0.1",
