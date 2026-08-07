@@ -1,3 +1,10 @@
+## [1.6.1](https://github.com/apachler/node-red-contrib-gree-hvac/compare/v1.6.0...v1.6.1) (2026-08-07)
+
+
+### Bug Fixes
+
+* adopt gree-hvac-client v3.0.6 (GCM auto-detect, status-timeout and child-logger fixes) ([#36](https://github.com/apachler/node-red-contrib-gree-hvac/issues/36)) ([7c21e9f](https://github.com/apachler/node-red-contrib-gree-hvac/commit/7c21e9f2e4e12d67ce5421cd33cba8f4089dc5f5))
+
 # [1.6.0](https://github.com/apachler/node-red-contrib-gree-hvac/compare/v1.5.2...v1.6.0) (2026-06-06)
 
 
