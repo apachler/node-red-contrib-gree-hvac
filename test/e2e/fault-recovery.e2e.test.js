@@ -61,6 +61,13 @@ test('client keeps polling status across injected packet drops', async t => {
     t.after(async () => {
         await resetFaults();
         try {
+            // restore the property the liveness probe flipped — the other
+            // e2e files share this sim
+            await postJson(`${SIM}/api/set`, { Lig: 0 });
+        } catch (_) {
+            /* sim may already be down */
+        }
+        try {
             await client.disconnect();
         } catch (_) {
             /* already disconnected */
@@ -87,21 +94,53 @@ test('client keeps polling status across injected packet drops', async t => {
     });
 
     // 2. Now drop every 3rd outbound packet and confirm polling still gets
-    //    through (the client retries on its polling interval).
-    const baseline = updates;
+    //    through. `update` only fires when the polled state actually changed —
+    //    counting updates on a *static* sim only "worked" on gree-hvac-client
+    //    <= v3.0.4, where orphaned status timers (issue apachler/gree-hvac-client#7,
+    //    fixed in v3.0.5) wiped the property cache and made every reply look
+    //    like a change. So flip a property the flow logic doesn't touch over
+    //    the sim's HTTP API and expect the change to surface through polling
+    //    despite the drops.
     const apply = await postJson(`${SIM}/api/faults`, { dropEvery: 3 });
     assert.equal(apply.status, 200);
 
-    await waitFor(() => updates > baseline, {
+    let lightsSeen = null;
+    client.on('update', changed => {
+        if ('lights' in changed) {
+            lightsSeen = changed.lights;
+        }
+    });
+    const set = await postJson(`${SIM}/api/set`, { Lig: 1 });
+    assert.equal(set.status, 200);
+
+    await waitFor(() => lightsSeen === 'on', {
         timeout: 25000,
         interval: 250,
-        label: 'a further status update while dropping every 3rd packet',
+        label: 'the Lig change to surface via polling while dropping every 3rd packet',
     });
 
-    // 3. The sim should report it actually dropped packets.
-    const stats = JSON.parse((await get(`${SIM}/api/stats`)).body);
-    assert.ok(
-        stats.packetsDropped > 0,
-        `expected packetsDropped > 0, got ${stats.packetsDropped}`
+    // 3. Keep polling until the sim has actually dropped something — with
+    //    dropEvery=3 the first drop is only on the 3rd response, which may be
+    //    after the update above already surfaced.
+    await waitFor(
+        async () => {
+            const stats = JSON.parse((await get(`${SIM}/api/stats`)).body);
+            return stats.packetsDropped > 0;
+        },
+        {
+            timeout: 25000,
+            interval: 500,
+            label: 'the sim to report packetsDropped > 0',
+        }
     );
+
+    // 4. And a change made after real drops still gets through.
+    const unset = await postJson(`${SIM}/api/set`, { Lig: 0 });
+    assert.equal(unset.status, 200);
+
+    await waitFor(() => lightsSeen === 'off', {
+        timeout: 25000,
+        interval: 250,
+        label: 'the Lig revert to surface via polling after packets were dropped',
+    });
 });
