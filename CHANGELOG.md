@@ -1,3 +1,10 @@
+## [1.6.5](https://github.com/apachler/node-red-contrib-gree-hvac/compare/v1.6.4...v1.6.5) (2026-09-23)
+
+
+### Bug Fixes
+
+* **deps:** bump gree-hvac-client from 4.0.0 to 4.1.0 ([#49](https://github.com/apachler/node-red-contrib-gree-hvac/issues/49)) ([53c87b7](https://github.com/apachler/node-red-contrib-gree-hvac/commit/53c87b7f46a7fd4cebb26b5a99488c0cf630fef4))
+
 ## [1.6.4](https://github.com/apachler/node-red-contrib-gree-hvac/compare/v1.6.3...v1.6.4) (2026-09-23)
 
 
