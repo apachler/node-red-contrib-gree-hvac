@@ -1,3 +1,10 @@
+## [1.6.4](https://github.com/apachler/node-red-contrib-gree-hvac/compare/v1.6.3...v1.6.4) (2026-09-23)
+
+
+### Bug Fixes
+
+* **release:** commit package-lock.json with the version bump ([#46](https://github.com/apachler/node-red-contrib-gree-hvac/issues/46)) ([0c6db99](https://github.com/apachler/node-red-contrib-gree-hvac/commit/0c6db99fa2bd461b16e43825c1cf20465b70370e))
+
 ## [1.6.3](https://github.com/apachler/node-red-contrib-gree-hvac/compare/v1.6.2...v1.6.3) (2026-08-17)
 
 
