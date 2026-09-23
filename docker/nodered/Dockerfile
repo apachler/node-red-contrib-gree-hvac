@@ -15,12 +15,17 @@ WORKDIR /opt/contrib
 COPY --chown=node-red:node-red package.json package-lock.json* ./
 COPY --chown=node-red:node-red gree-hvac ./gree-hvac
 
-RUN npm install --omit=dev --no-audit --no-fund && npm cache clean --force
+# npm's debug logs record the signed (JWT-bearing) redirect URL of the
+# gree-hvac-client GitHub Release tarball; `cache clean` leaves _logs, so drop
+# them explicitly or every image carries a secret-scanner hit.
+RUN npm install --omit=dev --no-audit --no-fund && npm cache clean --force \
+    && rm -rf "$(npm config get cache)/_logs"
 
 # nodemon is used by the dev override (docker-compose.dev.yml) to restart
 # Node-RED when files in the bind-mounted contrib package change. Harmless
 # in non-dev mode — it sits unused.
-RUN npm install -g --no-audit --no-fund nodemon@3 && npm cache clean --force
+RUN npm install -g --no-audit --no-fund nodemon@3 && npm cache clean --force \
+    && rm -rf "$(npm config get cache)/_logs"
 
 WORKDIR /data
 
@@ -36,7 +41,8 @@ COPY --chown=node-red:node-red docker/nodered/package.json ./package.json
 RUN npm install --omit=dev --no-audit --no-fund --no-package-lock /opt/contrib \
     && npm install --omit=dev --no-audit --no-fund --no-package-lock @flowfuse/node-red-dashboard@latest \
     && (npm install --omit=dev --no-audit --no-fund --no-package-lock @victronenergy/node-red-contrib-victron@latest || echo "[warn] @victronenergy install failed — Victron input nodes will be unknown, mocks tab covers it") \
-    && npm cache clean --force
+    && npm cache clean --force \
+    && rm -rf "$(npm config get cache)/_logs"
 
 COPY --chown=node-red:node-red docker/nodered/settings.js ./settings.js
 COPY --chown=node-red:node-red docker/nodered/flows.user.json /opt/build/flows.user.json
