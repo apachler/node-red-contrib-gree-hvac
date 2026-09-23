@@ -326,7 +326,6 @@ class ConnectionManager extends EventEmitter {
                 (typeof client.getDeviceId === 'function' &&
                     client.getDeviceId()) ||
                 null;
-            this._installSocketErrorHandler(client);
             this._setState('connected', { deviceId: this.deviceId });
             this._scheduleDrain();
         });
@@ -386,6 +385,9 @@ class ConnectionManager extends EventEmitter {
             this._setState('reconnecting', { reason: 'client_disconnect' });
         });
 
+        // gree-hvac-client >= 4.1.0 listens on its own UDP socket and
+        // re-emits socket failures here as ClientSocketError, so this one
+        // listener covers them too.
         client.on('error', error => {
             if (this.client !== client) return;
             this._onClientError(error);
@@ -394,24 +396,6 @@ class ConnectionManager extends EventEmitter {
         client.connect().catch(error => {
             if (this.client !== client) return;
             this._onClientError(error);
-        });
-
-        // the upstream client creates its dgram socket synchronously inside
-        // connect(); attach our handler as soon as it exists
-        this._installSocketErrorHandler(client);
-    }
-
-    _installSocketErrorHandler(client) {
-        const socket = client && client._socket;
-        if (!socket || socket.__greeHandlerInstalled) return;
-        socket.__greeHandlerInstalled = true;
-        socket.on('error', error => {
-            this.emit('log', 'warn', 'UDP socket error', {
-                error: error.message,
-            });
-            if (this.client === client) {
-                this._onClientError(error);
-            }
         });
     }
 
