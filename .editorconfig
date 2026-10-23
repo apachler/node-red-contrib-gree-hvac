@@ -1,5 +1,5 @@
 # https://editorconfig.org
-# Mirrors the Prettier/ESLint config so non-VSCode editors produce conforming code.
+# Mirrors the Prettier/ESLint config so editors produce conforming code.
 root = true
 
 [*]
@@ -15,6 +15,3 @@ indent_size = 2
 
 [*.md]
 trim_trailing_whitespace = false
-
-[Makefile]
-indent_style = tab

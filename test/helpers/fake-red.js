@@ -7,6 +7,7 @@ const EventEmitter = require('events');
  * node API (status/send/error/warn/log/context, input + close events) to
  * construct the contrib nodes in-process and observe what they do. Pulling in
  * the real node-red package for this would add its whole dependency tree.
+ *
  * @returns {object} { RED, create, input, close }
  */
 function createFakeRed() {
@@ -98,6 +99,7 @@ function createFakeRed() {
 
 /**
  * Wait until predicate() is truthy, polling every 25 ms.
+ *
  * @param {Function} predicate
  * @param {number} ms timeout
  * @param {string} what description for the timeout error

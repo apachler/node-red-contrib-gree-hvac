@@ -13,6 +13,7 @@ gree-hvac/                     published nodes
   gree-hvac.js                   control/observe node (wraps gree-hvac-client + ConnectionManager)
   lib/connection-manager.js      24/7 reconnect, backoff, watchdogs; swallows client 'error' events
   lib/validation.js              drops unknown/invalid properties before send
+  lib/mac-resolver.js            resolve-by-MAC: re-discovers the device IP after DHCP changes
   gree-hvac-config.js            device host+port      gree-hvac-discover.js  UDP broadcast discovery
 sim/                           standalone Gree simulator (cipher, transformer, state,
                                UDP server, HTTP+SSE dashboard, fault injection)
@@ -32,6 +33,7 @@ npm run sim:logs   # tail container logs
 npm run test:e2e   # bring stack up, run e2e, tear down
 npm run flow:push  # deploy flow sources to the running editor (no rebuild)
 npm run flow:pull  # capture the editor's deployed flow back into the source files
+npm run lint:lockfile  # lockfile-lint: npm registry over HTTPS + the pinned client tarball URL
 ```
 
 Iterating on e2e: `E2E_SKIP_BUILD=1 E2E_KEEP_UP=1 npm run test:e2e` reuses images and leaves the stack up.
@@ -62,7 +64,7 @@ Full spec (transport, encryption, every property + value, the TemSen +40 quirk):
 
 ## Releasing
 
-Automated via **semantic-release** (`release.yml` on `push` to `master`). Merging a PR to master with a Conventional-Commit title computes the next version, bumps `package.json` + `CHANGELOG.md` (commit carries `[skip ci]`), tags, and creates a GitHub Release with the `.tgz`. `fix:` → patch, `feat:` → minor. PRs are **squash-merged**, so the PR title must be a valid Conventional Commit. Don't hand-pick versions or push tags — semantic-release owns them. `master` is protected by a ruleset (PR + squash only + required checks), so the release job pushes via the `RELEASE_TOKEN` fine-grained PAT in the `release` environment, not `GITHUB_TOKEN`. `npm publish` is still gated/disabled (GitHub Release + tarball only). The client dependency is a GitHub Release tarball URL — to ship a `gree-hvac-client` fix, release it there first, then bump the URL + `npm install` here.
+Automated via **semantic-release** (`release.yml` on `push` to `master`). Merging a PR to master with a Conventional-Commit title computes the next version, bumps `package.json` + `CHANGELOG.md` (commit carries `[skip ci]`), tags, and creates a GitHub Release with the `.tgz`. `fix:` → patch, `feat:` → minor. PRs are **squash-merged**, so the PR title must be a valid Conventional Commit. Don't hand-pick versions or push tags — semantic-release owns them. `master` is protected by a ruleset (PR + squash only + required checks), so the release job pushes via the `RELEASE_TOKEN` fine-grained PAT in the `release` environment, not `GITHUB_TOKEN`. `npm publish` is still gated/disabled (GitHub Release + tarball only). The client dependency is a GitHub Release tarball URL — to ship a `gree-hvac-client` fix, release it there first, then bump the URL in `dependencies` **and** in the `lint:lockfile` script (its `--allowed-urls` pins the exact tarball, so CI fails on any other off-registry source) + `npm install` here.
 
 ## Gotchas
 

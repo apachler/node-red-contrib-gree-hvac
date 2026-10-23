@@ -37,6 +37,11 @@ module.exports = [
             'jsdoc/reject-function-type': 'off',
             'jsdoc/reject-any-type': 'off',
             'jsdoc/sort-tags': 'error',
+            'jsdoc/tag-lines': ['error', 'any', { startLines: 1 }],
+            // Dropped from flat/recommended in eslint-plugin-jsdoc v63; kept
+            // as warnings for parity with gree-hvac-client.
+            'jsdoc/no-undefined-types': 'warn',
+            'jsdoc/valid-types': 'warn',
         },
     },
     {
