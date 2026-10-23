@@ -21,13 +21,14 @@ updates:
         patterns:
           - "*"
 
-  # Keep the digest-pinned base images current, batched monthly.
+  # Keep the digest-pinned base images current, batched weekly: base-image
+  # patches are the main source of Trivy findings, so monthly lags too far.
   - package-ecosystem: "docker"
     directories:
       - "/sim"
       - "/docker/nodered"
     schedule:
-      interval: "monthly"
+      interval: "weekly"
     groups:
       docker-images:
         patterns:

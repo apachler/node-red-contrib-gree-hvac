@@ -29,8 +29,9 @@ RUN npm install --omit=dev --no-audit --no-fund && npm cache clean --force \
 # Node-RED when files in the bind-mounted contrib package change. Harmless
 # in non-dev mode — it sits unused.
 # npm itself is upgraded too: the base image's global npm bundles
-# vulnerable undici/brace-expansion that Trivy flags.
-RUN npm install -g --no-audit --no-fund npm@11.21.1 nodemon@3 && npm cache clean --force \
+# vulnerable undici/brace-expansion that Trivy flags. Range, not a pin:
+# Dependabot does not track RUN lines, so each rebuild takes the latest 11.x.
+RUN npm install -g --no-audit --no-fund npm@11 nodemon@3 && npm cache clean --force \
     && rm -rf "$(npm config get cache)/_logs"
 
 WORKDIR /data
