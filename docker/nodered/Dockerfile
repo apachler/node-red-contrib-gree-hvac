@@ -4,6 +4,10 @@ FROM nodered/node-red:5.0.9-24@sha256:e085d4a06591fd0aca2ea2a91364d27f1a0e31e885
 
 USER root
 
+# Pick up Alpine security patches (zlib, musl, ...) released after the base
+# image was built.
+RUN apk upgrade --no-cache
+
 # Working dir for the local contrib package (built into the image so the
 # Node-RED node loader picks it up without needing a host bind mount).
 WORKDIR /opt/contrib
