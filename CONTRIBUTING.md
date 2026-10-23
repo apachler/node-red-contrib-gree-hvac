@@ -42,6 +42,8 @@ Skip either with `GREE_SKIP_LINT=1` (e.g. `GREE_SKIP_LINT=1 git commit ...` or
 ```bash
 npm run lint          # ESLint + Prettier
 npm run lint:fix      # auto-fix
+npm run lint:lockfile # every lockfile entry from registry.npmjs.org over HTTPS
+npm run audit         # npm audit on production deps, fails on HIGH/CRITICAL
 npm test              # unit tests for the contrib nodes (node:test)
 npm run test:sim      # unit tests for the simulator (in-process)
 npm run test:e2e      # full docker-compose stack e2e suite

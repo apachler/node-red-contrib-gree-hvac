@@ -98,6 +98,7 @@ class ConnectionManager extends EventEmitter {
     /**
      * Queue a property write. Returns true if accepted, false if rejected
      * (rejected only when `rejectIfOffline` is true and we're offline).
+     *
      * @param {object} properties
      * @param {object} [meta]
      * @param {boolean} [meta.rejectIfOffline]
@@ -135,6 +136,7 @@ class ConnectionManager extends EventEmitter {
      * intentional move, not a fault.
      *
      * Intended to be called after `start()`.
+     *
      * @param {string} host New device host/IP
      * @returns {boolean} true if the host changed and a re-point was triggered
      */
@@ -173,6 +175,7 @@ class ConnectionManager extends EventEmitter {
 
     /**
      * Snapshot for diagnostics output / runtime context.
+     *
      * @returns {object} metrics snapshot
      */
     metrics() {

@@ -101,6 +101,7 @@ test('deployed Node-RED flow drives the gree node end-to-end', async () => {
 /**
  * Fire a plain inject node via the Node-RED admin API. The node sends its
  * own configured payload/topic, so no body is needed.
+ *
  * @param nodeId
  * @returns {Promise<void>}
  */

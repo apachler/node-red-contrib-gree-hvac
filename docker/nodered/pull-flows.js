@@ -63,6 +63,7 @@ const TEXT_KEYS = new Set(['func', 'initialize', 'finalize', 'info']);
 /**
  * Collect the config-node ids a node references (deep scan of structural
  * string values).
+ *
  * @param {object} node
  * @param {Set<string>} configIds
  * @returns {Set<string>}
@@ -93,6 +94,7 @@ function refsOf(node, configIds) {
 
 /**
  * Partition a deployed flow into user nodes and mock nodes.
+ *
  * @param {object[]} deployed
  * @param {Set<string>} existingMockIds  fallback classification for configs
  *                                        that nothing references
@@ -155,6 +157,7 @@ function classify(deployed, existingMockIds) {
 /**
  * Re-order nodes to match an existing file so a small edit shows as a small
  * diff. Unknown nodes are appended in their incoming order.
+ *
  * @param {object[]} nodes
  * @param {string} existingPath
  * @returns {object[]}

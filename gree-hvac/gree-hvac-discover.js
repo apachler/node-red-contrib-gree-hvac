@@ -9,6 +9,7 @@ const dgram = require('dgram');
  * here — exposing IPs and MAC-style cid fields is enough to populate a
  * config node, and it keeps this utility free of the encryption setup
  * cost.
+ *
  * @param RED
  */
 module.exports = function (RED) {

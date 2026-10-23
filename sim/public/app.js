@@ -55,6 +55,7 @@ let lastChangeAt = null;
  * Show the origin of the most recent state change and briefly flash when a
  * new change arrives, so flow-driven changes are distinguishable from
  * direct dashboard actions.
+ *
  * @param lc
  */
 function renderLastChange(lc) {
@@ -89,6 +90,7 @@ function renderLastChange(lc) {
 
 /**
  * Sync the direct-control widgets with the live state.
+ *
  * @param s
  */
 function renderControls(s) {
@@ -303,6 +305,7 @@ async function init() {
 
 /**
  * Step the setpoint relative to the current value (clamped 16–30°C).
+ *
  * @param delta
  */
 function stepTemp(delta) {
@@ -318,6 +321,7 @@ function stepTemp(delta) {
  * POST vendor property codes to the simulator's /api/set. The SSE 'state'
  * event then refreshes the display, but we also render the response so the
  * UI updates immediately.
+ *
  * @param vendorProps
  */
 async function setAc(vendorProps) {

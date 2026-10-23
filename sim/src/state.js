@@ -43,6 +43,7 @@ class DeviceState extends EventEmitter {
          * Origin of the most recent state change, so consumers (the
          * dashboard) can tell apart changes driven by the Node-RED flow
          * over UDP from changes made directly on the dashboard.
+         *
          * @type {{source: string, at: number, keys: string[]} | null}
          */
         this._lastChange = null;

@@ -6,6 +6,7 @@ const EventEmitter = require('events');
 /**
  * Normalise a MAC / cid for comparison: lower-case, strip every separator so
  * `AA:BB:CC`, `aabbcc` and `aa-bb-cc` all compare equal.
+ *
  * @param {string} mac
  * @returns {string} normalised hex string (may be empty)
  */
@@ -23,6 +24,7 @@ const normalizeMac = mac =>
  *
  * Rejects only on socket setup/send failures; a window that simply sees no
  * matching device resolves to `null` (a benign "not found", not an error).
+ *
  * @param {object} opts
  * @param {string} opts.mac                       device cid/MAC to resolve
  * @param {number} [opts.port]                    discovery port (default 7000)
