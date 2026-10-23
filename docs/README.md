@@ -35,4 +35,6 @@ npm run sim:down
 
 `.github/workflows/docs-media.yml` renders both on demand
 (`workflow_dispatch`) and uploads them as build artifacts, so you can
-regenerate without a local toolchain and download the results.
+regenerate without a local toolchain and download the results (artifact
+`docs-media`). Commit any updated files through a normal PR — `master` is
+ruleset-protected, so the workflow does not push.
