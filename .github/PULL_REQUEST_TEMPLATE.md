@@ -25,7 +25,6 @@
 - [ ] `npm test` and `npm run test:sim` pass
 - [ ] `npm run test:e2e` run locally (for protocol / connection-manager changes)
 - [ ] Docs updated (`README.md` / `docs/PROTOCOL.md`) if behaviour changed
-- [ ] Mock/sim data goes in `flows.mocks.json`, **not** `flows.user.json`
 
 ## Notes for reviewers
 

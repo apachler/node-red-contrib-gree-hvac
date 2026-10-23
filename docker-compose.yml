@@ -11,13 +11,7 @@ services:
       GREE_SIM_HTTP_PORT: "8080"
       GREE_SIM_CIPHER: "ecb"
       GREE_SIM_VERBOSE: "1"
-      GREE_SIM_NAME: "TinyHouse-AC"
-      # Initial mock sensor readings (overridable from the dashboard)
-      GREE_SIM_SOC: "78"
-      GREE_SIM_BATT_V: "53.7"
-      GREE_SIM_BATT_STATE: "1"
-      GREE_SIM_INSIDE_C: "24.5"
-      GREE_SIM_OUTSIDE_C: "22.0"
+      GREE_SIM_NAME: "Gree-Sim-AC"
     # Published on loopback only: the sim dashboard and the Node-RED editor
     # have no authentication. Set GREE_BIND=0.0.0.0 to reach them from other
     # machines on a trusted network.
@@ -26,9 +20,8 @@ services:
       - "${GREE_BIND:-127.0.0.1}:8080:8080/tcp"
     networks:
       sim-net:
-        # The Node-RED flow points at host "gree.lan" for the AC; this alias
-        # makes the sim container resolvable under that name on the docker
-        # network so the sample flow works unmodified.
+        # The dev flow's gree-hvac-config points at host "gree.lan"; this
+        # alias makes the sim container resolvable under that name.
         aliases:
           - gree.lan
     restart: unless-stopped
@@ -51,8 +44,6 @@ services:
       - "${GREE_BIND:-127.0.0.1}:1880:1880"
     networks:
       - sim-net
-    environment:
-      TZ: "Europe/Vienna"
     restart: unless-stopped
     # Runs as the unprivileged node-red user on port 1880; /data stays
     # writable (flows, context store), so no read_only here.

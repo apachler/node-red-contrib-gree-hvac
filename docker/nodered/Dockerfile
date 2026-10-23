@@ -36,30 +36,21 @@ RUN npm install -g --no-audit --no-fund npm@11 nodemon@3 && npm cache clean --fo
 
 WORKDIR /data
 
-# Install the auxiliary Node-RED modules used by the sample flow.
-# - @flowfuse/node-red-dashboard: dashboard widgets (ui-gauge, ui-text, ui-switch, ...)
-# - @victronenergy/node-red-contrib-victron: nodes the original flow uses
-#   for Battery SOC / State / Voltage / Ruuvi temperature. Marked optional —
-#   if its native dbus dep fails to build on alpine the build still succeeds
-#   and the nodes appear as "unknown" in the editor (the mocks tab provides
-#   substitute data either way).
-# - The local node-red-contrib-gree-hvac package installed by path.
+# Install the local node-red-contrib-gree-hvac package by path. The dev flow
+# uses only core nodes plus this package, so nothing else is needed.
 COPY --chown=node-red:node-red docker/nodered/package.json ./package.json
 RUN npm install --omit=dev --no-audit --no-fund --no-package-lock /opt/contrib \
-    && npm install --omit=dev --no-audit --no-fund --no-package-lock @flowfuse/node-red-dashboard@latest \
-    && (npm install --omit=dev --no-audit --no-fund --no-package-lock @victronenergy/node-red-contrib-victron@latest || echo "[warn] @victronenergy install failed — Victron input nodes will be unknown, mocks tab covers it") \
     && npm cache clean --force \
     && rm -rf "$(npm config get cache)/_logs"
 
 COPY --chown=node-red:node-red docker/nodered/settings.js ./settings.js
-COPY --chown=node-red:node-red docker/nodered/flows.user.json /opt/build/flows.user.json
-COPY --chown=node-red:node-red docker/nodered/flows.mocks.json /opt/build/flows.mocks.json
-COPY --chown=node-red:node-red docker/nodered/merge-flows.js /opt/build/merge-flows.js
 
-RUN node /opt/build/merge-flows.js \
-        /opt/build/flows.user.json \
-        /opt/build/flows.mocks.json \
-        /data/flows.json \
+# The dev flow is the shipped example (examples/basic-control.json), pointed
+# at the simulator.
+COPY --chown=node-red:node-red examples/basic-control.json /opt/build/basic-control.json
+COPY --chown=node-red:node-red docker/nodered/build-flows.js /opt/build/build-flows.js
+
+RUN node /opt/build/build-flows.js /opt/build/basic-control.json /data/flows.json \
     && chown node-red:node-red /data/flows.json
 
 # Reset WORKDIR back to the base image's dir. The official node-red image's

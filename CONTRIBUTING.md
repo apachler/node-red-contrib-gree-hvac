@@ -62,19 +62,16 @@ simulator** section of the [README](README.md).
 
 ### Project layout
 
-| Path                 | What it is                                          |
-| -------------------- | --------------------------------------------------- |
-| `gree-hvac/`         | the published Node-RED nodes                        |
-| `gree-hvac/lib/`     | connection manager (24/7 reconnect) + validation    |
-| `sim/`               | standalone Gree simulator (UDP server + dashboard)  |
-| `test/`, `sim/test/` | unit tests (live next to what they cover)           |
-| `test/e2e/`          | end-to-end tests driving the docker-compose stack   |
-| `docker/`            | Node-RED service image + sample/mocks flows         |
-| `docs/PROTOCOL.md`   | the full Gree UDP/AES protocol & property reference |
-
-> **Note:** `docker/nodered/flows.user.json` is the production flow. Mock
-> sensor data belongs in `flows.mocks.json` (merged at image build time), **not**
-> in the user flow.
+| Path                 | What it is                                              |
+| -------------------- | ------------------------------------------------------- |
+| `gree-hvac/`         | the published Node-RED nodes                            |
+| `gree-hvac/lib/`     | connection manager (24/7 reconnect) + validation        |
+| `sim/`               | standalone Gree simulator (UDP server + dashboard)      |
+| `test/`, `sim/test/` | unit tests (live next to what they cover)               |
+| `test/e2e/`          | end-to-end tests driving the docker-compose stack       |
+| `docker/`            | Node-RED dev image (boots the example flow)             |
+| `examples/`          | example flow shipped in the package (Import → Examples) |
+| `docs/PROTOCOL.md`   | the full Gree UDP/AES protocol & property reference     |
 
 ## Coding standards
 
@@ -97,7 +94,7 @@ workflow also maps the prefix to a label for triage. Recognised prefixes:
 
 Before opening a PR:
 
-1. `npm run lint && npm test && npm run test:flow && npm run test:sim` all pass
+1. `npm run lint && npm test && npm run test:sim` all pass
    (`npm run coverage:check` enforces the coverage thresholds CI uses).
 2. For protocol/connection changes, run `npm run test:e2e` locally.
 3. Update docs (`README.md` / `docs/PROTOCOL.md`) when behaviour changes.

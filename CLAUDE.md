@@ -17,7 +17,8 @@ gree-hvac/                     published nodes
   gree-hvac-config.js            device host+port      gree-hvac-discover.js  UDP broadcast discovery
 sim/                           standalone Gree simulator (cipher, transformer, state,
                                UDP server, HTTP+SSE dashboard, fault injection)
-docker/nodered/                Node-RED image: contrib pkg + flow sources + merge/push/pull scripts
+docker/nodered/                Node-RED dev image; build-flows.js bakes examples/basic-control.json in (host gree.lan)
+examples/                      shipped example flow (Import → Examples); core nodes only, checked by test/examples.test.js
 test/  test/e2e/  sim/test/    node:test unit + e2e suites
 docs/PROTOCOL.md               full protocol + property/value spec
 ```
@@ -31,8 +32,6 @@ npm run sim:up     # docker compose up -d --build (sim + node-red)
 npm run sim:down   # tear down + remove volumes
 npm run sim:logs   # tail container logs
 npm run test:e2e   # bring stack up, run e2e, tear down
-npm run flow:push  # deploy flow sources to the running editor (no rebuild)
-npm run flow:pull  # capture the editor's deployed flow back into the source files
 npm run lint:lockfile  # lockfile-lint: npm registry over HTTPS + the pinned client tarball URL
 ```
 
@@ -42,22 +41,9 @@ Iterating on e2e: `E2E_SKIP_BUILD=1 E2E_KEEP_UP=1 npm run test:e2e` reuses image
 
 - Node 22 LTS for development (`.nvmrc`, CI, docker images); the lint toolchain (ESLint 10) requires Node 22+. Published runtime still supports Node 18+ (`engines.node`), and CI runs the tests on 18/20/22/24.
 - Tests: `node --test` (no jest/mocha), beside what they cover.
-- Style: ESLint + Prettier (`npm run lint`); Markdown/YAML/JSON via `npm run format:check` / `npm run format` (CI-enforced; `.prettierignore` skips CHANGELOG, the lockfile and the Node-RED-written flow files). Single quotes, 4-space JS, 2-space JSON/YAML. The pre-push hook runs `eslint --fix`; `GREE_SKIP_LINT=1 git push` to skip.
+- Style: ESLint + Prettier (`npm run lint`); Markdown/YAML/JSON via `npm run format:check` / `npm run format` (CI-enforced; `.prettierignore` skips CHANGELOG and the lockfile). Single quotes, 4-space JS, 2-space JSON/YAML. The pre-push hook runs `eslint --fix`; `GREE_SKIP_LINT=1 git push` to skip.
 - Git hooks (`.githooks/`, installed by `prepare`): **commit-msg** enforces a Conventional-Commit subject (zero-dep shell regex, no commitlint; merge/revert/fixup pass through), **pre-push** runs `eslint --fix`. Both honor `GREE_SKIP_LINT=1`.
 - Each node takes a `logLevel`; the contrib node forwards it into the client.
-
-## Editing the flow (the non-obvious part)
-
-Flow source is split: `docker/nodered/flows.user.json` = **production** (control logic + dashboards; deploy to real hardware), `flows.mocks.json` = **sim-only** (mock Victron/Ruuvi sensors + Sim Sensors/Clock pages). `merge-flows.js` concatenates them into `flows.json` at image build time. **Don't add mock data to the production file — edit `flows.mocks.json`.**
-
-- `npm run flow:push` — merge both sources → full-deploy to the running editor (instant, no rebuild); then refresh the browser.
-- `npm run flow:pull` — capture the deployed flow → split back into the two source files (order-preserving, so a small edit is a small diff; adds harmless Node-RED normalisation).
-- Both target `http://127.0.0.1:1880` (override `NR_URL`); optional target arg (`:user`/`:mocks`). A rebuild (`sim:dev`) is only needed when contrib node code or the image changes — not for flow edits.
-
-Dashboard is **Dashboard 2.0** (`@flowfuse/node-red-dashboard`):
-
-- `ui-button` ignores the legacy `bgcolor`/`color`; use `buttonColor`/`textColor` (settable at runtime via `msg.ui_update`). There is no dynamic `enabled` — "disable" a button by recolouring it grey.
-- Inspect a widget's exact schema: `docker exec gree-nodered sh -c 'grep -n "defaults:" -A40 /data/node_modules/@flowfuse/node-red-dashboard/nodes/widgets/ui_<widget>.html'`.
 
 ## Gree protocol
 
@@ -70,7 +56,7 @@ Automated via **semantic-release** (`release.yml` on `push` to `master`). Mergin
 ## Gotchas
 
 - **Ports bind to `127.0.0.1`** (`GREE_BIND` overrides) and both containers run with `cap_drop: [ALL]` + `no-new-privileges` (the sim also `read_only`); keep that when adding services.
-- **`gree.lan`** is hard-coded in the example flow's config node; docker-compose aliases the sim container as `gree.lan` so it resolves without editing the flow.
-- The **sim dashboard at :8080** is a standalone Gree-device simulator (drives the simulated AC + fault injection) with no dependency on the example flow. Mock Victron/Ruuvi values come from the Node-RED "Sim Sensors" page (POST `/api/sensors`).
+- **`gree.lan`**: the dev image's flow (`examples/basic-control.json` via `build-flows.js`) targets it; docker-compose aliases the sim container as `gree.lan`. The shipped example itself keeps a placeholder IP.
+- The **sim dashboard at :8080** is a standalone Gree-device simulator (drives the simulated AC + fault injection) with no dependency on Node-RED.
 - **Workflow triggers**: only tag pushes (release.yml) and PR/push-to-master (ci.yml + e2e.yml) run Actions; pushes to feature branches don't.
-- Config persists via the `persistent`/`default` localfilesystem context store (`settings.js`), so it survives restarts where `/data` persists. The docker `node-red` service has **no `/data` volume**, so a rebuild/recreate wipes it (a plain `docker restart` keeps it).
+- The docker `node-red` service has **no `/data` volume**: flow edits made in the editor are lost on rebuild/recreate (a plain `docker restart` keeps them). Change the example in `examples/basic-control.json` instead.

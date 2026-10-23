@@ -67,8 +67,6 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Tests
         run: npm test
-      - name: Flow logic tests
-        run: npm run test:flow
 
   coverage:
     name: Coverage

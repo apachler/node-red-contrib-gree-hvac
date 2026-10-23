@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const dgram = require('dgram');
 
 const { ensureStack, teardownStack } = require('./global-setup');
-const { get, postJson } = require('./harness');
+const { get } = require('./harness');
 const Gree = require('gree-hvac-client');
 
 test.before(async () => {
@@ -24,22 +24,6 @@ test('sim dashboard is reachable', async () => {
     assert.ok(state.cid);
     assert.ok(state.friendly);
     assert.equal(state.cipher, 'ecb');
-});
-
-test('sim exposes mock sensors and accepts updates', async () => {
-    const r = await get('http://127.0.0.1:8080/api/sensors');
-    assert.equal(r.status, 200);
-    const before = JSON.parse(r.body);
-    assert.ok(typeof before.soc === 'number');
-
-    const upd = await postJson('http://127.0.0.1:8080/api/sensors', {
-        soc: 42,
-        insideC: 27.5,
-    });
-    assert.equal(upd.status, 200);
-    const after = JSON.parse(upd.body);
-    assert.equal(after.soc, 42);
-    assert.equal(after.insideC, 27.5);
 });
 
 test('gree-hvac-client can drive the sim end-to-end over UDP', async t => {

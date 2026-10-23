@@ -3,7 +3,6 @@
 
 const { Simulator } = require('../src/simulator');
 const { Dashboard } = require('../src/dashboard');
-const { MockSensors } = require('../src/sensors');
 
 /**
  * @param value
@@ -35,16 +34,7 @@ async function main() {
         },
     });
 
-    const sensors = new MockSensors({
-        soc: num(process.env.GREE_SIM_SOC, 78),
-        batteryVoltage: num(process.env.GREE_SIM_BATT_V, 53.7),
-        batterySystemStateNum: num(process.env.GREE_SIM_BATT_STATE, 1),
-        insideC: num(process.env.GREE_SIM_INSIDE_C, 24.5),
-        outsideC: num(process.env.GREE_SIM_OUTSIDE_C, 22),
-    });
-
     const dashboard = new Dashboard(sim, {
-        sensors,
         port: num(process.env.GREE_SIM_HTTP_PORT, 8080),
         bindAddress: process.env.GREE_SIM_HTTP_BIND || '0.0.0.0',
     });

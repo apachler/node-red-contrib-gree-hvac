@@ -72,8 +72,5 @@ jobs:
           name: docs-media
           path: |
             docs/demo.gif
-            docs/nodered-home.png
-            docs/nodered-config.png
-            docs/nodered-sim-sensors.png
             docs/sim-dashboard.png
           if-no-files-found: warn
