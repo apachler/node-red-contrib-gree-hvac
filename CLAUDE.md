@@ -62,7 +62,7 @@ Full spec (transport, encryption, every property + value, the TemSen +40 quirk):
 
 ## Releasing
 
-Automated via **semantic-release** (`release.yml` on `push` to `master`). Merging a PR to master with a Conventional-Commit title computes the next version, bumps `package.json` + `CHANGELOG.md` (commit carries `[skip ci]`), tags, and creates a GitHub Release with the `.tgz`. `fix:` → patch, `feat:` → minor. PRs are **squash-merged**, so the PR title must be a valid Conventional Commit. Don't hand-pick versions or push tags — semantic-release owns them. `npm publish` is still gated/disabled (GitHub Release + tarball only). The client dependency is a GitHub Release tarball URL — to ship a `gree-hvac-client` fix, release it there first, then bump the URL + `npm install` here.
+Automated via **semantic-release** (`release.yml` on `push` to `master`). Merging a PR to master with a Conventional-Commit title computes the next version, bumps `package.json` + `CHANGELOG.md` (commit carries `[skip ci]`), tags, and creates a GitHub Release with the `.tgz`. `fix:` → patch, `feat:` → minor. PRs are **squash-merged**, so the PR title must be a valid Conventional Commit. Don't hand-pick versions or push tags — semantic-release owns them. `master` is protected by a ruleset (PR + squash only + required checks), so the release job pushes via the `RELEASE_TOKEN` fine-grained PAT in the `release` environment, not `GITHUB_TOKEN`. `npm publish` is still gated/disabled (GitHub Release + tarball only). The client dependency is a GitHub Release tarball URL — to ship a `gree-hvac-client` fix, release it there first, then bump the URL + `npm install` here.
 
 ## Gotchas
 
