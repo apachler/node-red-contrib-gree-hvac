@@ -8,10 +8,8 @@
             interval: { value: 4, required: true, validate: RED.validators.number() },
             pollingTimeout: { value: 8, required: false, validate: RED.validators.number() },
             connectTimeout: { value: 8, required: false, validate: RED.validators.number() },
-            connectingTimeout: { value: 60, required: false, validate: RED.validators.number() },
             recoveryDelay: { value: 30, required: false, validate: RED.validators.number() },
             maxBackoff: { value: 300, required: false, validate: RED.validators.number() },
-            unresponsiveTimeout: { value: 60, required: false, validate: RED.validators.number() },
             noResponseThreshold: { value: 3, required: false, validate: RED.validators.number() },
             commandRate: { value: 500, required: false, validate: RED.validators.number() },
             maxQueueSize: { value: 64, required: false, validate: RED.validators.number() },
@@ -67,16 +65,6 @@
     <div class="form-row">
         <label for="node-input-connectTimeout"><i class="icon-tag"></i> Connect timeout (s)</label>
         <input type="number" id="node-input-connectTimeout" min="1" step="1" style="width:80px">
-    </div>
-
-    <div class="form-row">
-        <label for="node-input-connectingTimeout"><i class="icon-tag"></i> Stuck-connecting cap (s)</label>
-        <input type="number" id="node-input-connectingTimeout" min="5" step="1" style="width:80px">
-    </div>
-
-    <div class="form-row">
-        <label for="node-input-unresponsiveTimeout"><i class="icon-tag"></i> Watchdog silence (s)</label>
-        <input type="number" id="node-input-unresponsiveTimeout" min="5" step="1" style="width:80px">
     </div>
 
     <div class="form-row">
@@ -185,7 +173,7 @@
     <ol class="node-ports">
         <li><b>Changes</b> — <code>topic</code> is <code>updated</code> (delta from device) or <code>acknowledged</code> (delta from a write).</li>
         <li><b>Snapshot</b> — <code>topic</code> is <code>properties</code>, the full current property map.</li>
-        <li><b>Diagnostics</b> — structured events (<code>state</code>, <code>error</code>, <code>queue_overflow</code>, <code>heartbeat</code>, <code>update</code>, <code>write_ack</code>, <code>rehome</code>, <code>device_info</code>) with metrics for alerting and dashboards.</li>
+        <li><b>Diagnostics</b> — structured events (<code>state</code>, <code>error</code>, <code>queue_overflow</code>, <code>heartbeat</code>, <code>update</code>, <code>write_ack</code>, <code>device_info</code>) with metrics for alerting and dashboards.</li>
         <li><b>Responses</b> — answers to <code>msg.action</code> requests.</li>
     </ol>
 
@@ -202,12 +190,11 @@
     <p>Asks the unit not to beep on each command (units without a controllable beeper ignore it).</p>
 
     <h3>Connection handling</h3>
-    <p>The node wraps the underlying client with an exponential-backoff reconnect strategy and two watchdogs (one for silence while connected, one for "stuck in connecting"). Defaults are tuned for unattended 24/7 operation over WiFi.</p>
+    <p>The client keeps connecting and recovering by itself for as long as the node runs; every reconnect attempt opens a new UDP socket, which is what recovers a stuck WiFi module without a power cycle. Defaults are tuned for unattended 24/7 operation over WiFi.</p>
     <ul>
-        <li><b>Polling interval / timeout / no-response threshold</b>: how often the device is polled, how long a single poll may take, and how many consecutive misses trigger a full client teardown + fresh socket. This is what recovers a stuck WiFi module without a power-cycle.</li>
-        <li><b>Watchdog silence</b>: total silence while connected before a hard reset is forced.</li>
-        <li><b>Stuck-connecting cap</b>: maximum time the node may sit in the <code>connecting</code> state before a hard reset is forced.</li>
-        <li><b>Recovery delay / max backoff</b>: initial reconnect delay and the ceiling of the exponential backoff. A long initial delay gives the WiFi module time to recover instead of being flooded with scan/bind packets.</li>
+        <li><b>Polling interval / timeout / no-response threshold</b>: how often the device is polled, how long a single poll may take, and how many consecutive misses make the client drop the binding and re-scan.</li>
+        <li><b>Connect timeout</b>: how long one scan/bind attempt may take before the next one; attempts back off up to <em>max backoff</em>.</li>
+        <li><b>Recovery delay / max backoff</b>: the pause before re-scanning a device that stopped answering, and the ceiling of the back-off that follows. The pause gives the WiFi module time to recover instead of being flooded with scan/bind packets.</li>
         <li><b>Min command spacing / max queued writes</b>: rate-limit + bounded coalescing queue for outbound writes. Multiple updates to the same property collapse to the latest value before being sent; when the queue grows past the cap, the oldest entries are evicted.</li>
         <li><b>Heartbeat interval</b>: emits a periodic <code>heartbeat</code> diagnostic on output 3 so absence-of-message can drive offline alerts. Set to 0 to disable.</li>
     </ul>

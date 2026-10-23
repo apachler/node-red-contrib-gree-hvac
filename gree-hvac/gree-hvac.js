@@ -2,7 +2,6 @@
 
 const Gree = require('gree-hvac-client');
 const { ConnectionManager } = require('./lib/connection-manager');
-const { MacResolver } = require('./lib/mac-resolver');
 const { validateProperties } = require('./lib/validation');
 const { ACTIONS, getAction } = require('./lib/actions');
 
@@ -52,15 +51,6 @@ module.exports = function (RED) {
         const connectTimeoutMs = num(config.connectTimeout, 8) * 1000;
         const recoveryDelayMs = num(config.recoveryDelay, 30) * 1000;
         const maxBackoffMs = num(config.maxBackoff, 300) * 1000;
-        const unresponsiveTimeoutMs =
-            num(
-                config.unresponsiveTimeout,
-                Math.max(30, Math.ceil((pollingIntervalMs * 5) / 1000))
-            ) * 1000;
-        const connectingTimeoutMs = Math.max(
-            connectTimeoutMs * 4,
-            num(config.connectingTimeout, 60) * 1000
-        );
         const commandRateMs = num(config.commandRate, 500);
         const noResponseThreshold = Math.max(
             1,
@@ -88,23 +78,21 @@ module.exports = function (RED) {
             clientOptions.subUnit = device.subUnit;
         }
         if (resolveByMac) {
-            // bind only to the resolved device, never to another one that
-            // took over its old address
+            // The client scans the broadcast address and binds only to this
+            // MAC; after a DHCP move the polls go unanswered, and its re-bind
+            // finds the unit at the new address.
             clientOptions.mac = device.mac;
         }
 
         const manager = new ConnectionManager({
             ClientCtor: Gree.Client,
-            host: device.host || null,
+            host: resolveByMac ? device.broadcastAddress : device.host,
             port: num(device.port, 7000),
             pollingIntervalMs,
             pollingTimeoutMs,
             connectTimeoutMs,
             recoveryDelayMs,
             maxBackoffMs,
-            unresponsiveTimeoutMs,
-            connectingTimeoutMs,
-            watchdogTickMs: Math.max(1000, Math.floor(pollingIntervalMs / 2)),
             commandRateMs,
             noResponseThreshold,
             maxQueueSize,
@@ -181,7 +169,9 @@ module.exports = function (RED) {
                     break;
                 case 'connected':
                     statusConnected();
-                    fetchDeviceInfo();
+                    if (meta && meta.bound) {
+                        fetchDeviceInfo();
+                    }
                     break;
                 case 'no_response':
                     node.status({
@@ -209,7 +199,11 @@ module.exports = function (RED) {
                         node.status({
                             fill: 'grey',
                             shape: 'ring',
-                            text: 'reconnecting...',
+                            text:
+                                'reconnecting' +
+                                (meta && meta.attempt
+                                    ? ' (attempt ' + meta.attempt + ')'
+                                    : '...'),
                         });
                     }
                     break;
@@ -406,75 +400,14 @@ module.exports = function (RED) {
             }
         });
 
-        // Optional resolve-by-MAC: follow the device across DHCP IP changes by
-        // periodically discovering it and re-pointing the manager when its IP
-        // moves. When no initial host is configured we defer the first connect
-        // until the MAC first resolves to an address.
-        let resolver = null;
-        let started = false;
-        const startManager = () => {
-            if (started) {
-                return;
-            }
-            started = true;
-            manager.start();
-        };
-
-        if (resolveByMac) {
-            resolver = new MacResolver({
-                mac: device.mac,
-                port: num(device.port, 7000),
-                broadcastAddress: device.broadcastAddress,
-                intervalMs:
-                    Math.max(5, num(device.rediscoverInterval, 60)) * 1000,
-                initialAddress: device.host || null,
-            });
-            resolver.on('resolved', (addr, from) => {
-                node.log(
-                    'Resolved ' +
-                        device.mac +
-                        ' -> ' +
-                        addr +
-                        (from ? ' (was ' + from + ')' : '')
-                );
-                if (!started) {
-                    manager.opts.host = addr;
-                    startManager();
-                } else {
-                    manager.setHost(addr);
-                }
-            });
-            resolver.on('log', (level, message, meta) => {
-                if (config.debug || level === 'error') {
-                    const payload = meta
-                        ? message + ' ' + JSON.stringify(meta)
-                        : message;
-                    if (level === 'warn') {
-                        node.warn(payload);
-                    } else {
-                        node.log(payload);
-                    }
-                }
-            });
-            resolver.start();
-        }
-
         node.status({ fill: 'yellow', shape: 'dot', text: 'connecting...' });
         writeMetrics();
-
-        // Start now if we have an address; otherwise wait for the resolver.
-        if (device.host || !resolveByMac) {
-            startManager();
-        }
+        manager.start();
 
         this.on('close', done => {
             if (heartbeatTimer) {
                 clearInterval(heartbeatTimer);
                 heartbeatTimer = null;
-            }
-            if (resolver) {
-                resolver.stop();
-                resolver = null;
             }
             manager
                 .stop()

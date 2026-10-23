@@ -3,22 +3,19 @@
 const EventEmitter = require('events');
 
 /**
- * Wraps gree-hvac-client with a production-grade connection manager.
+ * Adapts gree-hvac-client to the needs of a Node-RED node running 24/7.
  *
- * Responsibilities:
- *   - Owns the client lifecycle (the library's auto-connect is disabled
- *     and we drive connect / disconnect ourselves) so a flaky device
- *     cannot keep flooding the WiFi module with scan/bind packets.
- *   - Exponential backoff with a long initial recovery delay (gives the
- *     WiFi module time to recover from a wedged state).
- *   - Watchdog on the stream of poll responses + a separate watchdog
- *     for "stuck in connecting" so a misconfigured device cannot hang
- *     the node forever.
- *   - Throttled and coalesced outbound writes, with a hard cap on the
- *     pending queue size (oldest-eviction with a warn) so an offline
- *     device cannot cause unbounded memory growth.
- *   - Late-event absorption: stale clients are kept subscribed but
- *     their events are ignored, so we never get an uncaught 'error'.
+ * The client (>= 4.4) owns connecting and recovery: connect retries with
+ * back-off, the re-bind after `maxNoResponse` missed polls with a
+ * `recoveryDelay` pause, a new UDP socket per attempt, and following the
+ * unit by MAC when `host` is a broadcast address. This class adds what is
+ * Node-RED policy rather than protocol:
+ *   - one long-lived client, connected on start() and disconnected on stop()
+ *   - a state machine + diagnostics / metrics built from the client events
+ *   - a throttled, coalescing write queue that holds writes while offline
+ *     (the client sends writes while unbound and loses them), capped with
+ *     oldest-eviction so an offline device cannot grow memory without bound
+ *   - dropping a property the client refuses instead of failing the batch
  *
  * Decoupled from Node-RED so it can be unit-tested.
  *
@@ -28,9 +25,9 @@ const EventEmitter = require('events');
  *                    'no_response' | 'stopped'
  *   - 'update'       (updated, properties)         delta from device
  *   - 'success'      (updated, properties)         write ack from device
- *   - 'failure'      (error)                       non-fatal error from the
- *                                                  device or client; the
- *                                                  manager will reconnect
+ *   - 'failure'      (error)                       an error the client
+ *                                                  reported; it recovers
+ *                                                  by itself
  *   - 'diagnostic'   ({ event, ...details })       structured event for
  *                                                  observability outputs
  *   - 'log'          (level, message, meta)
@@ -43,18 +40,15 @@ class ConnectionManager extends EventEmitter {
     /**
      * @param {object} opts
      * @param {Function} opts.ClientCtor   `gree-hvac-client`'s Client class (DI for tests)
-     * @param {string}  opts.host
+     * @param {string}  opts.host                  device IP, or a broadcast address with clientOptions.mac
      * @param {number}  opts.port
      * @param {number}  opts.pollingIntervalMs
      * @param {number}  opts.pollingTimeoutMs
      * @param {number}  opts.connectTimeoutMs
-     * @param {number}  opts.recoveryDelayMs        initial reconnect delay
-     * @param {number}  opts.maxBackoffMs           ceiling on exponential backoff
-     * @param {number}  opts.unresponsiveTimeoutMs  watchdog: silence while "connected"
-     * @param {number}  opts.connectingTimeoutMs    watchdog: stuck-in-connecting cap
-     * @param {number}  opts.watchdogTickMs
+     * @param {number}  opts.recoveryDelayMs        pause before re-scanning an unresponsive device
+     * @param {number}  opts.maxBackoffMs           ceiling on the reconnect back-off
+     * @param {number}  opts.noResponseThreshold    consecutive missed polls before the re-bind
      * @param {number}  opts.commandRateMs          minimum spacing between writes
-     * @param {number}  opts.noResponseThreshold    consecutive missed polls before reset
      * @param {number}  opts.maxQueueSize           hard cap on pending writes
      * @param {string}  opts.logLevel
      * @param {object}  [opts.clientOptions]       extra gree-hvac-client options
@@ -69,12 +63,9 @@ class ConnectionManager extends EventEmitter {
         this.stopped = false;
         this.connectedAt = 0;
         this.lastContactAt = 0;
-        this.connectingSince = 0;
-        this.consecutiveResets = 0;
         this.noResponseStreak = 0;
-        this.backoffMs = opts.recoveryDelayMs;
-        this.reconnectTimer = null;
-        this.watchdogTimer = null;
+        this.reconnectAttempt = 0;
+        this.lastReconnect = null;
         this.queue = new Map();
         this.queueOverflows = 0;
         this.lastSendAt = 0;
@@ -83,18 +74,41 @@ class ConnectionManager extends EventEmitter {
     }
 
     start() {
-        this._buildClient();
-        this._startWatchdog();
+        if (this.client || this.stopped) {
+            return;
+        }
+        const client = this._createClient();
+        this.client = client;
+        this._setState('connecting');
+        this.emit('log', 'info', 'Connecting', { host: this.opts.host });
+        // Resolves on the first bind; the client keeps retrying on its own,
+        // so a rejection (a failed first scan, a cancel by stop()) is only
+        // worth a log line.
+        client.connect().catch(error => {
+            this.emit('log', 'info', 'Connect attempt ended', {
+                reason: error && error.message,
+            });
+        });
     }
 
     async stop() {
         this.stopped = true;
-        this._clearTimer('reconnectTimer');
-        this._clearTimer('watchdogTimer');
         this._clearTimer('sendTimer');
         this.queue.clear();
+        this.connected = false;
         this._setState('stopped');
-        await this._teardownClient();
+        const client = this.client;
+        this.client = null;
+        if (!client) {
+            return;
+        }
+        try {
+            // after disconnect() the client fires no timer and no event
+            // but 'disconnect'
+            await client.disconnect();
+        } catch (_) {
+            // already disconnected
+        }
     }
 
     /**
@@ -155,52 +169,6 @@ class ConnectionManager extends EventEmitter {
     }
 
     /**
-     * Re-point the manager at a new device address — e.g. after the device's
-     * DHCP lease moved it to a new IP (resolve-by-MAC). No-op when the host is
-     * unchanged. On a real change we tear the current client down and rebuild
-     * against the new address immediately rather than waiting for the stale
-     * connection to time out, and reset the backoff since this is an
-     * intentional move, not a fault.
-     *
-     * Intended to be called after `start()`.
-     *
-     * @param {string} host New device host/IP
-     * @returns {boolean} true if the host changed and a re-point was triggered
-     */
-    setHost(host) {
-        if (!host || host === this.opts.host) {
-            return false;
-        }
-        const from = this.opts.host;
-        this.opts.host = host;
-        this.emit('log', 'info', 'Device address changed, re-pointing', {
-            from,
-            to: host,
-        });
-        this.emit('diagnostic', {
-            event: 'rehome',
-            at: Date.now(),
-            from,
-            to: host,
-        });
-        if (this.stopped) {
-            return true;
-        }
-        // Intentional move: connect promptly and cancel any pending backoff.
-        this.backoffMs = this.opts.recoveryDelayMs;
-        this._clearTimer('reconnectTimer');
-        this._teardownClient()
-            .catch(() => {})
-            .finally(() => {
-                if (this.stopped) {
-                    return;
-                }
-                this._buildClient();
-            });
-        return true;
-    }
-
-    /**
      * Snapshot for diagnostics output / runtime context.
      *
      * @returns {object} metrics snapshot
@@ -216,16 +184,116 @@ class ConnectionManager extends EventEmitter {
             lastContactAt: this.lastContactAt || null,
             silentMs: this.lastContactAt ? now - this.lastContactAt : null,
             noResponseStreak: this.noResponseStreak,
-            consecutiveResets: this.consecutiveResets,
+            reconnectAttempt: this.reconnectAttempt,
+            lastReconnect: this.lastReconnect,
             queueSize: this.queue.size,
             queueOverflows: this.queueOverflows,
-            nextReconnectInMs: this.reconnectTimer ? this.backoffMs : null,
-            backoffMs: this.backoffMs,
         };
     }
 
-    _setState(state, meta) {
-        if (this.state === state) {
+    _createClient() {
+        const client = new this.opts.ClientCtor({
+            ...this.opts.clientOptions,
+            host: this.opts.host,
+            port: this.opts.port,
+            pollingInterval: this.opts.pollingIntervalMs,
+            pollingTimeout: this.opts.pollingTimeoutMs,
+            connectTimeout: this.opts.connectTimeoutMs,
+            maxNoResponse: this.opts.noResponseThreshold,
+            recoveryDelay: this.opts.recoveryDelayMs,
+            reconnectMaxDelay: this.opts.maxBackoffMs,
+            reopenSocket: true,
+            autoConnect: false,
+            logLevel: this.opts.logLevel,
+        });
+
+        client.on('connect', () => {
+            this.connected = true;
+            this.connectedAt = Date.now();
+            this.lastContactAt = this.connectedAt;
+            this.noResponseStreak = 0;
+            this.reconnectAttempt = 0;
+            this.deviceId =
+                (typeof client.getDeviceId === 'function' &&
+                    client.getDeviceId()) ||
+                null;
+            // bound: a (re-)bind, as opposed to answers resuming
+            this._setState('connected', {
+                deviceId: this.deviceId,
+                bound: true,
+            });
+            this._scheduleDrain();
+        });
+
+        client.on('update', (updated, properties) => {
+            this._contact();
+            this.emit('update', updated, properties);
+            this.emit('diagnostic', {
+                event: 'update',
+                at: this.lastContactAt,
+                updated,
+            });
+        });
+
+        client.on('success', (updated, properties) => {
+            this._contact();
+            this.emit('success', updated, properties);
+            this.emit('diagnostic', {
+                event: 'write_ack',
+                at: this.lastContactAt,
+                updated,
+            });
+        });
+
+        client.on('no_response', () => {
+            this.noResponseStreak += 1;
+            this.emit('log', 'warn', 'No response from device', {
+                streak: this.noResponseStreak,
+                threshold: this.opts.noResponseThreshold,
+            });
+            this._setState('no_response', { streak: this.noResponseStreak });
+        });
+
+        // The client re-binds by itself: after a connect timeout, after
+        // noResponseThreshold missed polls (pausing recoveryDelay first)
+        // and after a socket error, each on a new socket.
+        client.on('reconnecting', info => {
+            const { attempt, delayMs, reason } = info || {};
+            this.connected = false;
+            this.connectedAt = 0;
+            this.reconnectAttempt = attempt || this.reconnectAttempt + 1;
+            this.lastReconnect = { at: Date.now(), reason, delayMs };
+            this.emit('log', 'info', 'Reconnecting', info);
+            // each attempt is reported, also while already reconnecting
+            this._setState('reconnecting', { delayMs, reason, attempt }, true);
+        });
+
+        // Every client error is informational: the client keeps connecting
+        // and recovering until stop().
+        client.on('error', error => {
+            this.emit('failure', error);
+            this.emit('diagnostic', {
+                event: 'error',
+                at: Date.now(),
+                message: error && error.message,
+                name: error && error.constructor && error.constructor.name,
+            });
+        });
+
+        return client;
+    }
+
+    _contact() {
+        this.lastContactAt = Date.now();
+        if (this.noResponseStreak > 0 && this.connected) {
+            this.noResponseStreak = 0;
+            this._setState('connected', { deviceId: this.deviceId });
+        }
+        this.noResponseStreak = 0;
+    }
+
+    _setState(state, meta, always = false) {
+        if (this.state === state && !always) {
             return;
         }
         const prev = this.state;
@@ -299,22 +367,22 @@ class ConnectionManager extends EventEmitter {
             return;
         }
         sent.catch(error => {
-            if (isInvalidPropertyError(error)) {
-                // the device will never take it: no requeue, no reset
-                this.emit('write_failed', error, batch);
-                return;
-            }
             // Surface the write failure to listeners so catch-nodes can
-            // see it with the originating payload; then requeue keys the
-            // caller has not overwritten since.
+            // see it with the originating payload.
             this.emit('write_failed', error, batch);
+            if (isInvalidPropertyError(error)) {
+                return; // the device will never take it: no requeue
+            }
+            // Not sent (e.g. the connection dropped meanwhile): requeue keys
+            // the caller has not overwritten since; they go out after the
+            // client re-binds.
             for (const [key, value] of Object.entries(batch)) {
                 if (!this.queue.has(key)) {
                     this.queue.set(key, value);
                 }
             }
             this._enforceQueueLimit();
-            this._onClientError(error);
+            this._scheduleDrain();
         });
         if (this.queue.size > 0) {
             this._scheduleDrain();
@@ -352,272 +420,10 @@ class ConnectionManager extends EventEmitter {
         }
     }
 
-    _buildClient() {
-        if (this.stopped) {
-            return;
-        }
-        this._clearTimer('reconnectTimer');
-
-        this.emit('log', 'info', 'Connecting', {
-            host: this.opts.host,
-            attemptBackoffMs: this.backoffMs,
-        });
-        this.connectingSince = Date.now();
-        this._setState('connecting');
-
-        let client;
-        try {
-            client = new this.opts.ClientCtor({
-                ...this.opts.clientOptions,
-                host: this.opts.host,
-                port: this.opts.port,
-                pollingInterval: this.opts.pollingIntervalMs,
-                pollingTimeout: this.opts.pollingTimeoutMs,
-                connectTimeout: this.opts.connectTimeoutMs,
-                autoConnect: false,
-                // gree-hvac-client >= 4.2 re-binds by itself after a few
-                // no_response events; the manager's noResponseThreshold owns
-                // that decision (and tears down + rebuilds the client).
-                maxNoResponse: 0,
-                logLevel: this.opts.logLevel,
-            });
-        } catch (error) {
-            this._scheduleReconnect(error);
-            return;
-        }
-
-        this.client = client;
-        this.connected = false;
-        this.noResponseStreak = 0;
-
-        client.on('connect', () => {
-            if (this.client !== client) return;
-            this.connected = true;
-            this.connectedAt = Date.now();
-            this.lastContactAt = this.connectedAt;
-            this.noResponseStreak = 0;
-            this.consecutiveResets = 0;
-            this.backoffMs = this.opts.recoveryDelayMs; // reset on success
-            this.deviceId =
-                (typeof client.getDeviceId === 'function' &&
-                    client.getDeviceId()) ||
-                null;
-            this._setState('connected', { deviceId: this.deviceId });
-            this._scheduleDrain();
-        });
-
-        client.on('update', (updated, properties) => {
-            if (this.client !== client) return;
-            this.lastContactAt = Date.now();
-            this.noResponseStreak = 0;
-            this.emit('update', updated, properties);
-            this.emit('diagnostic', {
-                event: 'update',
-                at: this.lastContactAt,
-                updated,
-            });
-        });
-
-        client.on('success', (updated, properties) => {
-            if (this.client !== client) return;
-            this.lastContactAt = Date.now();
-            this.noResponseStreak = 0;
-            this.emit('success', updated, properties);
-            this.emit('diagnostic', {
-                event: 'write_ack',
-                at: this.lastContactAt,
-                updated,
-            });
-        });
-
-        client.on('no_response', () => {
-            if (this.client !== client) return;
-            this.noResponseStreak += 1;
-            this.emit('log', 'warn', 'No response from device', {
-                streak: this.noResponseStreak,
-                threshold: this.opts.noResponseThreshold,
-            });
-            this._setState('no_response', { streak: this.noResponseStreak });
-            if (this.noResponseStreak >= this.opts.noResponseThreshold) {
-                this.emit(
-                    'log',
-                    'warn',
-                    'No-response threshold hit, forcing reset'
-                );
-                this._forceReset(
-                    new Error(
-                        'No response from device for ' +
-                            this.noResponseStreak +
-                            ' consecutive polls'
-                    )
-                );
-            }
-        });
-
-        client.on('disconnect', () => {
-            if (this.client !== client) return;
-            if (!this.connected) return; // cancelled / failed connect
-            this.connected = false;
-            this._setState('reconnecting', { reason: 'client_disconnect' });
-        });
-
-        // gree-hvac-client >= 4.1.0 listens on its own UDP socket and
-        // re-emits socket failures here as ClientSocketError, so this one
-        // listener covers them too.
-        client.on('error', error => {
-            if (this.client !== client) return;
-            this._onClientError(error);
-        });
-
-        client.connect().catch(error => {
-            if (this.client !== client) return;
-            this._onClientError(error);
-        });
-    }
-
-    _onClientError(error) {
-        this.emit('failure', error);
-        this.emit('diagnostic', {
-            event: 'error',
-            at: Date.now(),
-            message: error && error.message,
-            name: error && error.name,
-        });
-        this._forceReset(error);
-    }
-
-    _forceReset(cause) {
-        if (this.stopped) return;
-        const wasConnected = this.connected;
-        this.connected = false;
-        this.consecutiveResets += 1;
-        this._teardownClient()
-            .catch(() => {})
-            .finally(() => {
-                if (this.stopped) return;
-                if (!wasConnected) {
-                    this.backoffMs = Math.min(
-                        this.opts.maxBackoffMs,
-                        Math.max(this.opts.recoveryDelayMs, this.backoffMs * 2)
-                    );
-                }
-                this._scheduleReconnect(cause);
-            });
-    }
-
-    _scheduleReconnect(cause) {
-        if (this.stopped || this.reconnectTimer) return;
-        const delay = this.backoffMs;
-        this.emit('log', 'info', 'Scheduling reconnect', {
-            delayMs: delay,
-            reason: cause && cause.message,
-        });
-        this._setState('reconnecting', {
-            delayMs: delay,
-            reason: cause && cause.message,
-        });
-        this.reconnectTimer = setTimeout(() => {
-            this.reconnectTimer = null;
-            this._buildClient();
-        }, delay);
-        if (typeof this.reconnectTimer.unref === 'function') {
-            this.reconnectTimer.unref();
-        }
-    }
-
-    _startWatchdog() {
-        const tick = () => {
-            if (this.stopped) return;
-            const now = Date.now();
-            if (this.connected && this.lastContactAt > 0) {
-                const silent = now - this.lastContactAt;
-                if (silent > this.opts.unresponsiveTimeoutMs) {
-                    this.emit(
-                        'log',
-                        'warn',
-                        'Watchdog: device silent too long',
-                        {
-                            silentMs: silent,
-                        }
-                    );
-                    this._forceReset(
-                        new Error(
-                            'Watchdog: device silent for ' + silent + 'ms'
-                        )
-                    );
-                    return;
-                }
-            } else if (
-                !this.connected &&
-                this.connectingSince > 0 &&
-                !this.reconnectTimer
-            ) {
-                const connectingFor = now - this.connectingSince;
-                if (connectingFor > this.opts.connectingTimeoutMs) {
-                    this.emit(
-                        'log',
-                        'warn',
-                        'Watchdog: stuck connecting, forcing reset',
-                        { connectingForMs: connectingFor }
-                    );
-                    this._forceReset(
-                        new Error(
-                            'Stuck in connecting for ' + connectingFor + 'ms'
-                        )
-                    );
-                    return;
-                }
-            }
-            this.watchdogTimer = setTimeout(tick, this.opts.watchdogTickMs);
-            if (typeof this.watchdogTimer.unref === 'function') {
-                this.watchdogTimer.unref();
-            }
-        };
-        this.watchdogTimer = setTimeout(tick, this.opts.watchdogTickMs);
-        if (typeof this.watchdogTimer.unref === 'function') {
-            this.watchdogTimer.unref();
-        }
-    }
-
     _clearTimer(name) {
         if (this[name]) {
             clearTimeout(this[name]);
             this[name] = null;
-        }
-    }
-
-    async _teardownClient() {
-        const client = this.client;
-        this.client = null;
-        this.connected = false;
-        this.connectedAt = 0;
-        this.connectingSince = 0;
-        if (!client) return;
-        // The upstream client leaves _bindTimeoutRef armed after dispose.
-        try {
-            if (client._bindTimeoutRef) {
-                clearTimeout(client._bindTimeoutRef);
-                client._bindTimeoutRef = null;
-            }
-        } catch (_) {
-            /* best effort */
-        }
-        // Neutralise the upstream's internal reconnect chain so its still-
-        // pending setTimeouts can't fire on a closed socket and emit
-        // further 'error' events. We deliberately keep our listeners
-        // attached (especially 'error') so any late event from this client
-        // is absorbed instead of becoming an uncaught 'error' emit.
-        try {
-            client._initialize = () => Promise.resolve();
-            client._scheduleReconnect = () => Promise.resolve();
-        } catch (_) {
-            /* best effort — private fields */
-        }
-        try {
-            await client.disconnect();
-        } catch (_) {
-            // disconnect throws ClientNotConnectedError when socket is
-            // already gone — fine, we are tearing down anyway
         }
     }
 }

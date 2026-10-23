@@ -23,7 +23,6 @@
                 }
             },
             broadcastAddress: { value: "255.255.255.255", required: false },
-            rediscoverInterval: { value: 60, required: false, validate: RED.validators.number() },
             subUnit: {
                 value: "",
                 required: false,
@@ -68,9 +67,9 @@
         <input type="checkbox" id="node-config-input-resolveByMac" style="display:inline-block; width:auto; vertical-align:top">
     </div>
     <div class="form-tips gree-mac-row" style="margin-bottom:8px">
-        Periodically discovers the device by its MAC/cid and follows it when its
-        IP changes (DHCP). The IP Address above is used as the last-known address;
-        leave it blank to wait for the first discovery.
+        Finds the device by its MAC/cid with a broadcast scan and follows it when
+        its IP changes (DHCP): once it stops answering, the next scan finds it at
+        its new address. The IP Address above is not used then.
     </div>
     <div class="form-row gree-mac-row">
         <label for="node-config-input-mac"><i class="fa fa-id-card-o"></i> Device MAC</label>
@@ -79,10 +78,6 @@
     <div class="form-row gree-mac-row">
         <label for="node-config-input-broadcastAddress"><i class="fa fa-bullhorn"></i> Broadcast</label>
         <input type="text" id="node-config-input-broadcastAddress" placeholder="255.255.255.255">
-    </div>
-    <div class="form-row gree-mac-row">
-        <label for="node-config-input-rediscoverInterval"><i class="fa fa-clock-o"></i> Rescan (s)</label>
-        <input type="number" id="node-config-input-rediscoverInterval" min="5" step="1" placeholder="60" style="width:100px">
     </div>
     <hr/>
     <h4>Unit</h4>
@@ -122,7 +117,7 @@
         <dt>IP Address / UDP port</dt>
         <dd>The unit's address (port 7000). Optional when <b>Resolve by MAC</b> is on.</dd>
         <dt>Resolve by MAC</dt>
-        <dd>Periodically broadcast-discovers the unit by its MAC (<code>cid</code>) and follows it across DHCP address changes. The client also binds only to that MAC.</dd>
+        <dd>Scans the <b>Broadcast</b> address for the unit with this MAC (<code>cid</code>) and binds only to it. After a DHCP address change the unit stops answering; after <em>no-response threshold</em> missed polls (plus the recovery delay) the next scan finds it at its new address. The IP Address is not used then.</dd>
         <dt>Indoor unit</dt>
         <dd>Multi-split systems only: the indoor unit's MAC. The address above is then the outdoor unit's WiFi module, which relays status and commands. Get the MACs with the <code>getSubUnits</code> action of a <code>gree-hvac</code> node pointed at the outdoor unit.</dd>
         <dt>Half-degree °C setpoints</dt>

@@ -354,19 +354,24 @@ The simulator can model a non-offset firmware for testing via the
 The client options and requests above, and where the nodes of this package
 expose them:
 
-| Client                                    | Node-RED                                                                                     |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `subUnit` option                          | `gree-hvac-config` → **Indoor unit** (multi-split; host/MAC = the outdoor unit)              |
-| `halfDegree` option                       | `gree-hvac-config` → **Half-degree °C setpoints**                                            |
-| `encodedTargetHumidity` option            | `gree-hvac-config` → **Encoded target humidity**                                             |
-| `statusBatchSize` option                  | `gree-hvac-config` → **Status batch**                                                        |
-| `mac` option                              | `gree-hvac-config` → **Resolve by MAC** (the client then binds only to that MAC)             |
-| `silent` option                           | `gree-hvac` → **Silent**                                                                     |
-| `maxNoResponse`                           | always `0`: the node's **No-response threshold** owns the re-bind                            |
-| `getProperties()`, `getDeviceInfo()`, ... | `gree-hvac` input `msg.action` = the method name, answer on output 4                         |
-| `getDeviceInfo().upgradeWarning`          | `device_info` diagnostic after each connect, plus a one-time warning in the Node-RED log     |
-| `Client.discover()`                       | `gree-hvac-discover`                                                                         |
-| `Client.configureWifi()`                  | `gree-hvac-discover` with `msg.action` = `configureWifi`, `msg.payload` = `{ssid, password}` |
+| Client                                    | Node-RED                                                                                            |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `subUnit` option                          | `gree-hvac-config` → **Indoor unit** (multi-split; host/MAC = the outdoor unit)                     |
+| `halfDegree` option                       | `gree-hvac-config` → **Half-degree °C setpoints**                                                   |
+| `encodedTargetHumidity` option            | `gree-hvac-config` → **Encoded target humidity**                                                    |
+| `statusBatchSize` option                  | `gree-hvac-config` → **Status batch**                                                               |
+| `mac` option                              | `gree-hvac-config` → **Resolve by MAC**: `host` = the **Broadcast** address, bound only to that MAC |
+| `silent` option                           | `gree-hvac` → **Silent**                                                                            |
+| `maxNoResponse`                           | `gree-hvac` → **No-response threshold**                                                             |
+| `recoveryDelay`                           | `gree-hvac` → **Recovery delay**                                                                    |
+| `reconnectMaxDelay`                       | `gree-hvac` → **Max backoff**                                                                       |
+| `connectTimeout`                          | `gree-hvac` → **Connect timeout**                                                                   |
+| `reopenSocket`                            | always `true`: a new UDP socket per reconnect attempt                                               |
+| `reconnecting` event                      | `reconnecting` state diagnostic on output 3 (`attempt`, `reason`, `delayMs`)                        |
+| `getProperties()`, `getDeviceInfo()`, ... | `gree-hvac` input `msg.action` = the method name, answer on output 4                                |
+| `getDeviceInfo().upgradeWarning`          | `device_info` diagnostic after each connect, plus a one-time warning in the Node-RED log            |
+| `Client.discover()`                       | `gree-hvac-discover`                                                                                |
+| `Client.configureWifi()`                  | `gree-hvac-discover` with `msg.action` = `configureWifi`, `msg.payload` = `{ssid, password}`        |
 
 ---
 

@@ -17,11 +17,14 @@ drive what actually gets worked on. This file is the curated summary.
   setpoints, silent commands, multi-split indoor units, firmware info with a
   cloud-only-firmware warning, raw vendor codes, clock and name (`msg.action`,
   output 4), decrypted discovery and AP-mode WiFi setup.
-- **Robust 24/7 operation** — a `ConnectionManager` with backoff reconnect and
-  watchdogs that absorbs client errors, so a bad packet, wrong IP, or flaky
-  second unit no longer crashes Node-RED.
+- **Recovery in the client** — reconnecting, the re-bind after missed polls
+  (with a recovery pause), a new UDP socket per attempt and following a unit by
+  MAC moved into `gree-hvac-client` 4.4; the node keeps one client and only adds
+  the write queue, status and diagnostics.
+- **Robust 24/7 operation** — client errors are absorbed, so a bad packet, wrong
+  IP, or flaky second unit no longer crashes Node-RED.
 - **Follow a device across DHCP changes** — optional "resolve by MAC" on the
-  config node re-points the connection when the IP changes (v1.6.0).
+  config node (v1.6.0; done by the client since 4.4).
 - **Correct `currentTemperature` on non-offset firmwares** — guards the `TemSen`
   `+40` quirk so affected units stop reporting bogus sub-zero readings (v1.5.2).
 - **`sleep` on/off actually works** — writes the paired `SwhSlp`/`SlpMod` codes.

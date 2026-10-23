@@ -91,14 +91,12 @@ test('config node normalises its fields', () => {
         resolveByMac: 'true',
         mac: '  AA:BB:CC:DD:EE:FF ',
         broadcastAddress: ' ',
-        rediscoverInterval: 'x',
     });
     assert.equal(dev.host, '10.0.0.5');
     assert.equal(dev.port, 7000);
     assert.equal(dev.resolveByMac, true);
     assert.equal(dev.mac, 'AA:BB:CC:DD:EE:FF');
     assert.equal(dev.broadcastAddress, '255.255.255.255');
-    assert.equal(dev.rediscoverInterval, 60);
 });
 
 test('gree-hvac without a usable device reports "no device"', () => {
@@ -217,22 +215,66 @@ test('heartbeat diagnostics go to output 3; debug forwards manager logs', async 
     assert.ok(node.logs.length + node.warnings.length > 0);
 });
 
-test('resolve-by-MAC finds the device and connects without a host', async t => {
+test('resolve-by-MAC scans the broadcast address and binds to that MAC only', async t => {
     const { node } = await setup(
         t,
-        { debug: true },
+        {},
         {
-            host: '',
+            // a stale host is ignored: the scan goes to the broadcast address
+            host: '10.255.255.1',
             resolveByMac: true,
             mac: CID,
             broadcastAddress: '127.0.0.1',
-            rediscoverInterval: 5,
         }
     );
-    await connected(node);
-    assert.ok(
-        node.logs.some(l => new RegExp(`Resolved ${CID} -> 127.0.0.1`).test(l))
+    const status = await connected(node);
+    assert.match(status.text, new RegExp(CID));
+});
+
+test('resolve-by-MAC ignores a unit with another MAC', async t => {
+    const { node } = await setup(
+        t,
+        {},
+        {
+            host: '',
+            resolveByMac: true,
+            mac: '0000000000aa',
+            broadcastAddress: '127.0.0.1',
+        }
     );
+    await new Promise(r => setTimeout(r, 1500));
+    assert.ok(!node.statuses.some(s => s.fill === 'green'));
+});
+
+test('a unit that stops answering is re-bound by the client; queued writes follow', async t => {
+    const { sim, fake, node } = await setup(t, { noResponseThreshold: 2 });
+    await connected(node);
+    const diagnostics = () =>
+        node.sent.filter(m => m[2]).map(m => m[2].payload);
+
+    // the unit goes silent
+    sim.faults.update({ dropProbability: 1 });
+    const reconnecting = await waitFor(
+        () =>
+            diagnostics().find(
+                d => d.event === 'state' && d.to === 'reconnecting'
+            ),
+        10000,
+        'reconnecting diagnostic'
+    );
+    assert.equal(reconnecting.reason, 'no_response');
+    assert.equal(node.context().get('gree').connected, false);
+
+    // a write while it is away is held, not lost
+    const { err } = await fake.input(node, { payload: { power: 'on' } });
+    assert.equal(err, undefined);
+
+    // the unit is back: re-bound, and the held write arrives
+    const bindsBefore = sim.stats.binds;
+    sim.faults.update({ dropProbability: 0 });
+    await waitFor(() => sim.stats.binds > bindsBefore, 15000, 'second bind');
+    await waitFor(() => sim.state.all.Pow === 1, 10000, 'held write applied');
+    assert.equal(node.context().get('gree').state, 'connected');
 });
 
 test('close stops the manager and reports "stopped"', async () => {

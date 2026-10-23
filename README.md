@@ -20,7 +20,7 @@
 
 Provides nodes to control Gree HVAC (heating, ventilation, and air conditioning) units.
 
-Designed for unattended 24/7 operation: the node owns the client lifecycle, drives reconnect with exponential backoff, and has two watchdogs (silence-while-connected and stuck-in-connecting) so a wedged Gree WiFi module recovers without a physical power cycle. See [CHANGELOG.md](CHANGELOG.md) for the full list of reliability features.
+Designed for unattended 24/7 operation: the node keeps one client connected for as long as it runs, and the client recovers by itself — connect retries with back-off, a re-bind after missed polls with a recovery pause first, and a new UDP socket for every attempt — so a wedged Gree WiFi module recovers without a physical power cycle. Writes made while the unit is away are held and sent after the re-bind. See [Connection and recovery](#connection-and-recovery) and [CHANGELOG.md](CHANGELOG.md).
 
 Nodes
 -----
@@ -28,14 +28,14 @@ Nodes
 - `gree-hvac` — control and observe a single HVAC unit. Four outputs:
   1. **Changes** — `updated` (delta from the device) or `acknowledged` (delta from a write).
   2. **Snapshot** — full current property map.
-  3. **Diagnostics** — structured events (`state`, `error`, `queue_overflow`, `heartbeat`, `update`, `write_ack`, `rehome`, `device_info`) with metrics for alerting and dashboards.
+  3. **Diagnostics** — structured events (`state`, `error`, `queue_overflow`, `heartbeat`, `update`, `write_ack`, `device_info`) with metrics for alerting and dashboards.
   4. **Responses** — answers to `msg.action` requests (device info, raw vendor codes, clock, name, multi-split indoor units, poll now).
 - `gree-hvac-discover` — broadcast-scans the subnet and returns the responding devices (MAC, IP, name, firmware, number of multi-split indoor units) for populating config nodes; it also joins a unit in setup mode to your WiFi (`msg.action = "configureWifi"`).
 - `gree-hvac-config` — host + UDP port of a single device, with optional **resolve-by-MAC** to follow the device across DHCP IP changes, the **indoor unit** of a multi-split system, and the unit's firmware options (half-degree setpoints, encoded target humidity, status batch size).
 
-The node also publishes a live metrics snapshot under `context().get('gree')` (state, uptime, last contact, queue size, reset counters, device info).
+The node also publishes a live metrics snapshot under `context().get('gree')` (state, uptime, last contact, no-response streak, reconnect attempt and reason, queue size, device info).
 
-Built on [`gree-hvac-client`](https://github.com/apachler/gree-hvac-client) 4.3, so it covers everything the client does: all 26 properties (incl. outdoor temperature, humidity, fault code, target humidity / humidity mode, anti-direct-blow, light sensor and the dehumidifier tank/filter flags on units that have them), Fahrenheit and half-degree setpoints, silent (no-beep) commands, multi-split systems, firmware info with a warning for cloud-only firmwares, raw vendor codes, the unit's clock and name, discovery and WiFi setup.
+Built on [`gree-hvac-client`](https://github.com/apachler/gree-hvac-client) 4.4, so it covers everything the client does: self-recovering connections, all 26 properties (incl. outdoor temperature, humidity, fault code, target humidity / humidity mode, anti-direct-blow, light sensor and the dehumidifier tank/filter flags on units that have them), Fahrenheit and half-degree setpoints, silent (no-beep) commands, multi-split systems, firmware info with a warning for cloud-only firmwares, raw vendor codes, the unit's clock and name, discovery and WiFi setup.
 
 Install
 -------
@@ -109,17 +109,48 @@ For what each property and value means, see the [**Gree protocol & property refe
 
 If your AC gets its address from DHCP, its IP can change and break a hard-coded
 host. Enable **Resolve by MAC** on the `gree-hvac-config` node and enter the
-device's **MAC/cid** (the `cid` field returned by `gree-hvac-discover`). The node
-then periodically broadcast-discovers that MAC, maps it to the device's current
-IP, and re-points the connection automatically when it moves — no flow edits, no
-restart.
+device's **MAC** (the `mac` field returned by `gree-hvac-discover`). The client
+then scans the **Broadcast** address and binds only to the unit with that MAC.
+When the unit moves, its polls go unanswered; after **No-response threshold**
+missed polls and the **Recovery delay** the client scans again and finds the
+unit at its new address — no flow edits, no restart.
 
-- The **IP Address** field is used as the last-known address; leave it blank to
-  wait for the first discovery before connecting.
-- **Broadcast** (default `255.255.255.255`) and **Rescan (s)** (default `60`)
-  tune the discovery sweep — set Broadcast to your subnet's broadcast address if
-  global broadcast is filtered.
-- A re-point is surfaced as a `rehome` diagnostic event on output 3.
+- The **IP Address** field is not used while resolve by MAC is on.
+- Set **Broadcast** (default `255.255.255.255`) to your subnet's broadcast
+  address if global broadcast is filtered.
+- Detection takes about _no-response threshold × polling interval + recovery
+  delay_ (≈ 45 s with the defaults). The move shows on output 3 as a
+  `reconnecting` state with reason `no_response`, then `connected`.
+- Broadcasts must reach the unit: with Node-RED in Docker that needs host
+  networking (see [Node-RED in Docker](#node-red-in-docker)). A DHCP reservation
+  for the AC is the alternative.
+
+### Connection and recovery
+
+The `gree-hvac` node keeps one [`gree-hvac-client`](https://github.com/apachler/gree-hvac-client)
+connected for as long as it runs; the client recovers by itself and never needs a
+restart:
+
+- **Connecting**: a scan + bind attempt per **Connect timeout**, backing off
+  (doubling) up to **Max backoff**.
+- **Unit stops answering**: after **No-response threshold** missed polls the
+  client drops the binding, sends nothing for **Recovery delay** — time for a
+  struggling WiFi module to recover instead of being flooded — then scans again,
+  backing off up to **Max backoff** while it stays away.
+- **New socket per attempt**: every reconnect opens a new UDP socket, which is
+  what un-wedges some WiFi modules short of a power cycle; a socket error starts
+  recovery too.
+- **Writes while away** are held in the node's queue (the same property
+  collapses to its latest value; at most **Max queued writes**, oldest dropped
+  with a `queue_overflow` diagnostic) and sent once the unit is bound again.
+  Turn on **Reject inputs while offline** to fail them instead.
+- **Requests** (`msg.action`) are not held: they fail at once while offline.
+
+Each step is reported on output 3 — `state` diagnostics `connecting` →
+`connected`, `no_response` (with the streak), `reconnecting` (with `attempt`,
+`reason` `connect_timeout` / `no_response` / `socket_error` and `delayMs`) —
+and in the node status. Client errors are reported as `error` diagnostics only;
+they never stop the node. Use a **Heartbeat interval** to alert on silence.
 
 ### Setting properties
 
@@ -268,21 +299,20 @@ Useful env vars while iterating:
 
 ### What's actually being tested
 
-| Test file                             | What it covers                                                                                                                                                                                                        |
-| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `test/connection-manager.test.js`     | Reconnect/backoff, watchdogs, write queue, refused-property handling, client options and `call()` of the 24/7 connection manager (stubbed client)                                                                     |
-| `test/mac-resolver.test.js`           | Resolve-by-MAC: MAC normalisation, discovery sweep, `resolved` on first find / IP change, `miss`, scan-failure handling                                                                                               |
-| `test/validation.test.js`             | Unknown, read-only and invalid properties are dropped before a write                                                                                                                                                  |
-| `test/examples.test.js`               | The shipped `examples/` flows: core node types only, wires resolve, every editor default set, inject payloads pass validation, inject actions exist                                                                   |
-| `test/gree-hvac-node.test.js`         | The three nodes on a fake Node-RED runtime, over real UDP to the in-process sim: outputs, input forms, validation, `msg.action` requests, device info, offline rejection, heartbeat, resolve-by-MAC, discovery        |
-| `sim/test/simulator.test.js`          | Wire-level: discovery, bind, status, cmd, fault injection — without involving the contrib nodes                                                                                                                       |
-| `sim/test/client-roundtrip.test.js`   | Real `gree-hvac-client` connecting to the in-process simulator over loopback                                                                                                                                          |
-| `sim/test/client-features.test.js`    | Real `gree-hvac-client` 4.3 against the sim: feature probing, every optional property, °F / half-degree setpoints, device info + firmware warning, clock, name, raw codes, silent, multi-split, discovery, WiFi setup |
-| `sim/test/dashboard.test.js`          | The sim's HTTP API and SSE stream: state, set, temperature, faults, stats, body limits                                                                                                                                |
-| `sim/test/cipher-faults.test.js`      | ECB/GCM ciphers, fault injector, and a real client binding over AES-GCM                                                                                                                                               |
-| `test/e2e/sim.e2e.test.js`            | Dashboard HTTP API + client round-trip against the dockerized sim                                                                                                                                                     |
-| `test/e2e/nodered.e2e.test.js`        | Node-RED admin API: the example flow is deployed with `gree-hvac-config` on `gree.lan`; firing its inject nodes drives the simulated AC on and off                                                                    |
-| `test/e2e/fault-recovery.e2e.test.js` | Sets `dropEvery: 3` on the sim and verifies a real state change still gets through                                                                                                                                    |
+| Test file                             | What it covers                                                                                                                                                                                                                                          |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `test/connection-manager.test.js`     | The adapter around the client (stubbed): option mapping, state/diagnostics from the client events, writes held while offline, coalescing queue, refused-property handling, `call()`, stop                                                               |
+| `test/validation.test.js`             | Unknown, read-only and invalid properties are dropped before a write                                                                                                                                                                                    |
+| `test/examples.test.js`               | The shipped `examples/` flows: core node types only, wires resolve, every editor default set, inject payloads pass validation, inject actions exist                                                                                                     |
+| `test/gree-hvac-node.test.js`         | The three nodes on a fake Node-RED runtime, over real UDP to the in-process sim: outputs, input forms, validation, `msg.action` requests, device info, offline rejection, recovery of a unit that stops answering, heartbeat, resolve-by-MAC, discovery |
+| `sim/test/simulator.test.js`          | Wire-level: discovery, bind, status, cmd, fault injection — without involving the contrib nodes                                                                                                                                                         |
+| `sim/test/client-roundtrip.test.js`   | Real `gree-hvac-client` connecting to the in-process simulator over loopback                                                                                                                                                                            |
+| `sim/test/client-features.test.js`    | The real `gree-hvac-client` against the sim: feature probing, every optional property, °F / half-degree setpoints, device info + firmware warning, clock, name, raw codes, silent, multi-split, discovery, WiFi setup                                   |
+| `sim/test/dashboard.test.js`          | The sim's HTTP API and SSE stream: state, set, temperature, faults, stats, body limits                                                                                                                                                                  |
+| `sim/test/cipher-faults.test.js`      | ECB/GCM ciphers, fault injector, and a real client binding over AES-GCM                                                                                                                                                                                 |
+| `test/e2e/sim.e2e.test.js`            | Dashboard HTTP API + client round-trip against the dockerized sim                                                                                                                                                                                       |
+| `test/e2e/nodered.e2e.test.js`        | Node-RED admin API: the example flow is deployed with `gree-hvac-config` on `gree.lan`; firing its inject nodes drives the simulated AC on and off                                                                                                      |
+| `test/e2e/fault-recovery.e2e.test.js` | Sets `dropEvery: 3` on the sim and verifies a real state change still gets through                                                                                                                                                                      |
 
 Contributing
 ------------
