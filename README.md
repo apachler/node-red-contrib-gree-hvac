@@ -264,6 +264,12 @@ License
 
 [MIT](LICENSE) © Igor Starovierov and contributors.
 
+This package requires [`gree-hvac-client`](https://github.com/apachler/gree-hvac-client)
+at runtime, which is licensed under **GPL-3.0**. It is installed as a separate
+dependency, not bundled — but anything you distribute that ships both together
+(a Node-RED installation, a container image, an appliance) must comply with
+GPL-3.0 as a whole. See [NOTICE](NOTICE).
+
 Acknowledgements
 ----------------
 
