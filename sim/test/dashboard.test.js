@@ -9,14 +9,11 @@ const http = require('http');
 
 const { Simulator } = require('../src/simulator');
 const { Dashboard } = require('../src/dashboard');
-const { MockSensors, DEFAULTS } = require('../src/sensors');
 
-const startStack = async (t, { sensors = true } = {}) => {
+const startStack = async t => {
     const sim = new Simulator({ port: 0, bindAddress: '127.0.0.1' });
     await sim.start();
-    const mock = sensors ? new MockSensors() : null;
     const dash = new Dashboard(sim, {
-        sensors: mock,
         port: 0,
         bindAddress: '127.0.0.1',
     });
@@ -25,7 +22,7 @@ const startStack = async (t, { sensors = true } = {}) => {
         await dash.stop();
         await sim.stop();
     });
-    return { sim, dash, mock, base: `http://127.0.0.1:${dash.port}` };
+    return { sim, dash, base: `http://127.0.0.1:${dash.port}` };
 };
 
 const request = (url, { method = 'GET', body } = {}) =>
@@ -125,27 +122,6 @@ test('stats can be read and reset', async t => {
     assert.equal(reset.json().packetsRx, 0);
 });
 
-test('mock sensors: read, partial update, unknown keys ignored', async t => {
-    const { base } = await startStack(t);
-    assert.deepEqual((await request(base + '/api/sensors')).json(), DEFAULTS);
-    const res = await post(base + '/api/sensors', {
-        soc: 55,
-        insideC: 'warm',
-        __proto__x: 1,
-    });
-    assert.equal(res.status, 200);
-    assert.equal(res.json().soc, 55);
-    assert.equal(res.json().insideC, DEFAULTS.insideC);
-    assert.equal(res.json().__proto__x, undefined);
-    assert.equal((await post(base + '/api/sensors', '{')).status, 400);
-});
-
-test('sensor endpoints without a sensor store', async t => {
-    const { base } = await startStack(t, { sensors: false });
-    assert.deepEqual((await request(base + '/api/sensors')).json(), {});
-    assert.equal((await post(base + '/api/sensors', { soc: 1 })).status, 404);
-});
-
 test('rejects request bodies over 64 KiB', async t => {
     const { base } = await startStack(t);
     const big = JSON.stringify({ pad: 'x'.repeat(70 * 1024) });
@@ -155,7 +131,7 @@ test('rejects request bodies over 64 KiB', async t => {
 });
 
 test('SSE stream sends a snapshot on connect and broadcasts changes', async t => {
-    const { sim, mock, base } = await startStack(t);
+    const { sim, base } = await startStack(t);
     const events = [];
     const res = await new Promise((resolve, reject) => {
         http.get(base + '/api/events', resolve).on('error', reject);
@@ -179,12 +155,8 @@ test('SSE stream sends a snapshot on connect and broadcasts changes', async t =>
 
     await waitEvent('state');
     await waitEvent('stats');
-    await waitEvent('sensors');
 
     events.length = 0;
     sim.state.apply(['Pow'], [1], 'test');
     await waitEvent('state');
-    events.length = 0;
-    mock.update({ soc: 12 });
-    await waitEvent('sensors');
 });

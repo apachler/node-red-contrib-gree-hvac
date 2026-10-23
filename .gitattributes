@@ -15,4 +15,3 @@ docs/logo.svg -text
 
 # Keep generated/large files out of language stats and collapse them in diffs.
 package-lock.json linguist-generated=true
-docker/nodered/flows.user.json linguist-generated=true -diff

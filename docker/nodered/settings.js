@@ -19,16 +19,10 @@ module.exports = {
         },
     },
     exportGlobalContextKeys: false,
-    contextStorage: {
-        default: { module: 'localfilesystem' },
-        persistent: { module: 'localfilesystem' },
-    },
     editorTheme: {
         projects: { enabled: false },
         codeEditor: { lib: 'monaco' },
     },
-    functionExternalModules: true,
-    functionGlobalContext: {},
     debugMaxLength: 1000,
     mqttReconnectTime: 15000,
     serialReconnectTime: 15000,

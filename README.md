@@ -69,14 +69,7 @@ Until then, check the installed version — the registry currently serves the un
 Usage
 -----
 
-The package gives you the three nodes above — wire `gree-hvac` into whatever dashboard or automation you like. For a ready-made setup, import the bundled **production flow** [`docker/nodered/flows.user.json`](docker/nodered/flows.user.json): a PV-surplus AC controller with a full Dashboard 2.0 UI — live status gauges, an Automatic/Manual operating-mode panel with direct AC ON/OFF, trend charts, and a Config page for every threshold. See [Example flow for real hardware](#example-flow-for-real-hardware) for wiring it to your AC and Victron/Ruuvi inputs.
-
-<p align="center">
-  <img src="docs/nodered-home.png" width="420" alt="Node-RED Dashboard 2.0 home page — status gauges, Automatic/Manual operating mode, AC controls, and trend charts" />
-</p>
-<p align="center">
-  <img src="docs/nodered-config.png" width="860" alt="Node-RED Dashboard 2.0 config page — temperature/deactivate thresholds, schedule, and battery/compressor protection settings" />
-</p>
+The package gives you the three nodes above — wire `gree-hvac` into whatever dashboard or automation you like. To get started, import the bundled example (see [Example flow](#example-flow) below).
 
 For what each property and value means, see the [**Gree protocol & property reference**](docs/PROTOCOL.md).
 
@@ -112,21 +105,10 @@ After cloning, run `npm install` once — the `prepare` script wires up `core.ho
 
 Skip the hooks in an emergency with `GREE_SKIP_LINT=1 git commit ...` / `GREE_SKIP_LINT=1 git push ...`. CI sets `CI=true` so the hooks are a no-op in workflows (CI runs `npm run lint` itself anyway).
 
-Example flow for real hardware
-------------------------------
-
-[`docker/nodered/flows.user.json`](docker/nodered/flows.user.json) is the **production** flow — the one to import into a real Node-RED (e.g. on a Victron Venus OS) controlling real Gree hardware. It contains only the control logic and dashboards; it has no simulator dependencies. After importing, point the `gree-hvac-config` node at your AC's host/IP and wire your real Victron/Ruuvi input nodes into the `Collect Data` function (named `Battery SOC`, `Battery State`, `Battery Voltage`, `Ruuvi Inside`, `Ruuvi Outside`).
-
-The simulator-only `flows.mocks.json` (the Sim Sensors / Sim Clock pages and mock sensor feed) is merged in **only** for the docker stack and must not be deployed to hardware. Its dashboard page lets you drive the mock Victron/Ruuvi values and a simulated clock that the control logic reads instead of the wall clock:
-
-<p align="center">
-  <img src="docs/nodered-sim-sensors.png" width="760" alt="Node-RED Sim Sensors page (sim-only) — mock battery SOC/voltage/state, inside/outside temperature, and a simulated hour-of-day clock" />
-</p>
-
 Development with the simulator
 ------------------------------
 
-The repo ships a software simulator of a Gree HVAC device, so you can develop and test the nodes without owning hardware. The simulator implements the same UDP protocol (AES-ECB / AES-GCM) the real device speaks, exposes a small HTTP dashboard that visualizes the AC state in real time, and holds the mock Victron / Ruuvi sensor values (`GET`/`POST /api/sensors`, set from Node-RED's **Sim Sensors** page) so the bundled example flow runs end-to-end.
+The repo ships a software simulator of a Gree HVAC device, so you can develop and test the nodes without owning hardware. The simulator implements the same UDP protocol (AES-ECB / AES-GCM) the real device speaks, and exposes a small HTTP dashboard that visualizes the AC state in real time.
 
 <p align="center">
   <img src="docs/sim-dashboard.png" width="900" alt="The simulator dashboard at :8080 — live AC state, change-source, direct controls, fault injection and protocol stats" />
@@ -153,9 +135,9 @@ This starts two services:
 | ---------- | --------------------- | ------------------------------------------------------------------------------------- |
 | `gree-sim` | http://localhost:8080 | Simulator dashboard (live AC state, direct controls, fault injection, protocol stats) |
 | `gree-sim` | udp://localhost:7000  | Gree protocol endpoint (also reachable in-cluster as `gree.lan`)                      |
-| `node-red` | http://localhost:1880 | Node-RED with the contrib nodes + the example flow pre-loaded                         |
+| `node-red` | http://localhost:1880 | Node-RED with the contrib nodes + the example flow pre-loaded, pointed at the sim     |
 
-The sim container is aliased as `gree.lan` on the docker network, so the example flow's `gree-hvac-config` (which targets `gree.lan`) works without modification.
+The pre-loaded flow is [`examples/basic-control.json`](examples/basic-control.json) with its `gree-hvac-config` host set to `gree.lan` (`docker/nodered/build-flows.js`, at image build time); the sim container is aliased as `gree.lan` on the docker network. Fire its inject buttons in the editor and watch the AC change on the sim dashboard.
 
 The ports are published on `127.0.0.1` only, because neither the sim dashboard nor the Node-RED editor has authentication. To open them to other machines on a trusted network, start the stack with `GREE_BIND=0.0.0.0 npm run sim:up`.
 
@@ -163,7 +145,7 @@ Tail logs and tear down:
 
 ```bash
 npm run sim:logs
-npm run sim:down    # also removes the network and the Node-RED userdir volume
+npm run sim:down    # also removes the network
 ```
 
 ### Hot-reload while iterating on the nodes
@@ -175,31 +157,9 @@ npm run sim:dev          # foreground; Ctrl+C to stop
 npm run sim:dev:down     # tear down the dev stack
 ```
 
-What's mounted: `./gree-hvac/` → `/data/node_modules/node-red-contrib-gree-hvac/gree-hvac/` (read-only) and `./package.json` → the same package's package.json. Flow edits made through the editor still persist into Node-RED's internal `/data` volume.
+What's mounted: `./gree-hvac/` → `/data/node_modules/node-red-contrib-gree-hvac/gree-hvac/` (read-only) and `./package.json` → the same package's package.json. Flow edits made in the editor live in the container's `/data` and are lost when it is recreated.
 
 Node-RED does not hot-reload nodes in place — `nodemon` restarts the whole runtime on change, so the editor will briefly lose its WebSocket and reconnect. The browser tab survives the restart; just re-deploy if you were mid-edit. Use `npm run sim:up` (the production-like mode) when you want stable behavior for the e2e suite or for letting flows run unattended.
-
-### Editing the flow without rebuilding
-
-The flow source lives in two files — [`docker/nodered/flows.user.json`](docker/nodered/flows.user.json) (production) and `flows.mocks.json` (sim-only mocks tab) — that are concatenated by `merge-flows.js` and baked into the image at **build time**. Three scripts move between those source files and the running editor so you don't have to rebuild for every flow tweak:
-
-| Command             | Direction                | What it does                                                                                                                                                                                                                                           |
-| ------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `npm run flow:push` | sources → running editor | Merges both source files and full-deploys them to the running Node-RED over its admin API. Loads instantly and persists to `/data` — **no rebuild**.                                                                                                   |
-| `npm run flow:pull` | running editor → sources | Captures the deployed flow and splits it back into the two source files (mock nodes detected by tab membership; shared dashboard config stays with the production flow so the files never collide). Order-preserving, so a small edit is a small diff. |
-| `merge-flows.js`    | sources → image          | Build step only; runs in the Dockerfile.                                                                                                                                                                                                               |
-
-```bash
-# Editing the source files on the host:
-#   edit flows.user.json / flows.mocks.json, then:
-npm run flow:push        # …and refresh the editor in the browser
-
-# Editing in the browser editor, then saving it back to the repo:
-#   edit + Deploy at http://localhost:1880, then:
-npm run flow:pull        # writes both source files — review with `git diff`
-```
-
-Both default to the full flow and target `http://127.0.0.1:1880` (override with `NR_URL`); each takes an optional target arg (`flow:push:user`, `flow:pull:user`, `flow:pull:mocks`). `flow:push` overwrites whatever is deployed, so refresh the editor afterward (and expect the usual "flows changed" warning if you had unsaved edits open). You still need a rebuild (`npm run sim:dev`) when the contrib node code or the image itself changes — but not for flow edits.
 
 ### Run the tests
 
@@ -207,7 +167,6 @@ Both default to the full flow and target `http://127.0.0.1:1880` (override with 
 
 ```bash
 npm test           # contrib nodes + their libs, against the in-process simulator
-npm run test:flow  # control logic of the production flow, with a fake clock
 npm run test:sim   # the simulator itself
 ```
 
@@ -231,14 +190,12 @@ Useful env vars while iterating:
 | `test/validation.test.js`             | Unknown/invalid properties are dropped before a write                                                                                                                      |
 | `test/examples.test.js`               | The shipped `examples/` flows: core node types only, wires resolve, every editor default set, inject payloads pass validation                                              |
 | `test/gree-hvac-node.test.js`         | The three nodes on a fake Node-RED runtime, over real UDP to the in-process sim: outputs, input forms, validation, offline rejection, heartbeat, resolve-by-MAC, discovery |
-| `test/flow-logic/flow-logic.test.js`  | The production flow's function-node code (extracted from `flows.user.json`) driven with a fake clock — debounces, thresholds, manual mode                                  |
 | `sim/test/simulator.test.js`          | Wire-level: discovery, bind, status, cmd, fault injection — without involving the contrib nodes                                                                            |
 | `sim/test/client-roundtrip.test.js`   | Real `gree-hvac-client` connecting to the in-process simulator over loopback                                                                                               |
-| `sim/test/dashboard.test.js`          | The sim's HTTP API and SSE stream: state, set, temperature, faults, stats, mock sensors, body limits                                                                       |
+| `sim/test/dashboard.test.js`          | The sim's HTTP API and SSE stream: state, set, temperature, faults, stats, body limits                                                                                     |
 | `sim/test/cipher-faults.test.js`      | ECB/GCM ciphers, fault injector, and a real client binding over AES-GCM                                                                                                    |
 | `test/e2e/sim.e2e.test.js`            | Dashboard HTTP API + client round-trip against the dockerized sim                                                                                                          |
-| `test/e2e/nodered.e2e.test.js`        | Node-RED admin API: flow deployed, `gree-hvac-config` host wired to `gree.lan`, manual switch + button flow drives the sim's AC state                                      |
-| `test/e2e/flow-logic.e2e.test.js`     | The real decision path: mock sensors (`POST /api/sensors`) → Collect Data → Main Logic → `gree-hvac` node → UDP → sim                                                      |
+| `test/e2e/nodered.e2e.test.js`        | Node-RED admin API: the example flow is deployed with `gree-hvac-config` on `gree.lan`; firing its inject nodes drives the simulated AC on and off                         |
 | `test/e2e/fault-recovery.e2e.test.js` | Sets `dropEvery: 3` on the sim and verifies a real state change still gets through                                                                                         |
 
 Contributing

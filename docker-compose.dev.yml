@@ -7,8 +7,8 @@
 #
 # or via the convenience script:  npm run sim:dev
 #
-# Edits to the Node-RED flow (via the editor) still persist into the
-# anonymous /data volume the way they would in the default stack.
+# Flow edits made in the editor live in the container's /data and are lost
+# when it is recreated.
 
 services:
   node-red:

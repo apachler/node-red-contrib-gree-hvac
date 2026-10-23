@@ -13,7 +13,6 @@ class Dashboard extends EventEmitter {
     constructor(simulator, opts = {}) {
         super();
         this.simulator = simulator;
-        this.sensors = opts.sensors || null;
         this.port = opts.port ?? 8080;
         this.bindAddress = opts.bindAddress || '0.0.0.0';
         this._server = null;
@@ -25,11 +24,6 @@ class Dashboard extends EventEmitter {
         simulator.on('packet-dropped', () =>
             this._broadcast('stats', simulator.stats)
         );
-        if (this.sensors) {
-            this.sensors.on('change', payload =>
-                this._broadcast('sensors', payload.state)
-            );
-        }
     }
 
     start() {
@@ -102,9 +96,6 @@ class Dashboard extends EventEmitter {
             if (route === 'POST /api/set') return this._setProperty(req, res);
             if (route === 'POST /api/temperature')
                 return this._setCurrentTemperature(req, res);
-            if (route === 'GET /api/sensors') return this._sendSensors(res);
-            if (route === 'POST /api/sensors')
-                return this._updateSensors(req, res);
             if (route === 'GET /api/events') return this._sse(req, res);
 
             res.writeHead(404, { 'Content-Type': 'text/plain' });
@@ -236,32 +227,6 @@ class Dashboard extends EventEmitter {
         // Push current snapshot on connect
         this._writeEvent(res, 'state', this._stateSnapshot());
         this._writeEvent(res, 'stats', this.simulator.stats);
-        if (this.sensors) {
-            this._writeEvent(res, 'sensors', this.sensors.snapshot());
-        }
-    }
-
-    _sendSensors(res) {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(this.sensors ? this.sensors.snapshot() : {}));
-    }
-
-    _updateSensors(req, res) {
-        if (!this.sensors) {
-            res.writeHead(404, { 'Content-Type': 'text/plain' });
-            res.end('sensors not configured');
-            return;
-        }
-        this._readJson(req)
-            .then(body => {
-                this.sensors.update(body || {});
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify(this.sensors.snapshot()));
-            })
-            .catch(err => {
-                res.writeHead(400, { 'Content-Type': 'text/plain' });
-                res.end(err.message);
-            });
     }
 
     _broadcast(event, data) {
