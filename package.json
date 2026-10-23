@@ -16,7 +16,11 @@
     "ac",
     "climate",
     "iot",
-    "udp"
+    "udp",
+    "climate-control",
+    "home-automation",
+    "smart-home",
+    "simulator"
   ],
   "homepage": "https://github.com/apachler/node-red-contrib-gree-hvac#readme",
   "bugs": {
