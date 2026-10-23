@@ -14,7 +14,9 @@ gree-hvac/                     published nodes
   lib/connection-manager.js      24/7 reconnect, backoff, watchdogs; swallows client 'error' events
   lib/validation.js              drops unknown/invalid properties before send
   lib/mac-resolver.js            resolve-by-MAC: re-discovers the device IP after DHCP changes
-  gree-hvac-config.js            device host+port      gree-hvac-discover.js  UDP broadcast discovery
+  lib/actions.js                 msg.action requests (getDeviceInfo, setClock, ...) → client methods, answered on output 4
+  gree-hvac-config.js            device host+port, multi-split subUnit, firmware options (halfDegree, ...)
+  gree-hvac-discover.js          Client.discover() scan + configureWifi (AP-mode setup)
 sim/                           standalone Gree simulator (cipher, transformer, state,
                                UDP server, HTTP+SSE dashboard, fault injection)
 docker/nodered/                Node-RED dev image; build-flows.js bakes examples/basic-control.json in (host gree.lan)

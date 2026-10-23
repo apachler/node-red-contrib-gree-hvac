@@ -279,9 +279,15 @@ test('discover node finds the simulator and rejects overlapping scans', async t 
     const { err, sent } = await first;
     assert.equal(err, undefined);
     assert.equal(sent[0].topic, 'gree-discovery');
-    assert.ok(
-        sent[0].payload.some(d => d.cid === CID && d.port === portOf(sim))
-    );
+    const found = sent[0].payload.find(d => d.mac === CID);
+    assert.ok(found, 'simulator in the discovery result');
+    assert.equal(found.cid, CID);
+    assert.equal(found.port, portOf(sim));
+    assert.equal(found.address, '127.0.0.1');
+    // decrypted scan answer
+    assert.equal(found.name, sim.name);
+    assert.equal(found.subUnits, 0);
+    assert.equal(found.pack.t, 'dev');
     assert.equal(node.statuses.at(-1).text, `found ${sent[0].payload.length}`);
 });
 
@@ -294,4 +300,167 @@ test('discover node reports send errors', async t => {
     });
     assert.ok(err instanceof Error);
     assert.equal(node.statuses.at(-1).fill, 'red');
+});
+
+test('msg.action requests answer on output 4 with the original msg', async t => {
+    const { sim, fake, node } = await setup(t);
+    await connected(node);
+
+    const props = await fake.input(node, {
+        action: 'getProperties',
+        _msgid: 'm1',
+    });
+    assert.equal(props.err, undefined);
+    const [out] = props.sent;
+    assert.deepEqual(out.slice(0, 3), [null, null, null]);
+    assert.equal(out[3].topic, 'getProperties');
+    assert.equal(out[3]._msgid, 'm1');
+    assert.equal(out[3].payload.power, 'off');
+
+    const vendor = await fake.input(node, {
+        action: 'getVendorProperties',
+        payload: ['Pow', 'SetTem'],
+    });
+    assert.equal(vendor.err, undefined);
+    assert.equal(vendor.sent[0][3].payload.Pow, 0);
+    assert.equal(vendor.sent[0][3].payload.SetTem, sim.state.all.SetTem);
+
+    const raw = await fake.input(node, {
+        action: 'setVendorProperties',
+        payload: { Lig: 1 },
+    });
+    assert.equal(raw.err, undefined);
+    assert.deepEqual(raw.sent[0][3].payload, { Lig: 1 });
+    await waitFor(() => sim.state.all.Lig === 1, 5000, 'sim lights on');
+
+    const clock = await fake.input(node, {
+        action: 'setClock',
+        payload: '2026-01-02T03:04:05',
+    });
+    assert.equal(clock.err, undefined);
+    assert.equal(clock.sent[0][3].payload, '2026-01-02 03:04:05');
+});
+
+test('connect publishes device info as a diagnostic and in the context', async t => {
+    const { fake, node } = await setup(t);
+    await connected(node);
+    const diag = await waitFor(
+        () =>
+            node.sent.find(
+                m =>
+                    m[2] && m[2].payload && m[2].payload.event === 'device_info'
+            ),
+        5000,
+        'device_info diagnostic'
+    );
+    assert.equal(diag[2].payload.mac, CID);
+    await waitFor(
+        () => (node.context().get('gree') || {}).deviceInfo,
+        2000,
+        'deviceInfo in context'
+    );
+    assert.equal(node.context().get('gree').deviceInfo.mac, CID);
+    const info = await fake.input(node, { action: 'getDeviceInfo' });
+    assert.equal(info.sent[0][3].payload.mac, CID);
+});
+
+test('bad actions and action payloads fail via done(err)', async t => {
+    const { fake, node } = await setup(t);
+    await connected(node);
+    const unknown = await fake.input(node, { action: 'reboot' });
+    assert.match(unknown.err.message, /Unknown action "reboot"/);
+    const proto = await fake.input(node, { action: 'constructor' });
+    assert.match(proto.err.message, /Unknown action/);
+    const name = await fake.input(node, { action: 'setName', payload: ' ' });
+    assert.match(name.err.message, /setName: payload/);
+    const clock = await fake.input(node, {
+        action: 'setClock',
+        payload: 'not a date',
+    });
+    assert.match(clock.err.message, /setClock: payload/);
+    const vendor = await fake.input(node, {
+        action: 'setVendorProperties',
+        payload: [],
+    });
+    assert.match(vendor.err.message, /setVendorProperties: payload/);
+});
+
+test('actions fail at once while offline', async t => {
+    const { fake, node } = await setup(t, {}, { port: await deadPort() });
+    const { err } = await fake.input(node, { action: 'getProperties' });
+    assert.match(err.message, /getProperties rejected: offline/);
+});
+
+test('read-only properties are refused; a setpoint the client refuses is warned', async t => {
+    const { sim, fake, node } = await setup(t);
+    await connected(node);
+    const ro = await fake.input(node, {
+        topic: 'currentTemperature',
+        payload: 20,
+    });
+    assert.match(ro.err.message, /read-only property: currentTemperature/);
+
+    const before = sim.state.all.SetTem;
+    const { err } = await fake.input(node, {
+        payload: { temperature: 99, lights: 'on' },
+    });
+    assert.equal(err, undefined);
+    await waitFor(() => sim.state.all.Lig === 1, 5000, 'sim lights on');
+    assert.equal(sim.state.all.SetTem, before);
+    await waitFor(
+        () => node.warnings.some(w => /Write failed: .*temperature/.test(w)),
+        2000,
+        'write-failed warning'
+    );
+    // still connected: a refused value is no connection fault
+    assert.equal(node.context().get('gree').state, 'connected');
+});
+
+test('unit options from the config node reach the client', async t => {
+    const { fake, node } = await setup(
+        t,
+        { silent: true },
+        { halfDegree: true, statusBatchSize: 7, subUnit: '' }
+    );
+    await connected(node);
+    // the client only takes a half-degree setpoint with halfDegree on
+    const { err } = await fake.input(node, { payload: { temperature: 22.5 } });
+    assert.equal(err, undefined);
+    await waitFor(
+        () => node.sent.find(m => m[0] && m[0].topic === 'acknowledged'),
+        5000,
+        'acknowledged'
+    );
+    assert.ok(!node.warnings.some(w => /Write failed/.test(w)));
+});
+
+test('discover node configureWifi joins a unit in AP mode, without echoing the password', async t => {
+    const sim = await startSim();
+    const fake = loadNodes();
+    const node = fake.create('gree-hvac-discover', {
+        id: 'wifi',
+        port: portOf(sim),
+    });
+    t.after(async () => {
+        await fake.close(node);
+        await sim.stop();
+    });
+
+    const { err, sent } = await fake.input(node, {
+        action: 'configureWifi',
+        payload: { ssid: 'home', password: 'secret', host: '127.0.0.1' },
+    });
+    assert.equal(err, undefined);
+    assert.equal(sent[0].topic, 'gree-wifi-setup');
+    assert.equal(sent[0].payload.confirmed, true);
+    assert.equal(sent[0].payload.mac, CID);
+    assert.ok(!JSON.stringify(sent[0]).includes('secret'));
+
+    const bad = await fake.input(node, {
+        action: 'configureWifi',
+        payload: { ssid: 'home' },
+    });
+    assert.match(bad.err.message, /configureWifi: payload/);
+    const unknown = await fake.input(node, { action: 'reboot' });
+    assert.match(unknown.err.message, /Unknown action/);
 });

@@ -12,6 +12,11 @@ services:
       GREE_SIM_CIPHER: "ecb"
       GREE_SIM_VERBOSE: "1"
       GREE_SIM_NAME: "Gree-Sim-AC"
+      # Optional features the unit has (friendly names or vendor codes,
+      # comma-separated, or all / none) — see README "Simulator configuration".
+      GREE_SIM_FEATURES: "all"
+      # Multi-split gateway: a count of indoor units or a list of their MACs.
+      # GREE_SIM_SUB_UNITS: "2"
     # Published on loopback only: the sim dashboard and the Node-RED editor
     # have no authentication. Set GREE_BIND=0.0.0.0 to reach them from other
     # machines on a trusted network.

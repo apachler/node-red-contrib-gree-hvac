@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const { validateProperties } = require('../gree-hvac/lib/validation');
+const { getAction } = require('../gree-hvac/lib/actions');
 
 const EXAMPLES = path.join(__dirname, '..', 'examples');
 const OWN_TYPES = new Set([
@@ -75,8 +76,8 @@ for (const file of files) {
             );
             assert.equal(
                 node.wires.length,
-                3,
-                `${node.id}: gree-hvac has 3 outputs`
+                4,
+                `${node.id}: gree-hvac has 4 outputs`
             );
         }
         for (const node of flow.filter(n => OWN_TYPES.has(n.type))) {
@@ -86,7 +87,7 @@ for (const file of files) {
         }
     });
 
-    test(`${file}: inject payloads into gree-hvac pass validation`, () => {
+    test(`${file}: inject payloads / actions into gree-hvac pass validation`, () => {
         const greeIds = new Set(
             flow.filter(n => n.type === 'gree-hvac').map(n => n.id)
         );
@@ -96,6 +97,26 @@ for (const file of files) {
                 n.wires.flat().some(id => greeIds.has(id))
         );
         for (const node of injects) {
+            const action = (node.props || []).find(p => p.p === 'action');
+            if (action) {
+                // a request instead of a property write: a known action
+                // whose arguments are accepted
+                assert.ok(
+                    getAction(action.v),
+                    `${node.id}: action ${action.v}`
+                );
+                const payload =
+                    node.payloadType === 'json'
+                        ? JSON.parse(node.payload)
+                        : node.payloadType === 'date'
+                          ? Date.now()
+                          : node.payload;
+                assert.doesNotThrow(
+                    () => getAction(action.v).args({ payload }),
+                    `${node.id} (${node.name})`
+                );
+                continue;
+            }
             const value =
                 node.payloadType === 'json'
                     ? JSON.parse(node.payload)

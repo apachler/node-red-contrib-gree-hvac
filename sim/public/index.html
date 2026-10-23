@@ -17,6 +17,8 @@
             <span id="dev-cid">—</span>
             <span class="dot"></span>
             <span id="dev-cipher">—</span>
+            <span class="dot"></span>
+            <span id="dev-version">—</span>
         </div>
     </header>
 
@@ -25,10 +27,12 @@
             <div class="display">
                 <div class="power" id="power-pill">OFF</div>
                 <div class="setpoint">
-                    <span id="setpoint-val">--</span><span class="unit">°C</span>
+                    <span id="setpoint-val">--</span><span class="unit" id="setpoint-unit">°C</span>
                 </div>
                 <div class="current">
                     Room: <span id="current-val">--</span>°C
+                    <span id="outdoor-row">· Outdoor: <span id="outdoor-val">--</span>°C</span>
+                    <span id="humidity-row">· Humidity: <span id="humidity-val">--</span>%</span>
                 </div>
                 <div class="mode">
                     Mode: <span id="mode-val">--</span> ·
@@ -42,6 +46,7 @@
                     Last change:
                     <span class="src-pill" id="lastchange-src">—</span>
                     <span id="lastchange-detail"></span>
+                    <span class="src-pill" id="lastcmd-beep" title="Beeper flags of the last Gree command (Buzzer_ON_OFF / BuzzerCtrl)" hidden>—</span>
                 </div>
                 <div class="features">
                     <span class="badge" id="badge-turbo">turbo</span>
@@ -51,12 +56,24 @@
                     <span class="badge" id="badge-health">health</span>
                     <span class="badge" id="badge-light">light</span>
                     <span class="badge" id="badge-powersave">eco</span>
+                    <span class="badge" id="badge-antidirect">anti-direct</span>
+                    <span class="badge" id="badge-lightsensor">light sensor</span>
+                    <span class="badge" id="badge-humiditymode">dry: off</span>
+                    <span class="badge alert" id="badge-waterfull">water full</span>
+                    <span class="badge alert" id="badge-cleanfilter">clean filter</span>
+                    <span class="badge alert" id="badge-error">error 0</span>
                 </div>
             </div>
 
             <div class="controls">
                 <h2>Control AC directly</h2>
                 <p class="hint">Sets the AC state directly on the simulator — every property the Gree protocol exposes, like a full remote control on the unit.</p>
+                <div class="row unit-row" id="unit-row" hidden>
+                    <label>Indoor unit (multi-split)
+                        <select id="ac-unit"></select>
+                        <small class="fh">This unit is a multi-split gateway: pick the indoor unit to show and control.</small>
+                    </label>
+                </div>
                 <div class="control-row">
                     <button id="ac-power" class="ctl-power">Toggle power</button>
                     <div class="stepper">
@@ -191,6 +208,62 @@
                         </select>
                         <small class="fh">Keep the room ≥&nbsp;8&nbsp;°C (anti-freeze).</small>
                     </label>
+                    <label>Half degree (Add0.5)
+                        <select id="ac-halfdegree">
+                            <option value="0">off</option>
+                            <option value="1">+0.5&nbsp;°C</option>
+                        </select>
+                        <small class="fh">Half-degree bit of a °C setpoint (some firmwares).</small>
+                    </label>
+                    <label>Anti-direct blow
+                        <select id="ac-antidirect">
+                            <option value="1">on</option>
+                            <option value="0">off</option>
+                        </select>
+                        <small class="fh">Keep the air flow off people (optional).</small>
+                    </label>
+                    <label>Light sensor
+                        <select id="ac-lightsensor">
+                            <option value="0">on</option>
+                            <option value="1">off</option>
+                        </select>
+                        <small class="fh">Dim the display by room light (LigSen, inverted; optional).</small>
+                    </label>
+                    <label>Humidity mode
+                        <select id="ac-humiditymode">
+                            <option value="15">off</option>
+                            <option value="0">target</option>
+                            <option value="1">continuous</option>
+                            <option value="2">smart</option>
+                        </select>
+                        <small class="fh">Humidity control, e.g. Airy Pro (Dmod; optional).</small>
+                    </label>
+                    <label>Target humidity (Dwet)
+                        <input type="number" id="ac-targethumidity" min="0" max="100" step="1" />
+                        <small class="fh">Raw value: % on dehumidifiers, (% − 15) / 5 on ACs.</small>
+                    </label>
+                    <label>Room humidity %
+                        <input type="number" id="ac-humidity" min="0" max="100" step="1" />
+                        <small class="fh">Indoor humidity sensor (DwatSen; read-only for clients).</small>
+                    </label>
+                    <label>Fault code
+                        <input type="number" id="ac-errorcode" min="0" step="1" />
+                        <small class="fh">AllErr, 0 = no fault (read-only for clients).</small>
+                    </label>
+                    <label>Water tank full
+                        <select id="ac-waterfull">
+                            <option value="1">yes</option>
+                            <option value="0">no</option>
+                        </select>
+                        <small class="fh">Dehumidifier tank (DwatFul; read-only for clients).</small>
+                    </label>
+                    <label>Clean filter
+                        <select id="ac-cleanfilter">
+                            <option value="1">yes</option>
+                            <option value="0">no</option>
+                        </select>
+                        <small class="fh">Dehumidifier filter (Dfltr; read-only for clients).</small>
+                    </label>
                 </div>
 
                 <div class="subsection">
@@ -201,10 +274,38 @@
                         <button id="tempBtn">Set</button>
                     </div>
                 </div>
+
+                <div class="subsection">
+                    <h2>Outdoor temperature</h2>
+                    <p class="hint">The outdoor unit's sensor (vendor <code>OutEnvTem</code>, +40 like <code>TemSen</code>; optional).</p>
+                    <div class="row">
+                        <input type="number" id="outdoorInput" value="18" min="-30" max="50" step="1" />
+                        <button id="outdoorBtn">Set</button>
+                    </div>
+                </div>
             </div>
         </section>
 
         <div class="side">
+            <section class="panel">
+                <h2>Device</h2>
+                <p class="hint">What the unit tells about itself: name, firmware id, clock, WiFi setup and multi-split indoor units.</p>
+                <dl class="device-info">
+                    <dt>Firmware id (hid)</dt><dd id="dev-hid">—</dd>
+                    <dt>Clock</dt><dd><span id="dev-clock">—</span> <button id="clockBtn" class="ghost" title="Set the unit's clock to this browser's time">Sync</button></dd>
+                    <dt>WiFi setup</dt><dd id="dev-wifi">—</dd>
+                    <dt>Indoor units</dt><dd id="dev-subunits">— (single unit)</dd>
+                </dl>
+                <div class="row">
+                    <input type="text" id="nameInput" maxlength="64" placeholder="Device name" />
+                    <button id="nameBtn">Rename</button>
+                </div>
+                <h3>Optional features</h3>
+                <p class="hint">Codes this unit answers. A unit without a feature answers its status request empty; clients probe after each bind, so reconnect them after a change.</p>
+                <div class="features-grid" id="features"></div>
+                <button id="featuresBtn">Apply features</button>
+            </section>
+
             <section class="panel">
                 <h2>Fault injection</h2>
                 <p class="hint">Simulate a flaky Wi-Fi link to the unit, to test client resilience.</p>

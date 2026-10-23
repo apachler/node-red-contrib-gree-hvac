@@ -3,8 +3,8 @@
     "id": "a1c0de0000000001",
     "type": "comment",
     "name": "Basic control — set your AC's IP in the \"Gree AC\" config node first",
-    "info": "Core nodes only, no dashboard needed.\n\n1. Double-click the **Gree HVAC** node, edit the **Gree AC** config node and set **Host** to your AC's IP (use the **gree-hvac-discover** node to find it), or turn on *Resolve by MAC*.\n2. Deploy, then click the inject buttons.\n\nInput: either `msg.payload` as a property object (`{\"power\":\"on\",\"mode\":\"cool\",\"temperature\":24}`) or `msg.topic` = property name with `msg.payload` = value. Unknown properties and invalid values are dropped with a warning.\n\nOutputs: 1 = changes (`updated` from the device, `acknowledged` after a write), 2 = full property snapshot, 3 = diagnostics (`state`, `error`, `heartbeat`, …). See docs/PROTOCOL.md for every property and value.",
-    "x": 280,
+    "info": "Core nodes only, no dashboard needed.\n\n1. Double-click the **Gree HVAC** node, edit the **Gree AC** config node and set **Host** to your AC's IP (use **Scan network** below to find it), or turn on *Resolve by MAC*. Multi-split systems: point it at the outdoor unit and enter the indoor unit's MAC (from the *Indoor units* button).\n2. Deploy, then click the inject buttons.\n\nInput: either `msg.payload` as a property object (`{\"power\":\"on\",\"mode\":\"cool\",\"temperature\":24}`) or `msg.topic` = property name with `msg.payload` = value. Unknown properties, read-only ones and invalid values are dropped with a warning. `msg.action` makes a request instead (`getProperties`, `getDeviceInfo`, `getSubUnits`, `getVendorProperties`, `setVendorProperties`, `getClock`, `setClock`, `setName`).\n\nOutputs: 1 = changes (`updated` from the device, `acknowledged` after a write), 2 = full property snapshot, 3 = diagnostics (`state`, `error`, `heartbeat`, `device_info`, …), 4 = responses to `msg.action`. See docs/PROTOCOL.md for every property and value.",
+    "x": 320,
     "y": 40,
     "wires": []
   },
@@ -12,7 +12,11 @@
     "id": "a1c0de0000000002",
     "type": "inject",
     "name": "On, cool to 24 °C",
-    "props": [{ "p": "payload" }],
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
     "repeat": "",
     "crontab": "",
     "once": false,
@@ -20,15 +24,23 @@
     "topic": "",
     "payload": "{\"power\":\"on\",\"mode\":\"cool\",\"temperature\":24}",
     "payloadType": "json",
-    "x": 150,
-    "y": 120,
+    "x": 160,
+    "y": 100,
     "wires": [["a1c0de0000000005"]]
   },
   {
     "id": "a1c0de0000000003",
     "type": "inject",
     "name": "Fan speed: auto",
-    "props": [{ "p": "payload" }, { "p": "topic", "vt": "str" }],
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
     "repeat": "",
     "crontab": "",
     "once": false,
@@ -36,15 +48,23 @@
     "topic": "fanSpeed",
     "payload": "auto",
     "payloadType": "str",
-    "x": 140,
-    "y": 180,
+    "x": 160,
+    "y": 150,
     "wires": [["a1c0de0000000005"]]
   },
   {
     "id": "a1c0de0000000004",
     "type": "inject",
     "name": "Off",
-    "props": [{ "p": "payload" }, { "p": "topic", "vt": "str" }],
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
     "repeat": "",
     "crontab": "",
     "once": false,
@@ -52,8 +72,153 @@
     "topic": "power",
     "payload": "off",
     "payloadType": "str",
-    "x": 110,
-    "y": 240,
+    "x": 160,
+    "y": 200,
+    "wires": [["a1c0de0000000005"]]
+  },
+  {
+    "id": "a1c0de0000000010",
+    "type": "inject",
+    "name": "Display dims with room light",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "{\"lights\":\"on\",\"lightSensor\":\"on\"}",
+    "payloadType": "json",
+    "x": 160,
+    "y": 250,
+    "wires": [["a1c0de0000000005"]]
+  },
+  {
+    "id": "a1c0de0000000011",
+    "type": "inject",
+    "name": "Refresh now",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "action",
+        "v": "getProperties",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "",
+    "payloadType": "str",
+    "x": 160,
+    "y": 320,
+    "wires": [["a1c0de0000000005"]]
+  },
+  {
+    "id": "a1c0de0000000012",
+    "type": "inject",
+    "name": "Device info / firmware",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "action",
+        "v": "getDeviceInfo",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "",
+    "payloadType": "str",
+    "x": 160,
+    "y": 370,
+    "wires": [["a1c0de0000000005"]]
+  },
+  {
+    "id": "a1c0de0000000013",
+    "type": "inject",
+    "name": "Indoor units (multi-split)",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "action",
+        "v": "getSubUnits",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "",
+    "payloadType": "str",
+    "x": 160,
+    "y": 420,
+    "wires": [["a1c0de0000000005"]]
+  },
+  {
+    "id": "a1c0de0000000014",
+    "type": "inject",
+    "name": "Sync the unit's clock",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "action",
+        "v": "setClock",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 160,
+    "y": 470,
+    "wires": [["a1c0de0000000005"]]
+  },
+  {
+    "id": "a1c0de0000000015",
+    "type": "inject",
+    "name": "Read raw vendor codes",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "action",
+        "v": "getVendorProperties",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "[\"hid\",\"time\"]",
+    "payloadType": "json",
+    "x": 160,
+    "y": 520,
     "wires": [["a1c0de0000000005"]]
   },
   {
@@ -76,9 +241,15 @@
     "validate": true,
     "logLevel": "error",
     "debug": false,
-    "x": 370,
-    "y": 180,
-    "wires": [["a1c0de0000000006"], ["a1c0de0000000007"], ["a1c0de0000000008"]]
+    "x": 440,
+    "y": 300,
+    "wires": [
+      ["a1c0de0000000006"],
+      ["a1c0de0000000007"],
+      ["a1c0de0000000008"],
+      ["a1c0de0000000016"]
+    ],
+    "silent": false
   },
   {
     "id": "a1c0de0000000006",
@@ -90,8 +261,8 @@
     "tostatus": false,
     "complete": "true",
     "targetType": "full",
-    "x": 580,
-    "y": 120,
+    "x": 680,
+    "y": 220,
     "wires": []
   },
   {
@@ -104,8 +275,8 @@
     "tostatus": false,
     "complete": "payload",
     "targetType": "msg",
-    "x": 580,
-    "y": 180,
+    "x": 680,
+    "y": 270,
     "wires": []
   },
   {
@@ -118,8 +289,67 @@
     "tostatus": false,
     "complete": "payload",
     "targetType": "msg",
-    "x": 590,
-    "y": 240,
+    "x": 680,
+    "y": 320,
+    "wires": []
+  },
+  {
+    "id": "a1c0de0000000016",
+    "type": "debug",
+    "name": "Responses",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "true",
+    "targetType": "full",
+    "x": 680,
+    "y": 370,
+    "wires": []
+  },
+  {
+    "id": "a1c0de0000000017",
+    "type": "inject",
+    "name": "Scan network",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 150,
+    "y": 600,
+    "wires": [["a1c0de0000000018"]]
+  },
+  {
+    "id": "a1c0de0000000018",
+    "type": "gree-hvac-discover",
+    "name": "Gree discover",
+    "broadcastAddress": "255.255.255.255",
+    "port": 7000,
+    "listenWindowMs": 3000,
+    "x": 360,
+    "y": 600,
+    "wires": [["a1c0de0000000019"]]
+  },
+  {
+    "id": "a1c0de0000000019",
+    "type": "debug",
+    "name": "Devices",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "x": 560,
+    "y": 600,
     "wires": []
   },
   {
@@ -131,6 +361,10 @@
     "resolveByMac": false,
     "mac": "",
     "broadcastAddress": "255.255.255.255",
-    "rediscoverInterval": 60
+    "rediscoverInterval": 60,
+    "subUnit": "",
+    "halfDegree": false,
+    "encodedTargetHumidity": false,
+    "statusBatchSize": 20
   }
 ]

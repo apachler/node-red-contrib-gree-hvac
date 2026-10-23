@@ -6,6 +6,34 @@ const $ = sel => document.querySelector(sel);
 // values (e.g. to toggle power or step the setpoint relative to "now").
 let lastState = null;
 
+// Indoor unit shown and controlled on a multi-split gateway (null = the unit)
+let currentUnit = null;
+
+// Optional features, in the order the client probes them
+const FEATURE_LABELS = {
+    AntiDirectBlow: 'anti-direct blow',
+    OutEnvTem: 'outdoor temp',
+    DwatSen: 'humidity sensor',
+    AllErr: 'fault code',
+    Dwet: 'target humidity',
+    DwatFul: 'water full',
+    Dfltr: 'clean filter',
+    Dmod: 'humidity mode',
+    LigSen: 'light sensor',
+};
+
+const HUMIDITY_MODES = { 15: 'off', 0: 'target', 1: 'continuous', 2: 'smart' };
+
+/**
+ * @param {string} path
+ * @returns {string} path addressing the current indoor unit, if any
+ */
+function withUnit(path) {
+    return currentUnit
+        ? `${path}?unit=${encodeURIComponent(currentUnit)}`
+        : path;
+}
+
 /**
  *
  * @param s
@@ -15,18 +43,28 @@ function renderState(s) {
     $('#dev-name').textContent = s.name;
     $('#dev-cid').textContent = s.cid;
     $('#dev-cipher').textContent = `cipher: ${s.cipher}`;
+    $('#dev-version').textContent = s.version || '—';
 
     const f = s.friendly;
+    const v = s.vendor || {};
+    const has = code => (s.features || []).includes(code);
     const power = f.power === 'on';
     $('#power-pill').textContent = power ? 'ON' : 'OFF';
     $('#power-pill').classList.toggle('on', power);
 
+    const sp = s.setpoint || {};
     $('#setpoint-val').textContent =
-        typeof f.temperature === 'number' ? f.temperature : '--';
+        typeof sp.value === 'number' ? sp.value : '--';
+    $('#setpoint-unit').textContent = sp.unit || '°C';
     $('#current-val').textContent =
         s.currentTemperatureC === null
             ? '--'
             : s.currentTemperatureC.toFixed(1);
+    $('#outdoor-row').hidden = !has('OutEnvTem');
+    $('#outdoor-val').textContent =
+        s.outdoorTemperatureC === null ? '--' : s.outdoorTemperatureC;
+    $('#humidity-row').hidden = !has('DwatSen');
+    $('#humidity-val').textContent = v.DwatSen ?? '--';
     $('#mode-val').textContent = f.mode || '--';
     $('#fan-val').textContent = f.fanSpeed || '--';
     $('#swingH-val').textContent = f.swingHor || '--';
@@ -39,9 +77,27 @@ function renderState(s) {
     toggleBadge('badge-health', f.health === 'on');
     toggleBadge('badge-light', f.lights === 'on');
     toggleBadge('badge-powersave', f.powerSave === 'on');
+    toggleBadge(
+        'badge-antidirect',
+        f.antiDirectBlow === 'on',
+        has('AntiDirectBlow')
+    );
+    toggleBadge('badge-lightsensor', f.lightSensor === 'on', has('LigSen'));
+    toggleBadge(
+        'badge-humiditymode',
+        v.Dmod !== undefined && v.Dmod !== 15,
+        has('Dmod')
+    );
+    $('#badge-humiditymode').textContent =
+        'dry: ' + (HUMIDITY_MODES[v.Dmod] ?? v.Dmod);
+    toggleBadge('badge-waterfull', v.DwatFul === 1, has('DwatFul'));
+    toggleBadge('badge-cleanfilter', v.Dfltr === 1, has('Dfltr'));
+    toggleBadge('badge-error', !!v.AllErr, has('AllErr'));
+    $('#badge-error').textContent = `error ${v.AllErr ?? 0}`;
 
     renderControls(s);
-    renderLastChange(s.lastChange);
+    renderDevice(s);
+    renderLastChange(s.lastChange, s.lastCommand);
 }
 
 const SOURCE_LABELS = {
@@ -54,14 +110,24 @@ let lastChangeAt = null;
 /**
  * Show the origin of the most recent state change and briefly flash when a
  * new change arrives, so flow-driven changes are distinguishable from
- * direct dashboard actions.
+ * direct dashboard actions. A Gree command also shows whether it asked the
+ * unit not to beep.
  *
  * @param lc
+ * @param cmd
  */
-function renderLastChange(lc) {
+function renderLastChange(lc, cmd) {
     const pill = $('#lastchange-src');
     const detail = $('#lastchange-detail');
+    const beep = $('#lastcmd-beep');
     if (!pill || !detail) return;
+    if (beep) {
+        beep.hidden = !cmd;
+        if (cmd) {
+            beep.textContent = cmd.silent ? 'silent' : 'beep';
+            beep.className = 'src-pill' + (cmd.silent ? ' silent' : '');
+        }
+    }
     if (!lc) {
         pill.textContent = '—';
         pill.className = 'src-pill';
@@ -104,10 +170,65 @@ function renderControls(s) {
     for (const [sel, code] of Object.entries(AC_SELECTS)) {
         setSelect('#' + sel, v[code]);
     }
+    for (const [sel, code] of Object.entries(AC_NUMBERS)) {
+        const el = $('#' + sel);
+        // don't overwrite what the user is typing
+        if (el && document.activeElement !== el && v[code] !== undefined) {
+            el.value = String(v[code]);
+        }
+    }
     const temp = $('#ac-temp-val');
     if (temp) {
         temp.textContent =
             typeof v.SetTem === 'number' ? `${v.SetTem}°C` : '--°C';
+    }
+
+    const units = s.subUnits || [];
+    $('#unit-row').hidden = units.length === 0;
+    const select = $('#ac-unit');
+    const options = [{ mac: '', label: `${s.cid} (gateway)` }].concat(
+        units.map(u => ({ mac: u.mac, label: u.mac }))
+    );
+    if (select.options.length !== options.length) {
+        select.innerHTML = '';
+        for (const o of options) {
+            const opt = document.createElement('option');
+            opt.value = o.mac;
+            opt.textContent = o.label;
+            select.appendChild(opt);
+        }
+    }
+    select.value = s.unit || '';
+}
+
+/**
+ * Device identity, clock, WiFi setup and optional features.
+ *
+ * @param s
+ */
+function renderDevice(s) {
+    $('#dev-hid').textContent = s.hid || '— (not reported)';
+    $('#dev-clock').textContent = s.clock || '—';
+    $('#dev-wifi').textContent = s.wifi
+        ? `joined “${s.wifi.ssid}” at ${new Date(s.wifi.at).toLocaleTimeString()}`
+        : '— (no setup request)';
+    const units = s.subUnits || [];
+    $('#dev-subunits').textContent = units.length
+        ? units.map(u => u.mac).join(', ')
+        : '— (single unit)';
+    const nameInput = $('#nameInput');
+    if (document.activeElement !== nameInput) nameInput.value = s.name;
+
+    const box = $('#features');
+    if (!box.children.length) {
+        for (const [code, label] of Object.entries(FEATURE_LABELS)) {
+            const l = document.createElement('label');
+            l.innerHTML = `<input type="checkbox" value="${code}" /> ${label}`;
+            box.appendChild(l);
+        }
+    }
+    for (const input of box.querySelectorAll('input')) {
+        input.checked = (s.features || []).includes(input.value);
     }
 }
 
@@ -127,6 +248,19 @@ const AC_SELECTS = {
     'ac-turbo': 'Tur',
     'ac-powersave': 'SvSt',
     'ac-safety': 'StHt',
+    'ac-halfdegree': 'Add0.5',
+    'ac-antidirect': 'AntiDirectBlow',
+    'ac-lightsensor': 'LigSen',
+    'ac-humiditymode': 'Dmod',
+    'ac-waterfull': 'DwatFul',
+    'ac-cleanfilter': 'Dfltr',
+};
+
+// Maps each direct-control number <input> to its Gree vendor property code.
+const AC_NUMBERS = {
+    'ac-targethumidity': 'Dwet',
+    'ac-humidity': 'DwatSen',
+    'ac-errorcode': 'AllErr',
 };
 
 /**
@@ -142,10 +276,14 @@ function setSelect(sel, value) {
  *
  * @param id
  * @param on
+ * @param [available] hide the badge when the unit lacks the feature
  */
-function toggleBadge(id, on) {
+function toggleBadge(id, on, available = true) {
     const el = document.getElementById(id);
-    if (el) el.classList.toggle('on', !!on);
+    if (el) {
+        el.classList.toggle('on', !!on);
+        el.hidden = !available;
+    }
 }
 
 /**
@@ -189,6 +327,8 @@ function renderStats(stats) {
             .join('');
     }
     $('#stats').textContent = JSON.stringify(stats, null, 2);
+    // the unit's clock keeps ticking: refresh it with the stats heartbeat
+    if (lastState) refreshState();
 }
 
 /**
@@ -214,6 +354,34 @@ async function fetchJson(url, opts) {
 }
 
 /**
+ * Re-read the snapshot of the current unit.
+ */
+function refreshState() {
+    fetchJson(withUnit('/api/state'))
+        .then(renderState)
+        .catch(() => {});
+}
+
+/**
+ * POST a JSON body to a state-changing endpoint and render the answer.
+ *
+ * @param path
+ * @param body
+ */
+async function post(path, body) {
+    try {
+        const s = await fetchJson(withUnit(path), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        renderState(s);
+    } catch (e) {
+        alert('failed: ' + e.message);
+    }
+}
+
+/**
  *
  */
 async function init() {
@@ -231,30 +399,43 @@ async function init() {
     }
 
     const es = new EventSource('/api/events');
-    es.addEventListener('state', () => {
-        // payload from sim is {changed, state}; refetch the snapshot to keep render simple
-        fetchJson('/api/state')
-            .then(renderState)
-            .catch(() => {});
-    });
+    // payload from sim is {changed, state}; refetch the snapshot to keep render simple
+    es.addEventListener('state', refreshState);
     es.addEventListener('stats', e => renderStats(JSON.parse(e.data)));
     es.onerror = () => {
         // EventSource auto-reconnects; nothing to do
     };
 
-    $('#tempBtn').addEventListener('click', async () => {
+    $('#tempBtn').addEventListener('click', () => {
         const c = Number($('#tempInput').value);
-        if (!Number.isFinite(c)) return;
-        try {
-            const s = await fetchJson('/api/temperature', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ celsius: c }),
-            });
-            renderState(s);
-        } catch (e) {
-            alert('failed: ' + e.message);
-        }
+        if (Number.isFinite(c)) post('/api/temperature', { celsius: c });
+    });
+    $('#outdoorBtn').addEventListener('click', () => {
+        const c = Number($('#outdoorInput').value);
+        if (Number.isFinite(c))
+            post('/api/outdoor-temperature', { celsius: c });
+    });
+    $('#nameBtn').addEventListener('click', () =>
+        post('/api/name', { name: $('#nameInput').value })
+    );
+    // the browser's local time, as gree-hvac-client's setClock() sends it
+    $('#clockBtn').addEventListener('click', () => {
+        const d = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        const time =
+            `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
+            `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+        post('/api/clock', { time });
+    });
+    $('#featuresBtn').addEventListener('click', () => {
+        const features = [...document.querySelectorAll('#features input')]
+            .filter(i => i.checked)
+            .map(i => i.value);
+        post('/api/features', { features });
+    });
+    $('#ac-unit').addEventListener('change', e => {
+        currentUnit = e.target.value || null;
+        refreshState();
     });
 
     $('#statsResetBtn').addEventListener('click', async () => {
@@ -293,12 +474,16 @@ async function init() {
     });
     $('#ac-temp-up').addEventListener('click', () => stepTemp(1));
     $('#ac-temp-down').addEventListener('click', () => stepTemp(-1));
-    for (const [sel, code] of Object.entries(AC_SELECTS)) {
+    for (const [sel, code] of Object.entries({
+        ...AC_SELECTS,
+        ...AC_NUMBERS,
+    })) {
         const el = $('#' + sel);
         if (el) {
-            el.addEventListener('change', e =>
-                setAc({ [code]: Number(e.target.value) })
-            );
+            el.addEventListener('change', e => {
+                const value = Number(e.target.value);
+                if (Number.isFinite(value)) setAc({ [code]: value });
+            });
         }
     }
 }
@@ -323,18 +508,10 @@ function stepTemp(delta) {
  * UI updates immediately.
  *
  * @param vendorProps
+ * @returns {Promise<void>}
  */
-async function setAc(vendorProps) {
-    try {
-        const s = await fetchJson('/api/set', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(vendorProps),
-        });
-        renderState(s);
-    } catch (e) {
-        alert('failed: ' + e.message);
-    }
+function setAc(vendorProps) {
+    return post('/api/set', vendorProps);
 }
 
 init();

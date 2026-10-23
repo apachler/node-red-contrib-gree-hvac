@@ -11,6 +11,12 @@ drive what actually gets worked on. This file is the curated summary.
 
 ## Recently shipped
 
+- **Everything in `gree-hvac-client` 4.3** — the optional properties (outdoor
+  temperature, humidity, fault code, target humidity / humidity mode,
+  anti-direct-blow, light sensor, dehumidifier flags), Fahrenheit and half-degree
+  setpoints, silent commands, multi-split indoor units, firmware info with a
+  cloud-only-firmware warning, raw vendor codes, clock and name (`msg.action`,
+  output 4), decrypted discovery and AP-mode WiFi setup.
 - **Robust 24/7 operation** — a `ConnectionManager` with backoff reconnect and
   watchdogs that absorbs client errors, so a bad packet, wrong IP, or flaky
   second unit no longer crashes Node-RED.
@@ -25,8 +31,6 @@ drive what actually gets worked on. This file is the curated summary.
 
 ## Considering (near-term, no hardware needed)
 
-- **Fahrenheit setpoints** — surface `{temperature, temperatureUnit:"fahrenheit"}`
-  end-to-end (needs hardware to verify the round-trip — see _Help wanted_).
 - **SBOM on release** — attach a CycloneDX/SPDX bill of materials to each
   GitHub Release for supply-chain transparency.
 - **Stricter container scanning** — flip the Trivy image scan from report-only to
@@ -38,7 +42,10 @@ drive what actually gets worked on. This file is the curated summary.
 These need a real device + a `logLevel:"debug"` capture to make progress. If you
 have the hardware, a debug trace on an issue is the most useful contribution.
 
-- **Fahrenheit round-trip verification** on a unit that reports °F.
+- **Fahrenheit round-trip verification** on a unit that reports °F (the
+  `TemRec` encoding is implemented, verified against the simulator only).
+- **Multi-split verification** — indoor-unit listing and addressing follow
+  community reverse-engineering; a trace from a real outdoor unit is welcome.
 - **Firmware ≥ 1.21 GCM handshake quirk** — GCM is supported, but some commercial
   ceiling units still fail _after_ a successful bind; needs a post-bind trace.
 - **Gree RV air-conditioner** — reportedly emits no unsolicited status; needs a
@@ -49,9 +56,9 @@ have the hardware, a debug trace on an issue is the most useful contribution.
 - **iFeel external room-temperature feed** — iFeel is driven by the remote over
   IR (the sensor lives in the handset); most units expose no LAN write path for
   an external temperature, so there's no clean implementation over this transport.
-- **AP-mode WiFi provisioning ("add WiFi")** — pushing SSID/password to a
-  factory-reset unit is niche and carries real bricking risk; use the vendor app
-  for onboarding. May revisit if there's clear demand.
+- **Schedules and firmware upgrades** — the vendor app deletes schedules it did
+  not create, and a firmware upgrade can switch the WiFi module to cloud-only
+  firmware for good; neither is exposed.
 
 ## Process notes
 

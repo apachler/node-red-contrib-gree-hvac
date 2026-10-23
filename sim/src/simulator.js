@@ -14,6 +14,11 @@ const { FaultInjector } = require('./fault-injection');
 
 const DEFAULT_BRAND = 'gree';
 const DEFAULT_MODEL = 'sim-1.0';
+const DEFAULT_VERSION = 'V1.0.0';
+// Firmware id (`hid` status column): firmware code + WiFi module + version.
+// This code is not on the client's cloud-only list, so no upgrade warning.
+const DEFAULT_HID = '362001000762+U-CS532AE(LT)V3.31.bin';
+const MAX_NAME_LENGTH = 64;
 
 class Simulator extends EventEmitter {
     constructor(opts = {}) {
@@ -26,14 +31,35 @@ class Simulator extends EventEmitter {
         this.name = opts.name || `gree-sim-${this.cid.slice(-4)}`;
         this.brand = opts.brand || DEFAULT_BRAND;
         this.model = opts.model || DEFAULT_MODEL;
+        this.version = opts.version || DEFAULT_VERSION;
+        // null/'' models a unit that does not report a firmware id
+        this.hid = opts.hid === undefined ? DEFAULT_HID : opts.hid || null;
         this.cipherMode = opts.cipherMode || 'ecb'; // 'ecb' | 'gcm'
         this.verbose = opts.verbose || false; // log every protocol event
         this._deviceKey = opts.deviceKey || randomDeviceKey();
+        const stateOptions = {
+            temSenOffset: opts.temSenOffset,
+            features: opts.features,
+        };
         this._state =
             opts.state ||
-            new DeviceState(opts.initialState || {}, {
-                temSenOffset: opts.temSenOffset,
-            });
+            new DeviceState(opts.initialState || {}, stateOptions);
+        // Multi-split: this unit is the outdoor unit's WiFi module (gateway)
+        // and relays status/cmd to its indoor units, each with its own state.
+        this._subUnits = new Map();
+        for (const mac of subUnitMacs(opts.subUnits, this.cid)) {
+            const state = new DeviceState({}, stateOptions);
+            state.on('change', payload =>
+                this.emit('state-change', { ...payload, unit: mac })
+            );
+            this._subUnits.set(mac, { mac, mid: '10001', state });
+        }
+        // The unit's clock, as an offset from this host's clock
+        this._clockOffsetMs = 0;
+        // Last WiFi setup (AP mode) request; the password is not kept
+        this._wifi = null;
+        // Beeper flags of the last command (per command, not device state)
+        this._lastCommand = null;
         this._faults = new FaultInjector(opts.faults || {});
 
         this._genericEcb = new EcbCipher(ECB_GENERIC_KEY);
@@ -52,6 +78,8 @@ class Simulator extends EventEmitter {
             binds: 0,
             statusRequests: 0,
             commands: 0,
+            subLists: 0,
+            wifiSetups: 0,
             errors: 0,
         };
         this._startedAt = Date.now();
@@ -71,6 +99,71 @@ class Simulator extends EventEmitter {
     }
     get faults() {
         return this._faults;
+    }
+    /** @returns {Array<{mac: string, mid: string}>} indoor units (multi-split) */
+    get subUnits() {
+        return [...this._subUnits.values()].map(({ mac, mid }) => ({
+            mac,
+            mid,
+        }));
+    }
+    /**
+     * @param {string|null} [mac] indoor unit; the unit itself when empty/unknown
+     * @returns {DeviceState}
+     */
+    unitState(mac) {
+        const unit = mac && this._subUnits.get(String(mac));
+        return unit ? unit.state : this._state;
+    }
+    get wifi() {
+        return this._wifi ? { ...this._wifi } : null;
+    }
+    get lastCommand() {
+        return this._lastCommand ? { ...this._lastCommand } : null;
+    }
+
+    /** @returns {string} the unit's clock, `YYYY-MM-DD HH:MM:SS` local time */
+    get clock() {
+        return formatTime(new Date(Date.now() + this._clockOffsetMs));
+    }
+
+    /**
+     * @param {string|Date} time `YYYY-MM-DD HH:MM:SS` (local) or a Date
+     * @param {string} [source]
+     * @returns {boolean} true when the time was valid
+     */
+    setClock(time, source = 'sim') {
+        const date = time instanceof Date ? time : parseTime(time);
+        if (!date) return false;
+        this._clockOffsetMs = date.getTime() - Date.now();
+        this._emitIdentityChange({ time: this.clock }, source);
+        return true;
+    }
+
+    /**
+     * @param {string} name new device name (shown in scan answers)
+     * @param {string} [source]
+     * @returns {boolean} true when the name was valid
+     */
+    setName(name, source = 'sim') {
+        const next = String(name ?? '')
+            .trim()
+            .slice(0, MAX_NAME_LENGTH);
+        if (!next) return false;
+        if (next !== this.name) {
+            this.name = next;
+            this._emitIdentityChange({ name: next }, source);
+        }
+        return true;
+    }
+
+    _emitIdentityChange(changed, source) {
+        this.emit('state-change', {
+            changed,
+            state: this._state.all,
+            source,
+            at: Date.now(),
+        });
     }
     get stats() {
         const out = this._stats.packetsTx + this._stats.packetsDropped;
@@ -154,6 +247,21 @@ class Simulator extends EventEmitter {
                 return this._respondScan(rinfo);
             }
 
+            // Unencrypted WiFi setup of a unit in AP mode
+            if (msg.t === 'wlan') {
+                this._stats.wifiSetups++;
+                this._log('wlan     ←', `${rinfo.address}:${rinfo.port}`);
+                return this._respondWifi(msg, rinfo);
+            }
+
+            // Classic multi-split unit list, generic key (AES-ECB modules)
+            if (msg.t === 'subList' && msg.pack) {
+                if (!this._decryptGeneric(msg)) return;
+                this._stats.subLists++;
+                this._log('subList  ←', `${rinfo.address}:${rinfo.port}`);
+                return this._respondSubList(rinfo, true);
+            }
+
             if (msg.t === 'pack' && msg.pack) {
                 const inner = this._decryptInbound(msg);
                 if (!inner) return;
@@ -186,6 +294,11 @@ class Simulator extends EventEmitter {
                         )}`
                     );
                     return this._respondCmd(inner, rinfo);
+                }
+                if (inner.t === 'subList') {
+                    this._stats.subLists++;
+                    this._log('subList  ←', `${rinfo.address}:${rinfo.port}`);
+                    return this._respondSubList(rinfo, false);
                 }
                 this.emit('protocol-error', {
                     error: 'unknown-inner',
@@ -223,6 +336,24 @@ class Simulator extends EventEmitter {
         this._stats.errors++;
         this.emit('protocol-error', { error: 'decrypt-failed' });
         return null;
+    }
+
+    _decryptGeneric(envelope) {
+        try {
+            return this.cipherMode === 'gcm'
+                ? this._genericGcm.decrypt(envelope.pack, envelope.tag)
+                : this._genericEcb.decrypt(envelope.pack);
+        } catch (_) {
+            this._stats.errors++;
+            this.emit('protocol-error', { error: 'decrypt-failed' });
+            return null;
+        }
+    }
+
+    _sealGeneric(payload) {
+        return this.cipherMode === 'gcm'
+            ? this._genericGcm.encrypt(payload)
+            : this._genericEcb.encrypt(payload);
     }
 
     _send(envelope, rinfo) {
@@ -268,10 +399,13 @@ class Simulator extends EventEmitter {
             model: this.model,
             name: this.name,
             series: 'gree',
-            ver: 'V1.0.0',
+            ver: this.version,
             vender: '1',
             lock: 0,
         };
+        if (this._subUnits.size > 0) {
+            innerPayload.subCnt = this._subUnits.size;
+        }
         const sealed =
             this.cipherMode === 'gcm'
                 ? this._genericGcm.encrypt(innerPayload)
@@ -315,11 +449,16 @@ class Simulator extends EventEmitter {
     }
 
     _respondStatus(inner, rinfo) {
-        const cols = Array.isArray(inner.cols) ? inner.cols : [];
-        const dat = this._state.getCols(cols);
+        const requested = Array.isArray(inner.cols) ? inner.cols : [];
+        // A multi-split gateway answers for the indoor unit named in `mac`
+        const { cols, dat } = this.unitState(inner.mac).read(requested, {
+            time: this.clock,
+            name: this.name,
+            hid: this.hid,
+        });
         const payload = {
             t: 'dat',
-            mac: this.cid,
+            mac: inner.mac || this.cid,
             cid: this.cid,
             r: 200,
             cols,
@@ -345,7 +484,35 @@ class Simulator extends EventEmitter {
         // Node-RED flow's gree-hvac node, gree-hvac-client, or a real app).
         // Tag the change as protocol-driven so the dashboard can tell it
         // apart from a direct action taken on the dashboard itself.
-        this._state.apply(opts, vals, 'udp');
+        // The beeper flags, the clock and the name are not device state:
+        // take them out before applying the rest to the addressed unit.
+        const keys = [];
+        const values = [];
+        let silent = false;
+        for (let i = 0; i < opts.length; i++) {
+            const key = opts[i];
+            const val = vals[i];
+            if (key === 'Buzzer_ON_OFF') {
+                silent = silent || val === 1; // older firmwares: 1 = silent
+            } else if (key === 'BuzzerCtrl') {
+                silent = silent || val === 0; // newer firmwares: 0 = silent
+            } else if (key === 'time') {
+                this.setClock(val, 'udp');
+            } else if (key === 'name') {
+                this.setName(val, 'udp');
+            } else {
+                keys.push(key);
+                values.push(val);
+            }
+        }
+        // `sub` names the indoor unit on a multi-split gateway; setClock()
+        // sends the unit's own MAC there, which means the unit itself.
+        const unit =
+            inner.sub && this._subUnits.has(String(inner.sub))
+                ? String(inner.sub)
+                : null;
+        this._lastCommand = { at: Date.now(), silent, unit };
+        this.unitState(unit).apply(keys, values, 'udp');
         const payload = {
             t: 'res',
             mac: this.cid,
@@ -368,11 +535,108 @@ class Simulator extends EventEmitter {
         this._send(envelope, rinfo);
     }
 
+    /**
+     * Answer a subList request: the device-key form comes in a `pack`
+     * envelope, the classic form (`generic`) with the generic key. A unit
+     * that is no gateway answers with an empty list.
+     *
+     * @param {object} rinfo
+     * @param {boolean} generic
+     */
+    _respondSubList(rinfo, generic) {
+        const list = this.subUnits;
+        const payload = {
+            t: 'subList',
+            mac: this.cid,
+            r: 200,
+            c: list.length,
+            i: generic ? 1 : 0,
+            list,
+        };
+        const sealed = generic
+            ? this._sealGeneric(payload)
+            : this._sealWithDeviceKey(payload);
+        const envelope = {
+            t: 'pack',
+            i: generic ? 1 : 0,
+            uid: 0,
+            cid: this.cid,
+            tcid: '',
+            pack: sealed.pack,
+        };
+        if (sealed.tag) envelope.tag = sealed.tag;
+        this._send(envelope, rinfo);
+    }
+
+    _respondWifi(msg, rinfo) {
+        if (typeof msg.ssid !== 'string' || !msg.ssid) {
+            this.emit('protocol-error', { error: 'wlan-without-ssid' });
+            return;
+        }
+        this._wifi = { ssid: msg.ssid.slice(0, 64), at: Date.now() };
+        this._emitIdentityChange({ wifi: this._wifi.ssid }, 'udp');
+        // Answered unencrypted: there is no key in AP mode
+        this._send({ t: 'ret', r: 200, mac: this.cid }, rinfo);
+    }
+
     _sealWithDeviceKey(payload) {
         return this._deviceCipher instanceof GcmCipher
             ? this._deviceCipher.encrypt(payload)
             : this._deviceCipher.encrypt(payload);
     }
+}
+
+/**
+ * @param {Date} date
+ * @returns {string} `YYYY-MM-DD HH:MM:SS` in local time, as units report it
+ */
+function formatTime(date) {
+    const pad = n => String(n).padStart(2, '0');
+    return (
+        `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ` +
+        `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+    );
+}
+
+/**
+ * @param {unknown} time `YYYY-MM-DD HH:MM:SS`, local time
+ * @returns {Date|null}
+ */
+function parseTime(time) {
+    const m = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/.exec(
+        String(time)
+    );
+    if (!m) return null;
+    const [y, mo, d, h, mi, se] = m.slice(1).map(Number);
+    const date = new Date(y, mo - 1, d, h, mi, se);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/**
+ * Indoor-unit MACs of a multi-split gateway: a count (derived from the
+ * gateway cid; indoor-unit MACs may be longer than 12 hex digits) or a
+ * comma-separated list / array of MACs.
+ *
+ * @param {number|string|string[]|undefined} subUnits
+ * @param {string} cid
+ * @returns {string[]}
+ */
+function subUnitMacs(subUnits, cid) {
+    if (subUnits === undefined || subUnits === null || subUnits === '') {
+        return [];
+    }
+    if (Array.isArray(subUnits)) return subUnits.map(String);
+    if (/^\d+$/.test(String(subUnits).trim())) {
+        const n = Math.min(Number(subUnits), 16);
+        return Array.from(
+            { length: n },
+            (_, i) => `${cid}${String(i + 1).padStart(2, '0')}`
+        );
+    }
+    return String(subUnits)
+        .split(',')
+        .map(m => m.trim().toLowerCase())
+        .filter(Boolean);
 }
 
 /**
@@ -384,4 +648,4 @@ function generateCid() {
     return bytes.toString('hex');
 }
 
-module.exports = { Simulator };
+module.exports = { Simulator, formatTime, parseTime, subUnitMacs };
