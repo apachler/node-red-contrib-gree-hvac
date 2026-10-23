@@ -1,3 +1,10 @@
+## [1.6.7](https://github.com/apachler/node-red-contrib-gree-hvac/compare/v1.6.6...v1.6.7) (2026-10-23)
+
+
+### Bug Fixes
+
+* **package:** ship a NOTICE about the GPL-3.0 runtime dependency ([#66](https://github.com/apachler/node-red-contrib-gree-hvac/issues/66)) ([b703af3](https://github.com/apachler/node-red-contrib-gree-hvac/commit/b703af3ff2008689323b85b3b01ab24c6e4f55c1))
+
 ## [1.6.6](https://github.com/apachler/node-red-contrib-gree-hvac/compare/v1.6.5...v1.6.6) (2026-10-23)
 
 
