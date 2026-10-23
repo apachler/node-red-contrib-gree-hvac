@@ -73,4 +73,5 @@ jobs:
           path: |
             docs/demo.gif
             docs/sim-dashboard.png
+            docs/example-flow.png
           if-no-files-found: warn

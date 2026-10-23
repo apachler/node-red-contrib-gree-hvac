@@ -191,7 +191,31 @@ A unit whose WiFi was reset (MODE + WIFI, or MODE + TURBO, on the remote for 5 s
 
 ### Example flow
 
-A flow ships with the package: in the Node-RED editor, open **Import → Examples → node-red-contrib-gree-hvac → basic-control**. It uses only core nodes — inject buttons for properties (on + cool to 24 °C, fan speed, off, display dimming with the room light) and for requests (refresh now, device info / firmware, indoor units, clock sync, raw vendor codes) into a `gree-hvac` node with a debug node on each of its four outputs, plus a **Scan network** button on a `gree-hvac-discover` node. Set the `Gree AC` config node's host to your AC's IP (or turn on resolve by MAC) and deploy.
+A ready-to-run flow ships with the package: in the Node-RED editor, open **☰ Menu → Import → Examples → node-red-contrib-gree-hvac → basic-control**. It uses only core nodes (inject, debug, comment) besides ours, so it imports on any Node-RED 3+ — no dashboard package needed.
+
+<p align="center">
+  <img src="docs/example-flow.png" width="900" alt="The basic-control example flow in the Node-RED editor: inject buttons wired into the Gree HVAC node (status: connected), debug nodes on its four outputs, a Scan network button on Gree discover, and the debug sidebar with an acknowledged write, a diagnostic and a getDeviceInfo response" />
+</p>
+
+To use it:
+
+1. Double-click **Gree HVAC**, edit its **Gree AC** config node and set **IP Address** to your AC's IP — click **Scan network** first to find it — or turn on **Resolve by MAC**.
+2. **Deploy**. The node's status turns green with the unit's MAC once it is bound.
+3. Click the inject buttons and watch the **debug** sidebar.
+
+| Button                       | Sends                                                            | Answer on                          |
+| ---------------------------- | ---------------------------------------------------------------- | ---------------------------------- |
+| On, cool to 24 °C            | `msg.payload = {"power":"on","mode":"cool","temperature":24}`    | Changes (`acknowledged`), Snapshot |
+| Fan speed: auto / Off        | `msg.topic` = property, `msg.payload` = value                    | Changes, Snapshot                  |
+| Display dims with room light | `{"lights":"on","lightSensor":"on"}` (units with a light sensor) | Changes, Snapshot                  |
+| Refresh now                  | `msg.action = "getProperties"`                                   | Responses                          |
+| Device info / firmware       | `msg.action = "getDeviceInfo"`                                   | Responses                          |
+| Indoor units (multi-split)   | `msg.action = "getSubUnits"`                                     | Responses (`[]` for a single unit) |
+| Sync the unit's clock        | `msg.action = "setClock"` with the inject timestamp              | Responses                          |
+| Read raw vendor codes        | `msg.action = "getVendorProperties"`, `["hid","time"]`           | Responses                          |
+| Scan network                 | a discovery scan on **Gree discover**                            | Devices                            |
+
+The four debug nodes are the `gree-hvac` outputs: **Changes** (what changed, from the unit or after a write), **Snapshot** (all properties, off by default — enable it to see every poll), **Diagnostics** (connection state, errors, heartbeat, `device_info`) and **Responses** (answers to `msg.action`). Copy what you need into your own flows; the help panel of each node lists every input and output. The [Docker stack](#development-with-the-simulator) loads the same flow, pointed at the simulator.
 
 Protocol
 --------
