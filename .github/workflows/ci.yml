@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   # The lint toolchain (ESLint 10 + eslint-plugin-jsdoc) requires Node 22+,
-  # so linting runs on its own job. Runtime tests still cover Node 18/20/22.
+  # so linting runs on its own job. Runtime tests cover Node 18/20/22/24.
   lint:
     name: Lint (Node 22)
     runs-on: ubuntu-latest
@@ -40,7 +40,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: [18.x, 20.x, 22.x]
+        node-version: [18.x, 20.x, 22.x, 24.x]
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

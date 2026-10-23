@@ -59,7 +59,7 @@ async function teardownStack() {
     if (process.env.E2E_STACK_UP === '1') return;
     try {
         await down();
-    } catch (e) {
+    } catch (_) {
         /* best-effort */
     }
 }
