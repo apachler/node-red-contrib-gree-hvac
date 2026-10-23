@@ -4,7 +4,7 @@
         "type": "tab",
         "label": "🧪 Mocks (sim only)",
         "disabled": false,
-        "info": "Pumps mock Victron + Ruuvi sensor values from the simulator container into the 'Collect Data' function in the main flow. This tab replaces the role of the Victron + Ruuvi input nodes when there is no Venus OS / dbus available.\n\nReads values from the simulator's HTTP API:\n  GET http://gree.lan:8080/api/sensors\n\nFor the dashboard / control logic to react, set values on the simulator dashboard at http://localhost:8080/, or use the 'Sim Sensors' dashboard page."
+        "info": "Pumps mock Victron + Ruuvi sensor values from the simulator container into the 'Collect Data' function in the main flow. This tab replaces the role of the Victron + Ruuvi input nodes when there is no Venus OS / dbus available.\n\nReads values from the simulator's HTTP API:\n  GET http://gree.lan:8080/api/sensors\n\nFor the dashboard / control logic to react, set values on the 'Sim Sensors' dashboard page (or POST http://localhost:8080/api/sensors)."
     },
     {
         "id": "mock-tick",

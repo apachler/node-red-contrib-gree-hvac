@@ -27,7 +27,7 @@ Nodes
 - `gree-hvac` — control and observe a single HVAC unit. Three outputs:
   1. **Changes** — `updated` (delta from the device) or `acknowledged` (delta from a write).
   2. **Snapshot** — full current property map.
-  3. **Diagnostics** — structured events (`state`, `error`, `queue_overflow`, `heartbeat`, `update`, `write_ack`) with metrics for alerting and dashboards.
+  3. **Diagnostics** — structured events (`state`, `error`, `queue_overflow`, `heartbeat`, `update`, `write_ack`, `rehome`) with metrics for alerting and dashboards.
 - `gree-hvac-discover` — broadcast-scans the subnet and returns the list of responding devices for populating config nodes.
 - `gree-hvac-config` — host + UDP port of a single device, with optional **resolve-by-MAC** to follow the device across DHCP IP changes.
 
@@ -111,9 +111,9 @@ The Gree UDP/AES wire protocol and every device property (vendor code, values, a
 Development setup
 -----------------
 
-After cloning, run `npm install` once — the `prepare` script wires up `core.hooksPath` to `./.githooks/` so the pre-push hook runs `eslint --fix` against the whole repo before every push. Pushes are refused if eslint reports errors it couldn't auto-fix, or if `--fix` produced changes that haven't been staged + committed (so the fix lands in a reviewable commit, not silently on the remote).
+After cloning, run `npm install` once — the `prepare` script wires up `core.hooksPath` to `./.githooks/` so two git hooks run: **commit-msg** rejects commit subjects that aren't [Conventional Commits](https://www.conventionalcommits.org/), and **pre-push** runs `eslint --fix` against the whole repo before every push. Pushes are refused if eslint reports errors it couldn't auto-fix, or if `--fix` produced changes that haven't been staged + committed (so the fix lands in a reviewable commit, not silently on the remote).
 
-Skip the hook for an emergency push with `GREE_SKIP_LINT=1 git push ...`. CI sets `CI=true` so the hook is a no-op in workflows (CI runs `npm run lint` itself anyway).
+Skip the hooks in an emergency with `GREE_SKIP_LINT=1 git commit ...` / `GREE_SKIP_LINT=1 git push ...`. CI sets `CI=true` so the hooks are a no-op in workflows (CI runs `npm run lint` itself anyway).
 
 Example flow for real hardware
 ------------------------------
@@ -129,13 +129,13 @@ The simulator-only `flows.mocks.json` (the Sim Sensors / Sim Clock pages and moc
 Development with the simulator
 ------------------------------
 
-The repo ships a software simulator of a Gree HVAC device, so you can develop and test the nodes without owning hardware. The simulator implements the same UDP protocol (AES-ECB / AES-GCM) the real device speaks, exposes a small HTTP dashboard that visualizes the AC state in real time, and serves mock Victron / Ruuvi sensor values so the bundled example flow runs end-to-end.
+The repo ships a software simulator of a Gree HVAC device, so you can develop and test the nodes without owning hardware. The simulator implements the same UDP protocol (AES-ECB / AES-GCM) the real device speaks, exposes a small HTTP dashboard that visualizes the AC state in real time, and holds the mock Victron / Ruuvi sensor values (`GET`/`POST /api/sensors`, set from Node-RED's **Sim Sensors** page) so the bundled example flow runs end-to-end.
 
 <p align="center">
-  <img src="docs/sim-dashboard.png" width="900" alt="The simulator dashboard at :8080 — live AC state, change-source, direct controls, fault injection and mock sensors" />
+  <img src="docs/sim-dashboard.png" width="900" alt="The simulator dashboard at :8080 — live AC state, change-source, direct controls, fault injection and protocol stats" />
 </p>
 
-The dashboard shows live AC state and the **source** of each change ("Gree UDP protocol" when a client sets a value over the wire, "HTTP API" for a direct dashboard/REST action), plus controls to drive the AC directly, inject faults (packet drop / latency), and set the mock sensor values the example flow consumes.
+The dashboard shows live AC state and the **source** of each change ("Gree UDP protocol" when a client sets a value over the wire, "HTTP API" for a direct dashboard/REST action), plus controls to drive the AC directly (every protocol property, and the unit's own room-temperature reading), inject faults (packet drop / latency / jitter), and watch live UDP protocol stats.
 
 > The dashboard screenshots in this README are generated, not hand-placed — regenerate them with `node docs/screenshot.mjs` against a running stack (see [`docs/`](docs/)). `docs/demo.tape` renders an optional terminal demo GIF via [`vhs`](https://github.com/charmbracelet/vhs); it's also wired into the manual **Docs media** workflow.
 
@@ -154,7 +154,7 @@ This starts two services:
 
 | Service        | URL                                | What it is                                            |
 | -------------- | ---------------------------------- | ----------------------------------------------------- |
-| `gree-sim`     | http://localhost:8080              | Simulator dashboard (live AC state, fault injection, mock sensor knobs) |
+| `gree-sim`     | http://localhost:8080              | Simulator dashboard (live AC state, direct controls, fault injection, protocol stats) |
 | `gree-sim`     | udp://localhost:7000               | Gree protocol endpoint (also reachable in-cluster as `gree.lan`) |
 | `node-red`     | http://localhost:1880              | Node-RED with the contrib nodes + the example flow pre-loaded |
 
@@ -204,10 +204,12 @@ Both default to the full flow and target `http://127.0.0.1:1880` (override with 
 
 ### Run the tests
 
-**Unit tests of the simulator itself** (no docker required):
+**Unit tests** (no docker required):
 
 ```bash
-npm run test:sim
+npm test           # contrib nodes: connection manager, MAC resolver, validation
+npm run test:flow  # control logic of the production flow, with a fake clock
+npm run test:sim   # the simulator itself
 ```
 
 **End-to-end tests** against the live compose stack — boots the stack, exercises the simulator over UDP using the real `gree-hvac-client`, drives the deployed Node-RED flow via its admin API, injects packet drops to verify the connection-manager's recovery, and tears the stack down:
@@ -225,11 +227,16 @@ Useful env vars while iterating:
 
 | Test file                                  | What it covers                                                                                                   |
 | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `test/connection-manager.test.js`          | Reconnect/backoff, watchdogs, write queue and diagnostics of the 24/7 connection manager (stubbed client)          |
+| `test/mac-resolver.test.js`                | Resolve-by-MAC: MAC normalisation, discovery sweep, `resolved` on first find / IP change, `miss`, scan-failure handling |
+| `test/validation.test.js`                  | Unknown/invalid properties are dropped before a write                                                            |
+| `test/flow-logic/flow-logic.test.js`       | The production flow's function-node code (extracted from `flows.user.json`) driven with a fake clock — debounces, thresholds, manual mode |
 | `sim/test/simulator.test.js`               | Wire-level: discovery, bind, status, cmd, fault injection — without involving the contrib nodes                  |
 | `sim/test/client-roundtrip.test.js`        | Real `gree-hvac-client` connecting to the in-process simulator over loopback                                     |
 | `test/e2e/sim.e2e.test.js`                 | Dashboard HTTP API + client round-trip against the dockerized sim                                                |
 | `test/e2e/nodered.e2e.test.js`             | Node-RED admin API: flow deployed, `gree-hvac-config` host wired to `gree.lan`, manual switch + button flow drives the sim's AC state |
-| `test/e2e/fault-recovery.e2e.test.js`      | Sets `dropEvery: 2` on the sim, verifies the client still surfaces status updates                                |
+| `test/e2e/flow-logic.e2e.test.js`          | The real decision path: mock sensors (`POST /api/sensors`) → Collect Data → Main Logic → `gree-hvac` node → UDP → sim |
+| `test/e2e/fault-recovery.e2e.test.js`      | Sets `dropEvery: 3` on the sim and verifies a real state change still gets through                               |
 
 Contributing
 ------------
@@ -260,7 +267,8 @@ License
 Acknowledgements
 ----------------
 
-- Built on [`gree-hvac-client`](https://www.npmjs.com/package/gree-hvac-client)
+- Built on [`gree-hvac-client`](https://github.com/apachler/gree-hvac-client)
+  (maintained fork of [inwaar/gree-hvac-client](https://github.com/inwaar/gree-hvac-client))
   for the UDP/AES wire protocol.
 - Originally authored by [Igor Starovierov](https://github.com/inwaar); currently
   maintained by [Andreas Pachler](https://github.com/apachler).
