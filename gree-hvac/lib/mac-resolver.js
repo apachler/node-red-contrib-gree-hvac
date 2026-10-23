@@ -78,7 +78,7 @@ function scanForMac(opts = {}) {
         socket.on('error', fail);
 
         socket.on('message', (buf, rinfo) => {
-            let parsed = null;
+            let parsed;
             try {
                 parsed = JSON.parse(buf.toString());
             } catch (_) {

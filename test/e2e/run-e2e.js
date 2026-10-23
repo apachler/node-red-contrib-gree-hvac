@@ -66,7 +66,7 @@ async function main() {
     );
     await up({ build: !skipBuild });
 
-    let exitCode = 1;
+    let exitCode;
     try {
         await waitForSimReady();
         await waitForNodeRedReady();

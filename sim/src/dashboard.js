@@ -293,7 +293,7 @@ class Dashboard extends EventEmitter {
                 if (!data) return resolve({});
                 try {
                     resolve(JSON.parse(data));
-                } catch (e) {
+                } catch (_) {
                     reject(new Error('invalid JSON'));
                 }
             });
