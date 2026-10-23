@@ -2,14 +2,15 @@ name: Docs media
 
 # Renders the README's demo GIF (VHS) and dashboard screenshots (Playwright).
 # Manual only — heavy, and only needed when the demo/dashboard changes.
-# The demo GIF is committed back (VHS doesn't render reliably on all dev hosts,
-# so CI is the source of truth for it); the screenshots are uploaded as an
-# artifact for manual review rather than auto-committed over the curated ones.
+# VHS doesn't render reliably on all dev hosts, so CI is the source of truth
+# for the demo GIF. Both the GIF and the screenshots are uploaded as artifacts:
+# master is protected by a ruleset (PR + required checks) that GITHUB_TOKEN
+# can't bypass, so commit a new GIF through a normal PR.
 on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: docs-media-${{ github.ref }}
@@ -38,18 +39,6 @@ jobs:
         with:
           path: docs/demo.tape
 
-      - name: Commit demo GIF
-        run: |
-          if [[ -n "$(git status --porcelain docs/demo.gif)" ]]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add docs/demo.gif
-            git commit -m "docs: regenerate demo GIF [skip ci]"
-            git push
-          else
-            echo "demo.gif unchanged — nothing to commit"
-          fi
-
       - name: Bring stack up for screenshots
         run: |
           npm run sim:up
@@ -69,11 +58,12 @@ jobs:
         if: always()
         run: npm run sim:down || true
 
-      - name: Upload screenshots (review, not auto-committed)
+      - name: Upload demo GIF + screenshots (review, not auto-committed)
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: docs-screenshots
+          name: docs-media
           path: |
+            docs/demo.gif
             docs/nodered-home.png
             docs/nodered-config.png
             docs/nodered-sim-sensors.png
