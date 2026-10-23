@@ -18,8 +18,8 @@ jobs:
     name: Simulator unit tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22.x"
           cache: "npm"
@@ -34,8 +34,8 @@ jobs:
     needs: sim-unit
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22.x"
           cache: "npm"
@@ -61,14 +61,14 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build images
         run: docker compose build
       # Report pass: every severity goes to code scanning (the action ignores
       # `severity` for SARIF output unless limit-severities-for-sarif is set,
       # so we don't pretend to filter here). Never fails the job.
       - name: Scan gree-hvac-sim image (report)
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: gree-hvac-sim:dev
           format: sarif
@@ -76,7 +76,7 @@ jobs:
           ignore-unfixed: true
           exit-code: "0"
       - name: Scan gree-hvac-nodered image (report)
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: gree-hvac-nodered:dev
           format: sarif
@@ -85,20 +85,20 @@ jobs:
           exit-code: "0"
       - name: Upload Trivy SARIF (gree-sim)
         if: always()
-        uses: github/codeql-action/upload-sarif@v4.39.0
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           sarif_file: trivy-sim.sarif
           category: trivy-gree-sim
       - name: Upload Trivy SARIF (node-red)
         if: always()
-        uses: github/codeql-action/upload-sarif@v4.39.0
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           sarif_file: trivy-nodered.sarif
           category: trivy-nodered
       # Gate pass: fail on fixable HIGH/CRITICAL findings. Runs after the
       # uploads so code scanning is updated even when the gate trips.
       - name: Gate gree-hvac-sim image (HIGH/CRITICAL)
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: gree-hvac-sim:dev
           format: table
@@ -107,7 +107,7 @@ jobs:
           exit-code: "1"
       - name: Gate gree-hvac-nodered image (HIGH/CRITICAL)
         if: always()
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: gree-hvac-nodered:dev
           format: table

@@ -1,7 +1,8 @@
 <!--
   Thanks for contributing! Please keep the PR title in Conventional Commit form,
   e.g. "feat: add quiet mode toggle" or "fix(connection): clear stuck watchdog".
-  The release-notes automation derives the changelog category from the prefix.
+  PRs are squash-merged and semantic-release derives the next version and the
+  changelog from that title, so the prefix matters.
 -->
 
 ## What & why
@@ -23,7 +24,6 @@
 - [ ] `npm run lint` passes
 - [ ] `npm test` and `npm run test:sim` pass
 - [ ] `npm run test:e2e` run locally (for protocol / connection-manager changes)
-- [ ] `CHANGELOG.md` updated under **Unreleased**
 - [ ] Docs updated (`README.md` / `docs/PROTOCOL.md`) if behaviour changed
 - [ ] Mock/sim data goes in `flows.mocks.json`, **not** `flows.user.json`
 
