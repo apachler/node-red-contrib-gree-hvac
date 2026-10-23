@@ -29,6 +29,12 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     environment: release
+    # Only the provenance step needs more than read: an OIDC token to sign the
+    # attestation and permission to store it. Pushes still go via RELEASE_TOKEN.
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     steps:
       - name: Check RELEASE_TOKEN is set
         env:
@@ -50,3 +56,26 @@ jobs:
       - run: npx semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+      # semantic-release only packs pack/*.tgz when it cut a release.
+      - name: Detect new release
+        id: rel
+        run: |
+          if ls pack/*.tgz >/dev/null 2>&1; then
+            echo "tag=$(git describe --tags --exact-match)" >> "$GITHUB_OUTPUT"
+          fi
+      # Signed SLSA build provenance for the tarball (verify with
+      # `gh attestation verify <file>.tgz -R apachler/node-red-contrib-gree-hvac`).
+      - name: Attest build provenance
+        if: steps.rel.outputs.tag
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: pack/*.tgz
+      # CycloneDX SBOM of the runtime dependency tree, attached to the release.
+      - name: Attach SBOM to the release
+        if: steps.rel.outputs.tag
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          TAG: ${{ steps.rel.outputs.tag }}
+        run: |
+          npm sbom --omit=dev --sbom-format cyclonedx > "node-red-contrib-gree-hvac-${TAG#v}.cdx.json"
+          gh release upload "$TAG" "node-red-contrib-gree-hvac-${TAG#v}.cdx.json"
