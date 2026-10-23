@@ -11,6 +11,7 @@
 
 <p align="center">
   <a href="https://github.com/apachler/node-red-contrib-gree-hvac/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/apachler/node-red-contrib-gree-hvac/ci.yml?branch=master&label=CI" alt="CI" /></a>
+  <a href="https://github.com/apachler/node-red-contrib-gree-hvac/actions/workflows/ci.yml"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fapachler%2Fnode-red-contrib-gree-hvac%2Fbadges%2Fcoverage.json" alt="Coverage" /></a>
   <a href="https://github.com/apachler/node-red-contrib-gree-hvac/actions/workflows/codeql.yml"><img src="https://img.shields.io/github/actions/workflow/status/apachler/node-red-contrib-gree-hvac/codeql.yml?branch=master&label=CodeQL" alt="CodeQL" /></a>
   <a href="https://github.com/apachler/node-red-contrib-gree-hvac/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/apachler/node-red-contrib-gree-hvac/release.yml?label=release" alt="Release" /></a>
   <a href="https://securityscorecards.dev/viewer/?uri=github.com/apachler/node-red-contrib-gree-hvac"><img src="https://api.securityscorecards.dev/projects/github.com/apachler/node-red-contrib-gree-hvac/badge" alt="OpenSSF Scorecard" /></a>
