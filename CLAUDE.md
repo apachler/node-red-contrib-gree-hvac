@@ -42,7 +42,7 @@ Iterating on e2e: `E2E_SKIP_BUILD=1 E2E_KEEP_UP=1 npm run test:e2e` reuses image
 
 - Node 22 LTS for development (`.nvmrc`, CI, docker images); the lint toolchain (ESLint 10) requires Node 22+. Published runtime still supports Node 18+ (`engines.node`), and CI runs the tests on 18/20/22/24.
 - Tests: `node --test` (no jest/mocha), beside what they cover.
-- Style: ESLint + Prettier (`npm run lint`). Single quotes, 4-space JS, 2-space JSON/YAML. The pre-push hook runs `eslint --fix`; `GREE_SKIP_LINT=1 git push` to skip.
+- Style: ESLint + Prettier (`npm run lint`); Markdown/YAML/JSON via `npm run format:check` / `npm run format` (CI-enforced; `.prettierignore` skips CHANGELOG, the lockfile and the Node-RED-written flow files). Single quotes, 4-space JS, 2-space JSON/YAML. The pre-push hook runs `eslint --fix`; `GREE_SKIP_LINT=1 git push` to skip.
 - Git hooks (`.githooks/`, installed by `prepare`): **commit-msg** enforces a Conventional-Commit subject (zero-dep shell regex, no commitlint; merge/revert/fixup pass through), **pre-push** runs `eslint --fix`. Both honor `GREE_SKIP_LINT=1`.
 - Each node takes a `logLevel`; the contrib node forwards it into the client.
 
@@ -55,6 +55,7 @@ Flow source is split: `docker/nodered/flows.user.json` = **production** (control
 - Both target `http://127.0.0.1:1880` (override `NR_URL`); optional target arg (`:user`/`:mocks`). A rebuild (`sim:dev`) is only needed when contrib node code or the image changes — not for flow edits.
 
 Dashboard is **Dashboard 2.0** (`@flowfuse/node-red-dashboard`):
+
 - `ui-button` ignores the legacy `bgcolor`/`color`; use `buttonColor`/`textColor` (settable at runtime via `msg.ui_update`). There is no dynamic `enabled` — "disable" a button by recolouring it grey.
 - Inspect a widget's exact schema: `docker exec gree-nodered sh -c 'grep -n "defaults:" -A40 /data/node_modules/@flowfuse/node-red-dashboard/nodes/widgets/ui_<widget>.html'`.
 

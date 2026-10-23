@@ -2,7 +2,7 @@
 
 A high-level view of where **node-red-contrib-gree-hvac** is headed. This is a
 single-maintainer, best-effort project (see [GOVERNANCE.md](GOVERNANCE.md)), so
-this roadmap reflects *intent and priorities*, not commitments or dates.
+this roadmap reflects _intent and priorities_, not commitments or dates.
 
 **The live source of truth is the issue tracker** —
 [open issues](https://github.com/apachler/node-red-contrib-gree-hvac/issues) and
@@ -26,7 +26,7 @@ drive what actually gets worked on. This file is the curated summary.
 ## Considering (near-term, no hardware needed)
 
 - **Fahrenheit setpoints** — surface `{temperature, temperatureUnit:"fahrenheit"}`
-  end-to-end (needs hardware to verify the round-trip — see *Help wanted*).
+  end-to-end (needs hardware to verify the round-trip — see _Help wanted_).
 - **SBOM on release** — attach a CycloneDX/SPDX bill of materials to each
   GitHub Release for supply-chain transparency.
 - **Stricter container scanning** — flip the Trivy image scan from report-only to
@@ -40,7 +40,7 @@ have the hardware, a debug trace on an issue is the most useful contribution.
 
 - **Fahrenheit round-trip verification** on a unit that reports °F.
 - **Firmware ≥ 1.21 GCM handshake quirk** — GCM is supported, but some commercial
-  ceiling units still fail *after* a successful bind; needs a post-bind trace.
+  ceiling units still fail _after_ a successful bind; needs a post-bind trace.
 - **Gree RV air-conditioner** — reportedly emits no unsolicited status; needs a
   capture before anything is actionable.
 
