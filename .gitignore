@@ -1,4 +1,4 @@
-# Dependencies / local Node-RED sandbox (devcontainer `npm run nd`)
+# Dependencies / local Node-RED sandbox (`npm run nd`)
 node_modules/
 sandbox/
 
@@ -15,10 +15,9 @@ pack/
 # Local environment (see .env.example)
 .env
 
-# Editors: share only the debug configs
+# Editors
 .idea/
-.vscode/*
-!.vscode/launch.json
+.vscode/
 
 # Local-only notes
 HAPPY-CODING.md
