@@ -19,7 +19,8 @@ gree-hvac/                     published nodes
 sim/                           standalone Gree simulator (cipher, transformer, state, UDP server,
                                HTTP+SSE dashboard, fault injection); configured by GREE_SIM_* env vars
 docker/nodered/                Node-RED dev image; build-flows.js bakes examples/basic-control.json in (host gree.lan)
-examples/                      shipped example flow (Import → Examples)
+examples/                      shipped example flows (Import → Examples): basic-control (core nodes only),
+                               dashboard-thermostat (Dashboard 2.0, @flowfuse/node-red-dashboard)
 test/  test/e2e/  sim/test/    node:test unit + e2e suites
 docs/PROTOCOL.md               full protocol + property/value spec + client-option → node-setting map
 ```
@@ -68,9 +69,9 @@ The client dependency is a GitHub Release tarball URL. Bump it with the **`bump-
 
 ## Gotchas
 
-- **Editor defaults are tested against the example**: `test/examples.test.js` parses the `defaults: {` block of each `gree-hvac/*.html` by indentation (8 spaces for the block, 12 for keys) and requires every key in `examples/basic-control.json`. Add a new editor setting to the example flow too, and keep that indentation. Inject nodes that set `msg.action` must name an action from `lib/actions.js`.
+- **Editor defaults are tested against the example**: `test/examples.test.js` parses the `defaults: {` block of each `gree-hvac/*.html` by indentation (8 spaces for the block, 12 for keys) and requires every key in `examples/basic-control.json`. Add a new editor setting to the example flow too, and keep that indentation. Inject nodes that set `msg.action` must name an action from `lib/actions.js`. Examples may use core nodes only, except a file listed in `EXTRA_PACKAGES` there (`dashboard-thermostat.json`: Dashboard 2.0 `ui-*` types, its comment must name the package); dashboard widgets wired into `gree-hvac` need a fixed topic, pass-through off and valid values. Widget `topic`s are property names.
 - **Ports bind to `127.0.0.1`** (`GREE_BIND` overrides) and both containers run with `cap_drop: [ALL]` + `no-new-privileges` (the sim also `read_only`); keep that when adding services.
-- **`gree.lan`**: the dev image's flow (`examples/basic-control.json` via `build-flows.js`) targets it; docker-compose aliases the sim container as `gree.lan`. The shipped example itself keeps a placeholder IP. The e2e suite fires the example's inject nodes by id (`a1c0de0000000002` on, `…04` off), so keep those ids.
+- **`gree.lan`**: the dev image's flow (`examples/basic-control.json` via `build-flows.js`) targets it; docker-compose aliases the sim container as `gree.lan`. The shipped example itself keeps a placeholder IP. The e2e suite fires the example's inject nodes by id (`a1c0de0000000002` on, `…04` off), so keep those ids. The dev image loads both examples (one tab each) and installs Dashboard 2.0 from `docker/nodered/package.json` (pinned; Dependabot updates it).
 - The **sim dashboard at :8080** is a standalone Gree-device simulator (drives the simulated AC + fault injection) with no dependency on Node-RED. In the container its clock runs on UTC.
 - **Workflow triggers**: only tag pushes (release.yml) and PR/push-to-master (ci.yml + e2e.yml) run Actions; pushes to feature branches don't.
 - The docker `node-red` service has **no `/data` volume**: flow edits made in the editor are lost on rebuild/recreate (a plain `docker restart` keeps them). Change the example in `examples/basic-control.json` instead.

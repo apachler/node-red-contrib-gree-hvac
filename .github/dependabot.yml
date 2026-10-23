@@ -1,8 +1,11 @@
 version: 2
 updates:
-  # All npm (dev) updates batched into one monthly PR.
+  # All npm (dev) updates batched into one monthly PR; /docker/nodered pins
+  # the Dashboard 2.0 version of the dev image.
   - package-ecosystem: "npm"
-    directory: "/"
+    directories:
+      - "/"
+      - "/docker/nodered"
     schedule:
       interval: "monthly"
     # Let new releases age a few days before proposing them (security

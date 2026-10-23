@@ -217,6 +217,25 @@ To use it:
 
 The four debug nodes are the `gree-hvac` outputs: **Changes** (what changed, from the unit or after a write), **Snapshot** (all properties, off by default — enable it to see every poll), **Diagnostics** (connection state, errors, heartbeat, `device_info`) and **Responses** (answers to `msg.action`). Copy what you need into your own flows; the help panel of each node lists every input and output. The [Docker stack](#development-with-the-simulator) loads the same flow, pointed at the simulator.
 
+### Dashboard example (thermostat)
+
+A second example, **dashboard-thermostat**, puts one unit on a [Dashboard 2.0](https://dashboard.flowfuse.com/) page: power, mode, setpoint, fan, swing and quiet / turbo / display switches, the room temperature as a gauge, a status card (connection, room, outdoor, humidity, fault code, firmware) and a 24 h chart of room temperature against the setpoint.
+
+<p align="center">
+  <img src="docs/dashboard-thermostat.png" width="900" alt="The dashboard-thermostat example on Dashboard 2.0: a Thermostat card with power switch, mode buttons (Cool selected), a room-temperature gauge at 26 °C, a setpoint slider at 23 and fan / swing dropdowns; a Status card with connection, room, outdoor, humidity, fault code and firmware; and a chart of room temperature against the setpoint" />
+</p>
+
+1. Install **`@flowfuse/node-red-dashboard`** (**☰ Menu → Manage palette → Install**) — this example needs it; `basic-control` doesn't.
+2. Import **☰ Menu → Import → Examples → node-red-contrib-gree-hvac → dashboard-thermostat**.
+3. Set the **Gree AC (dashboard)** config node's IP Address (or resolve by MAC), deploy, and open `http://<node-red>:1880/dashboard`.
+
+How it's wired, if you want to build your own:
+
+- Each control sends `msg.topic` = property and `msg.payload` = value into the `gree-hvac` node — the topic form of its input. The setpoint slider sends on release only.
+- A **Properties → widgets** function feeds controls, readouts and chart from the node's **Snapshot** output (after every change) and from a `getProperties` request every minute (answered on **Responses**).
+- The widgets have **pass-through off**, so a change made on the unit (remote control, app) updates the page without echoing back as a command.
+- A **Diagnostics → status** function shows the connection state and the firmware; readouts the unit has no sensor for show "—".
+
 Protocol
 --------
 
@@ -255,13 +274,13 @@ npm run sim:up      # docker compose up -d --build
 
 This starts two services:
 
-| Service    | URL                   | What it is                                                                            |
-| ---------- | --------------------- | ------------------------------------------------------------------------------------- |
-| `gree-sim` | http://localhost:8080 | Simulator dashboard (live AC state, direct controls, fault injection, protocol stats) |
-| `gree-sim` | udp://localhost:7000  | Gree protocol endpoint (also reachable in-cluster as `gree.lan`)                      |
-| `node-red` | http://localhost:1880 | Node-RED with the contrib nodes + the example flow pre-loaded, pointed at the sim     |
+| Service    | URL                   | What it is                                                                                                                                  |
+| ---------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `gree-sim` | http://localhost:8080 | Simulator dashboard (live AC state, direct controls, fault injection, protocol stats)                                                       |
+| `gree-sim` | udp://localhost:7000  | Gree protocol endpoint (also reachable in-cluster as `gree.lan`)                                                                            |
+| `node-red` | http://localhost:1880 | Node-RED with the contrib nodes + both example flows pre-loaded, pointed at the sim; the thermostat page at http://localhost:1880/dashboard |
 
-The pre-loaded flow is [`examples/basic-control.json`](examples/basic-control.json) with its `gree-hvac-config` host set to `gree.lan` (`docker/nodered/build-flows.js`, at image build time); the sim container is aliased as `gree.lan` on the docker network. Fire its inject buttons in the editor and watch the AC change on the sim dashboard.
+The pre-loaded flows are the two examples, [`basic-control`](examples/basic-control.json) and [`dashboard-thermostat`](examples/dashboard-thermostat.json), one tab each, with their `gree-hvac-config` host set to `gree.lan` (`docker/nodered/build-flows.js`, at image build time); the sim container is aliased as `gree.lan` on the docker network. The image includes Dashboard 2.0 (`@flowfuse/node-red-dashboard`, pinned in `docker/nodered/package.json`). Fire the inject buttons in the editor, or use the thermostat page, and watch the AC change on the sim dashboard — or change it on the sim dashboard and watch the thermostat page follow.
 
 The ports are published on `127.0.0.1` only, because neither the sim dashboard nor the Node-RED editor has authentication. To open them to other machines on a trusted network, start the stack with `GREE_BIND=0.0.0.0 npm run sim:up`.
 
@@ -325,20 +344,20 @@ Useful env vars while iterating:
 
 ### What's actually being tested
 
-| Test file                             | What it covers                                                                                                                                                                                                                                          |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `test/connection-manager.test.js`     | The adapter around the client (stubbed): option mapping, state/diagnostics from the client events, writes held while offline, coalescing queue, refused-property handling, `call()`, stop                                                               |
-| `test/validation.test.js`             | Unknown, read-only and invalid properties are dropped before a write                                                                                                                                                                                    |
-| `test/examples.test.js`               | The shipped `examples/` flows: core node types only, wires resolve, every editor default set, inject payloads pass validation, inject actions exist                                                                                                     |
-| `test/gree-hvac-node.test.js`         | The three nodes on a fake Node-RED runtime, over real UDP to the in-process sim: outputs, input forms, validation, `msg.action` requests, device info, offline rejection, recovery of a unit that stops answering, heartbeat, resolve-by-MAC, discovery |
-| `sim/test/simulator.test.js`          | Wire-level: discovery, bind, status, cmd, fault injection — without involving the contrib nodes                                                                                                                                                         |
-| `sim/test/client-roundtrip.test.js`   | Real `gree-hvac-client` connecting to the in-process simulator over loopback                                                                                                                                                                            |
-| `sim/test/client-features.test.js`    | The real `gree-hvac-client` against the sim: feature probing, every optional property, °F / half-degree setpoints, device info + firmware warning, clock, name, raw codes, silent, multi-split, discovery, WiFi setup                                   |
-| `sim/test/dashboard.test.js`          | The sim's HTTP API and SSE stream: state, set, temperature, faults, stats, body limits                                                                                                                                                                  |
-| `sim/test/cipher-faults.test.js`      | ECB/GCM ciphers, fault injector, and a real client binding over AES-GCM                                                                                                                                                                                 |
-| `test/e2e/sim.e2e.test.js`            | Dashboard HTTP API + client round-trip against the dockerized sim                                                                                                                                                                                       |
-| `test/e2e/nodered.e2e.test.js`        | Node-RED admin API: the example flow is deployed with `gree-hvac-config` on `gree.lan`; firing its inject nodes drives the simulated AC on and off                                                                                                      |
-| `test/e2e/fault-recovery.e2e.test.js` | Sets `dropEvery: 3` on the sim and verifies a real state change still gets through                                                                                                                                                                      |
+| Test file                             | What it covers                                                                                                                                                                                                                                                                              |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `test/connection-manager.test.js`     | The adapter around the client (stubbed): option mapping, state/diagnostics from the client events, writes held while offline, coalescing queue, refused-property handling, `call()`, stop                                                                                                   |
+| `test/validation.test.js`             | Unknown, read-only and invalid properties are dropped before a write                                                                                                                                                                                                                        |
+| `test/examples.test.js`               | The shipped `examples/` flows: core node types only (Dashboard 2.0 types for the dashboard example, which names its package), wires resolve, every editor default set, inject payloads pass validation, inject actions exist, dashboard widgets send valid properties with pass-through off |
+| `test/gree-hvac-node.test.js`         | The three nodes on a fake Node-RED runtime, over real UDP to the in-process sim: outputs, input forms, validation, `msg.action` requests, device info, offline rejection, recovery of a unit that stops answering, heartbeat, resolve-by-MAC, discovery                                     |
+| `sim/test/simulator.test.js`          | Wire-level: discovery, bind, status, cmd, fault injection — without involving the contrib nodes                                                                                                                                                                                             |
+| `sim/test/client-roundtrip.test.js`   | Real `gree-hvac-client` connecting to the in-process simulator over loopback                                                                                                                                                                                                                |
+| `sim/test/client-features.test.js`    | The real `gree-hvac-client` against the sim: feature probing, every optional property, °F / half-degree setpoints, device info + firmware warning, clock, name, raw codes, silent, multi-split, discovery, WiFi setup                                                                       |
+| `sim/test/dashboard.test.js`          | The sim's HTTP API and SSE stream: state, set, temperature, faults, stats, body limits                                                                                                                                                                                                      |
+| `sim/test/cipher-faults.test.js`      | ECB/GCM ciphers, fault injector, and a real client binding over AES-GCM                                                                                                                                                                                                                     |
+| `test/e2e/sim.e2e.test.js`            | Dashboard HTTP API + client round-trip against the dockerized sim                                                                                                                                                                                                                           |
+| `test/e2e/nodered.e2e.test.js`        | Node-RED admin API: the example flow is deployed with `gree-hvac-config` on `gree.lan`; firing its inject nodes drives the simulated AC on and off; the dashboard example is deployed and its page served                                                                                   |
+| `test/e2e/fault-recovery.e2e.test.js` | Sets `dropEvery: 3` on the sim and verifies a real state change still gets through                                                                                                                                                                                                          |
 
 Contributing
 ------------

@@ -11,6 +11,7 @@ import { dirname, join } from 'node:path';
 
 const DOCS = dirname(fileURLToPath(import.meta.url));
 const NODE_RED = 'http://localhost:1880/';
+const SIM = 'http://localhost:8080/';
 
 // Example-flow inject nodes (examples/basic-control.json) fired before the
 // editor shot, so the gree node shows "connected" and the debug sidebar has
@@ -57,8 +58,38 @@ const SHOTS = [
         },
     },
     {
+        // examples/dashboard-thermostat.json on Dashboard 2.0
+        name: 'dashboard-thermostat.png',
+        url: NODE_RED + 'dashboard/gree',
+        viewport: { width: 1280, height: 900 },
+        fullPage: true,
+        prepare: async page => {
+            // a unit cooling a warm room, set on the simulated AC itself so
+            // the page shows it the way a real unit's change arrives
+            await fetch(SIM + 'api/set', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    Pow: 1,
+                    Mod: 1,
+                    SetTem: 23,
+                    WdSpd: 3,
+                    Lig: 1,
+                }),
+            });
+            await fetch(SIM + 'api/temperature', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ celsius: 26 }),
+            });
+            await page.waitForSelector('.nrdb-ui-group', { timeout: 30000 });
+            // the next poll brings the change to the page
+            await page.waitForTimeout(6000);
+        },
+    },
+    {
         name: 'sim-dashboard.png',
-        url: 'http://localhost:8080/',
+        url: SIM,
         viewport: { width: 1180, height: 980 },
         fullPage: true,
     },

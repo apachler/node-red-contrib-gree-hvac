@@ -74,4 +74,5 @@ jobs:
             docs/demo.gif
             docs/sim-dashboard.png
             docs/example-flow.png
+            docs/dashboard-thermostat.png
           if-no-files-found: warn

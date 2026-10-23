@@ -3,5 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "description": "Node-RED user dir for the Gree HVAC simulator stack",
-  "dependencies": {}
+  "dependencies": {
+    "@flowfuse/node-red-dashboard": "1.33.0"
+  }
 }

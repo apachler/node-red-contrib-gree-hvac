@@ -36,8 +36,9 @@ RUN npm install -g --no-audit --no-fund npm@11 nodemon@3 && npm cache clean --fo
 
 WORKDIR /data
 
-# Install the local node-red-contrib-gree-hvac package by path. The dev flow
-# uses only core nodes plus this package, so nothing else is needed.
+# Install the local node-red-contrib-gree-hvac package by path, plus the
+# dependencies listed in docker/nodered/package.json: Dashboard 2.0
+# (@flowfuse/node-red-dashboard, pinned) for the dashboard-thermostat example.
 COPY --chown=node-red:node-red docker/nodered/package.json ./package.json
 RUN npm install --omit=dev --no-audit --no-fund --no-package-lock /opt/contrib \
     && npm cache clean --force \
@@ -45,12 +46,12 @@ RUN npm install --omit=dev --no-audit --no-fund --no-package-lock /opt/contrib \
 
 COPY --chown=node-red:node-red docker/nodered/settings.js ./settings.js
 
-# The dev flow is the shipped example (examples/basic-control.json), pointed
-# at the simulator.
-COPY --chown=node-red:node-red examples/basic-control.json /opt/build/basic-control.json
+# The dev flows are the shipped examples, one tab each, pointed at the
+# simulator.
+COPY --chown=node-red:node-red examples/basic-control.json examples/dashboard-thermostat.json /opt/build/
 COPY --chown=node-red:node-red docker/nodered/build-flows.js /opt/build/build-flows.js
 
-RUN node /opt/build/build-flows.js /opt/build/basic-control.json /data/flows.json \
+RUN node /opt/build/build-flows.js /data/flows.json /opt/build/basic-control.json /opt/build/dashboard-thermostat.json \
     && chown node-red:node-red /data/flows.json
 
 # Reset WORKDIR back to the base image's dir. The official node-red image's
