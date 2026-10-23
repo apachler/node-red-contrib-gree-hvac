@@ -5,11 +5,12 @@ reproducible — the committed `.svg` is hand-authored; the `.gif` and
 `.png` are rendered by the tooling below (locally or in CI via
 `.github/workflows/docs-media.yml`).
 
-| Asset               | How it's made                                            |
-| ------------------- | -------------------------------------------------------- |
-| `logo.svg`          | Hand-authored vector (also the sim favicon).             |
-| `demo.gif`          | `vhs docs/demo.tape` — terminal demo of the stack.       |
-| `sim-dashboard.png` | `node docs/screenshot.mjs` — Playwright shot of `:8080`. |
+| Asset               | How it's made                                                                                                     |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `logo.svg`          | Hand-authored vector (also the sim favicon).                                                                      |
+| `demo.gif`          | `vhs docs/demo.tape` — terminal demo of the stack.                                                                |
+| `sim-dashboard.png` | `node docs/screenshot.mjs` — Playwright shot of `:8080`.                                                          |
+| `example-flow.png`  | `node docs/screenshot.mjs` — the example flow in the Node-RED editor at `:1880`, after firing two of its injects. |
 
 ## Terminal demo GIF (VHS)
 
@@ -22,12 +23,12 @@ docker compose build         # pre-build so the GIF isn't just image builds
 vhs docs/demo.tape           # writes docs/demo.gif
 ```
 
-## Dashboard screenshot (Playwright)
+## Screenshots (Playwright)
 
 ```bash
-npm i -D playwright && npx playwright install chromium
+npm i --no-save playwright && npx playwright install chromium
 npm run sim:up               # stack must be running
-node docs/screenshot.mjs     # writes docs/sim-dashboard.png
+node docs/screenshot.mjs     # writes docs/example-flow.png + docs/sim-dashboard.png
 npm run sim:down
 ```
 
