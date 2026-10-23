@@ -74,6 +74,49 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           npm run --silent coverage:check 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload coverage summary (master only, feeds the README badge)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-summary
+          path: coverage/coverage-summary.json
+          retention-days: 1
+
+  # Publishes a shields.io endpoint JSON to the `badges` branch, which the
+  # README's coverage badge reads. That branch is outside the master ruleset,
+  # so the job's own GITHUB_TOKEN can push it; only this job gets write.
+  coverage-badge:
+    name: Coverage badge
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: coverage
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: coverage-summary
+      - name: Build badge JSON
+        run: |
+          node -e '
+            const pct = require("./coverage-summary.json").total.lines.pct;
+            const color = pct >= 90 ? "brightgreen" : pct >= 80 ? "green" : pct >= 70 ? "yellow" : "red";
+            const badge = { schemaVersion: 1, label: "coverage", message: pct.toFixed(1) + "%", color };
+            require("fs").writeFileSync("coverage.json", JSON.stringify(badge));
+            console.log(badge);
+          '
+      - name: Push to the badges branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git init -q badges && cd badges
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -q --orphan badges
+          cp ../coverage.json .
+          git add coverage.json
+          git commit -q -m "chore: update coverage badge [skip ci]"
+          git push -q --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" badges
 
   audit:
     name: Dependency audit
