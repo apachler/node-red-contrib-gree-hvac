@@ -1,0 +1,22 @@
+node-red-contrib-gree-hvac
+Copyright (c) 2021 Igor Starovierov and contributors
+
+The source code in this repository is licensed under the MIT License
+(see LICENSE).
+
+Runtime dependency under a different license
+--------------------------------------------
+
+This package requires gree-hvac-client at runtime, which is licensed under
+the GNU General Public License v3.0 (GPL-3.0):
+
+  https://github.com/apachler/gree-hvac-client
+  (fork of https://github.com/inwaar/gree-hvac-client)
+
+gree-hvac-client is not included in this package's source or release
+tarball; npm installs it as a separate dependency. However, the nodes load
+it into the same Node-RED process, so any work that is distributed together
+with gree-hvac-client (for example a Node-RED installation, a container
+image or an appliance that ships both) must comply with the terms of
+GPL-3.0 as a whole. The MIT-licensed code in this repository remains
+available under MIT on its own.
