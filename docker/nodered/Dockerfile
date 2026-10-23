@@ -1,8 +1,12 @@
 # Pinned to an immutable digest for reproducible builds (Dependabot docker
 # ecosystem keeps it current). Sim/dev image only — never shipped to users.
-FROM nodered/node-red:5.0.7-24@sha256:a649dd711d55490151a2c39a8e48ad0c44325488fbc0e66315f2d2e19e5e1ace
+FROM nodered/node-red:5.0.9-24@sha256:e085d4a06591fd0aca2ea2a91364d27f1a0e31e885675f77935e10f95412a963
 
 USER root
+
+# Pick up Alpine security patches (zlib, musl, ...) released after the base
+# image was built.
+RUN apk upgrade --no-cache
 
 # Working dir for the local contrib package (built into the image so the
 # Node-RED node loader picks it up without needing a host bind mount).
@@ -24,7 +28,9 @@ RUN npm install --omit=dev --no-audit --no-fund && npm cache clean --force \
 # nodemon is used by the dev override (docker-compose.dev.yml) to restart
 # Node-RED when files in the bind-mounted contrib package change. Harmless
 # in non-dev mode — it sits unused.
-RUN npm install -g --no-audit --no-fund nodemon@3 && npm cache clean --force \
+# npm itself is upgraded too: the base image's global npm bundles
+# vulnerable undici/brace-expansion that Trivy flags.
+RUN npm install -g --no-audit --no-fund npm@11.21.1 nodemon@3 && npm cache clean --force \
     && rm -rf "$(npm config get cache)/_logs"
 
 WORKDIR /data

@@ -1,7 +1,12 @@
 # Pinned to an immutable digest for bit-for-bit reproducible builds; the
 # Dependabot docker ecosystem keeps the digest current. The tag is retained
 # alongside the digest for human readability.
-FROM node:26.10-alpine@sha256:0b36e8c136b94cd4fcf02188228e76c31ad5872eef3fec8cbd2eee500cfd9e80
+FROM node:26.12-alpine@sha256:40cd011b55415bc894e45b02fdd5a5dfde056921b7d23a64c74f80497af48797
+
+# The base image's global npm bundles vulnerable undici/brace-expansion that
+# Trivy flags; the sim never uses npm at runtime, but upgrade it anyway.
+RUN npm install -g --no-audit --no-fund npm@11.21.1 && npm cache clean --force \
+    && rm -rf "$(npm config get cache)/_logs"
 
 WORKDIR /app
 
