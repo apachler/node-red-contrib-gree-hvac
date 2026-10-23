@@ -208,7 +208,7 @@ Both default to the full flow and target `http://127.0.0.1:1880` (override with 
 **Unit tests** (no docker required):
 
 ```bash
-npm test           # contrib nodes: connection manager, MAC resolver, validation
+npm test           # contrib nodes + their libs, against the in-process simulator
 npm run test:flow  # control logic of the production flow, with a fake clock
 npm run test:sim   # the simulator itself
 ```
@@ -231,9 +231,12 @@ Useful env vars while iterating:
 | `test/connection-manager.test.js`          | Reconnect/backoff, watchdogs, write queue and diagnostics of the 24/7 connection manager (stubbed client)          |
 | `test/mac-resolver.test.js`                | Resolve-by-MAC: MAC normalisation, discovery sweep, `resolved` on first find / IP change, `miss`, scan-failure handling |
 | `test/validation.test.js`                  | Unknown/invalid properties are dropped before a write                                                            |
+| `test/gree-hvac-node.test.js`              | The three nodes on a fake Node-RED runtime, over real UDP to the in-process sim: outputs, input forms, validation, offline rejection, heartbeat, resolve-by-MAC, discovery |
 | `test/flow-logic/flow-logic.test.js`       | The production flow's function-node code (extracted from `flows.user.json`) driven with a fake clock — debounces, thresholds, manual mode |
 | `sim/test/simulator.test.js`               | Wire-level: discovery, bind, status, cmd, fault injection — without involving the contrib nodes                  |
 | `sim/test/client-roundtrip.test.js`        | Real `gree-hvac-client` connecting to the in-process simulator over loopback                                     |
+| `sim/test/dashboard.test.js`               | The sim's HTTP API and SSE stream: state, set, temperature, faults, stats, mock sensors, body limits             |
+| `sim/test/cipher-faults.test.js`           | ECB/GCM ciphers, fault injector, and a real client binding over AES-GCM                                          |
 | `test/e2e/sim.e2e.test.js`                 | Dashboard HTTP API + client round-trip against the dockerized sim                                                |
 | `test/e2e/nodered.e2e.test.js`             | Node-RED admin API: flow deployed, `gree-hvac-config` host wired to `gree.lan`, manual switch + button flow drives the sim's AC state |
 | `test/e2e/flow-logic.e2e.test.js`          | The real decision path: mock sensors (`POST /api/sensors`) → Collect Data → Main Logic → `gree-hvac` node → UDP → sim |
