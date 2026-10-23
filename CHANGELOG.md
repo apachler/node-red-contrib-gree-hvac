@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/apachler/node-red-contrib-gree-hvac/compare/v1.8.0...v1.9.0) (2026-10-23)
+
+
+### Features
+
+* ship a Dashboard 2.0 thermostat example flow ([#81](https://github.com/apachler/node-red-contrib-gree-hvac/issues/81)) ([1f51cb9](https://github.com/apachler/node-red-contrib-gree-hvac/commit/1f51cb9684575a43caa7f8be99f9a2137344175f)), closes [#80](https://github.com/apachler/node-red-contrib-gree-hvac/issues/80)
+
 # [1.8.0](https://github.com/apachler/node-red-contrib-gree-hvac/compare/v1.7.0...v1.8.0) (2026-10-23)
 
 
