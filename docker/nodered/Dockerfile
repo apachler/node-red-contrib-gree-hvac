@@ -24,7 +24,9 @@ RUN npm install --omit=dev --no-audit --no-fund && npm cache clean --force \
 # nodemon is used by the dev override (docker-compose.dev.yml) to restart
 # Node-RED when files in the bind-mounted contrib package change. Harmless
 # in non-dev mode — it sits unused.
-RUN npm install -g --no-audit --no-fund nodemon@3 && npm cache clean --force \
+# npm itself is upgraded too: the base image's global npm bundles
+# vulnerable undici/brace-expansion that Trivy flags.
+RUN npm install -g --no-audit --no-fund npm@11.21.1 nodemon@3 && npm cache clean --force \
     && rm -rf "$(npm config get cache)/_logs"
 
 WORKDIR /data
