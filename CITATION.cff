@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using these metadata."
+title: node-red-contrib-gree-hvac
+abstract: >-
+  Node-RED nodes to control Gree air-conditioners over their UDP/AES protocol,
+  with a software simulator for hardware-free development and testing.
+type: software
+license: MIT
+repository-code: "https://github.com/apachler/node-red-contrib-gree-hvac"
+authors:
+  - given-names: Igor
+    family-names: Starovierov
+  - given-names: Andreas
+    family-names: Pachler
+keywords:
+  - node-red
+  - gree
+  - hvac
+  - air-conditioner
+  - udp

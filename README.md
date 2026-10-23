@@ -50,6 +50,12 @@ npm install https://github.com/apachler/node-red-contrib-gree-hvac/releases/down
 
 Or download the `.tgz` from the [Releases page](https://github.com/apachler/node-red-contrib-gree-hvac/releases) and run `npm install ./node-red-contrib-gree-hvac-<version>.tgz` from your `~/.node-red` directory. Restart Node-RED after installation. This also works for air-gapped instances and for pinning to a specific release.
 
+Each release also carries a signed build-provenance attestation for the `.tgz` and a CycloneDX SBOM (`*.cdx.json`) of its runtime dependencies. To check that a downloaded tarball was built by this repo's release workflow:
+
+```
+gh attestation verify node-red-contrib-gree-hvac-<version>.tgz -R apachler/node-red-contrib-gree-hvac
+```
+
 ### From npm
 
 Once this fork is published to npm, you'll be able to install it the usual way from your `~/.node-red` directory:
