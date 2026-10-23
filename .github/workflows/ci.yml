@@ -1,141 +1,141 @@
 name: lint and test
 
 on:
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.push:
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.pull_request:
+  push:
+  pull_request:
 
 # Least privilege: jobs only need to read the repo.
 permissions:
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.contents: read
+  contents: read
 
 # Cancel superseded runs on the same ref to save CI minutes.
 concurrency:
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.group: ci-${{ github.workflow }}-${{ github.ref }}
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.# The lint toolchain (ESLint 10 + eslint-plugin-jsdoc) requires Node 22+,
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.# so linting runs on its own job. Runtime tests still cover Node 18/20/22.
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.lint:
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.  name: Lint (Node 22)
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.  runs-on: ubuntu-latest
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.  steps:
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.      with:
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        persist-credentials: false
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.    - name: Use Node.js 22
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.      with:
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        node-version: "22.x"
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        cache: "npm"
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.    - name: Install dependencies
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.      run: npm ci
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.    - name: Linters
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.      run: npm run lint
+  # The lint toolchain (ESLint 10 + eslint-plugin-jsdoc) requires Node 22+,
+  # so linting runs on its own job. Runtime tests cover Node 18/20/22/24.
+  lint:
+    name: Lint (Node 22)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Use Node.js 22
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22.x"
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci
+      - name: Linters
+        run: npm run lint
 
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.test:
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.  name: Test (Node ${{ matrix.node-version }})
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.  runs-on: ubuntu-latest
+  test:
+    name: Test (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
 
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.  strategy:
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.    fail-fast: false
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.    matrix:
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.      node-version: [18.x, 20.x, 22.x, 24.x]
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18.x, 20.x, 22.x, 24.x]
 
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.  steps:
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.      with:
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        persist-credentials: false
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.    - name: Use Node.js ${{ matrix.node-version }}
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.      with:
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        node-version: ${{ matrix.node-version }}
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        cache: "npm"
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.    - name: Install dependencies
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.      run: npm ci
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.    - name: Tests
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.      run: npm test
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.    - name: Flow logic tests
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.      run: npm run test:flow
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci
+      - name: Tests
+        run: npm test
+      - name: Flow logic tests
+        run: npm run test:flow
 
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.coverage:
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.  name: Coverage
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.  runs-on: ubuntu-latest
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.  steps:
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.      with:
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        persist-credentials: false
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.      with:
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        node-version: "22.x"
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        cache: "npm"
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.    - name: Install dependencies
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.      run: npm ci
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.    - name: Coverage (enforce thresholds + PR summary)
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.      run: |
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        {
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.          echo '### Coverage'
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.          echo ''
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.          echo '```text'
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        } >> "$GITHUB_STEP_SUMMARY"
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        npm run --silent coverage:check 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        echo '```' >> "$GITHUB_STEP_SUMMARY"
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.    - name: Upload coverage summary (master only, feeds the README badge)
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.      if: github.event_name == 'push' && github.ref == 'refs/heads/master'
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.      with:
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        name: coverage-summary
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        path: coverage/coverage-summary.json
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        retention-days: 1
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22.x"
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci
+      - name: Coverage (enforce thresholds + PR summary)
+        run: |
+          {
+            echo '### Coverage'
+            echo ''
+            echo '```text'
+          } >> "$GITHUB_STEP_SUMMARY"
+          npm run --silent coverage:check 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload coverage summary (master only, feeds the README badge)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-summary
+          path: coverage/coverage-summary.json
+          retention-days: 1
 
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.# Publishes a shields.io endpoint JSON to the `badges` branch, which the
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.# README's coverage badge reads. That branch is outside the master ruleset,
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.# so the job's own GITHUB_TOKEN can push it; only this job gets write.
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.coverage-badge:
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.  name: Coverage badge
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.  if: github.event_name == 'push' && github.ref == 'refs/heads/master'
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.  needs: coverage
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.  runs-on: ubuntu-latest
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.  permissions:
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.    contents: write
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.  steps:
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.    - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.      with:
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        name: coverage-summary
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.    - name: Build badge JSON
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.      run: |
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        node -e '
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.          const pct = require("./coverage-summary.json").total.lines.pct;
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.          const color = pct >= 90 ? "brightgreen" : pct >= 80 ? "green" : pct >= 70 ? "yellow" : "red";
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.          const badge = { schemaVersion: 1, label: "coverage", message: pct.toFixed(1) + "%", color };
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.          require("fs").writeFileSync("coverage.json", JSON.stringify(badge));
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.          console.log(badge);
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        '
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.    - name: Push to the badges branch
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.      env:
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        GH_TOKEN: ${{ github.token }}
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.      run: |
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        git init -q badges && cd badges
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        git config user.name "github-actions[bot]"
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        git checkout -q --orphan badges
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        cp ../coverage.json .
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        git add coverage.json
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        git commit -q -m "chore: update coverage badge [skip ci]"
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        git push -q --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" badges
+  # Publishes a shields.io endpoint JSON to the `badges` branch, which the
+  # README's coverage badge reads. That branch is outside the master ruleset,
+  # so the job's own GITHUB_TOKEN can push it; only this job gets write.
+  coverage-badge:
+    name: Coverage badge
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: coverage
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: coverage-summary
+      - name: Build badge JSON
+        run: |
+          node -e '
+            const pct = require("./coverage-summary.json").total.lines.pct;
+            const color = pct >= 90 ? "brightgreen" : pct >= 80 ? "green" : pct >= 70 ? "yellow" : "red";
+            const badge = { schemaVersion: 1, label: "coverage", message: pct.toFixed(1) + "%", color };
+            require("fs").writeFileSync("coverage.json", JSON.stringify(badge));
+            console.log(badge);
+          '
+      - name: Push to the badges branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git init -q badges && cd badges
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -q --orphan badges
+          cp ../coverage.json .
+          git add coverage.json
+          git commit -q -m "chore: update coverage badge [skip ci]"
+          git push -q --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" badges
 
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.audit:
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.  name: Dependency audit
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.  runs-on: ubuntu-latest
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.  steps:
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.      with:
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        persist-credentials: false
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.      with:
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        node-version: "22.x"
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.        cache: "npm"
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.    - name: Install dependencies
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.      run: npm ci
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.    - name: Audit production dependencies
- so linting runs on its own job. Runtime tests still cover Node 18/20/22.      run: npm run audit
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22.x"
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci
+      - name: Audit production dependencies
+        run: npm run audit
