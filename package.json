@@ -45,7 +45,7 @@
     "prepare": "git config core.hooksPath .githooks || true",
     "lint": "eslint ./",
     "lint:fix": "eslint --fix ./",
-    "lint:lockfile": "lockfile-lint --path package-lock.json --type npm --allowed-hosts npm --allowed-urls https://github.com/apachler/gree-hvac-client/releases/download/v4.1.0/gree-hvac-client-4.1.0.tgz --validate-https --validate-package-names",
+    "lint:lockfile": "lockfile-lint --path package-lock.json --type npm --allowed-hosts npm --allowed-urls https://github.com/apachler/gree-hvac-client/releases/download/v4.3.0/gree-hvac-client-4.3.0.tgz --validate-https --validate-package-names",
     "format:check": "prettier --check \"**/*.{md,yml,yaml,json}\"",
     "format": "prettier --write \"**/*.{md,yml,yaml,json}\"",
     "test": "node --test test/*.test.js",
@@ -63,7 +63,7 @@
     "watch": "node --watch-path=gree-hvac \"$(npm root -g)/node-red/red.js\" -u sandbox"
   },
   "dependencies": {
-    "gree-hvac-client": "https://github.com/apachler/gree-hvac-client/releases/download/v4.1.0/gree-hvac-client-4.1.0.tgz"
+    "gree-hvac-client": "https://github.com/apachler/gree-hvac-client/releases/download/v4.3.0/gree-hvac-client-4.3.0.tgz"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

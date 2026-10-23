@@ -1,14 +1,14 @@
 'use strict';
 
-const dgram = require('dgram');
+const Gree = require('gree-hvac-client');
 
 /**
- * Broadcast-scan helper. Sends the Gree discovery packet to the given
- * broadcast address (or 255.255.255.255 by default) and collects raw
- * responses for a fixed listen window. We do not decrypt the responses
- * here — exposing IPs and MAC-style cid fields is enough to populate a
- * config node, and it keeps this utility free of the encryption setup
- * cost.
+ * Broadcast-scan helper built on gree-hvac-client's Client.discover(): sends
+ * the Gree discovery packet to the given broadcast address (or
+ * 255.255.255.255 by default), decrypts the answers that arrive within the
+ * listen window and emits one entry per device — enough to populate a config
+ * node. With `msg.action = "configureWifi"` it instead joins a unit in AP
+ * (setup) mode to a WiFi network (Client.configureWifi()).
  *
  * @param RED
  */
@@ -28,27 +28,118 @@ module.exports = function (RED) {
             Math.min(30000, Number(config.listenWindowMs) || 3000)
         );
 
-        let socket = null;
-        let timer = null;
         let inFlight = false;
-
-        const cleanup = () => {
-            if (timer) {
-                clearTimeout(timer);
-                timer = null;
-            }
-            if (socket) {
-                try {
-                    socket.close();
-                } catch (_) {
-                    /* ignore */
-                }
-                socket = null;
-            }
-            inFlight = false;
-        };
+        let closed = false;
 
         node.status({});
+
+        // inFlight is cleared before done(): a flow may start the next
+        // request straight from the reply
+        const fail = (error, msg, done) => {
+            inFlight = false;
+            if (!closed) {
+                node.status({
+                    fill: 'red',
+                    shape: 'ring',
+                    text: String(error.message || error).slice(0, 40),
+                });
+            }
+            if (done) done(error);
+            else node.error(error, msg);
+        };
+
+        const reply = (msg, send, done, payload, topic) => {
+            inFlight = false;
+            const out = Object.assign({}, msg, { topic, payload });
+            if (send) send(out);
+            else node.send(out);
+            if (done) done();
+        };
+
+        const scan = (msg, send, done) => {
+            const addr = (msg && msg.broadcastAddress) || broadcastAddress;
+            const targetPort = Number(msg && msg.port) || port;
+            const windowMs = Math.max(
+                500,
+                Math.min(30000, Number(msg && msg.windowMs) || listenWindowMs)
+            );
+
+            node.status({
+                fill: 'yellow',
+                shape: 'dot',
+                text: 'scanning ' + addr,
+            });
+
+            return Gree.Client.discover({
+                host: addr,
+                port: targetPort,
+                timeout: windowMs,
+            }).then(
+                devices => {
+                    if (closed) return;
+                    const list = devices.map(d => ({
+                        mac: d.mac,
+                        // the field name of earlier releases, kept for flows
+                        // that read it
+                        cid: d.mac,
+                        name: d.name,
+                        address: d.address,
+                        port: targetPort,
+                        version: d.version,
+                        subUnits: d.subUnits,
+                        pack: d.pack,
+                    }));
+                    node.status({
+                        fill: 'green',
+                        shape: 'dot',
+                        text: 'found ' + list.length,
+                    });
+                    reply(msg, send, done, list, 'gree-discovery');
+                },
+                error => fail(error, msg, done)
+            );
+        };
+
+        const configureWifi = (msg, send, done) => {
+            const p = (msg && msg.payload) || {};
+            if (!p.ssid || typeof p.password !== 'string') {
+                fail(
+                    new Error(
+                        'configureWifi: payload must be {ssid, password[, host]}'
+                    ),
+                    msg,
+                    done
+                );
+                return Promise.resolve();
+            }
+            node.status({
+                fill: 'yellow',
+                shape: 'dot',
+                text: 'WiFi setup → ' + p.ssid,
+            });
+            return Gree.Client.configureWifi({
+                ssid: p.ssid,
+                password: p.password,
+                ...(p.host && { host: p.host }),
+                port: Number(msg.port) || port,
+            }).then(
+                result => {
+                    if (closed) return;
+                    node.status({
+                        fill: result.confirmed ? 'green' : 'yellow',
+                        shape: 'dot',
+                        text: result.confirmed
+                            ? 'joined ' + p.ssid
+                            : 'no confirmation',
+                    });
+                    // never echo the password back into the flow
+                    const out = Object.assign({}, msg);
+                    delete out.payload;
+                    reply(out, send, done, result, 'gree-wifi-setup');
+                },
+                error => fail(error, msg, done)
+            );
+        };
 
         this.on('input', (msg, send, done) => {
             if (inFlight) {
@@ -57,105 +148,30 @@ module.exports = function (RED) {
                 else node.error(err, msg);
                 return;
             }
-            const addr = (msg && msg.broadcastAddress) || broadcastAddress;
-            const targetPort = Number(msg && msg.port) || port;
-            const windowMs = Math.max(
-                500,
-                Math.min(30000, Number(msg && msg.windowMs) || listenWindowMs)
-            );
-
-            const devices = new Map(); // key: ip+cid
-
-            inFlight = true;
-            node.status({
-                fill: 'yellow',
-                shape: 'dot',
-                text: 'scanning ' + addr,
-            });
-
-            socket = dgram.createSocket('udp4');
-
-            socket.on('error', error => {
-                cleanup();
-                node.status({
-                    fill: 'red',
-                    shape: 'ring',
-                    text: error.message.slice(0, 40),
-                });
-                if (done) done(error);
-                else node.error(error, msg);
-            });
-
-            socket.on('message', (buf, rinfo) => {
-                let parsed = null;
-                try {
-                    parsed = JSON.parse(buf.toString());
-                } catch (_) {
-                    /* ignore malformed */
-                }
-                const key = rinfo.address + ':' + (parsed && parsed.cid);
-                devices.set(key, {
-                    address: rinfo.address,
-                    port: rinfo.port,
-                    cid: parsed && parsed.cid,
-                    raw: parsed,
-                });
-            });
-
-            socket.bind(() => {
-                try {
-                    socket.setBroadcast(true);
-                } catch (error) {
-                    cleanup();
-                    if (done) done(error);
-                    else node.error(error, msg);
-                    return;
-                }
-                const payload = Buffer.from(JSON.stringify({ t: 'scan' }));
-                socket.send(
-                    payload,
-                    0,
-                    payload.length,
-                    targetPort,
-                    addr,
-                    sendErr => {
-                        if (sendErr) {
-                            cleanup();
-                            node.status({
-                                fill: 'red',
-                                shape: 'ring',
-                                text: sendErr.message.slice(0, 40),
-                            });
-                            if (done) done(sendErr);
-                            else node.error(sendErr, msg);
-                            return;
-                        }
-                        timer = setTimeout(() => {
-                            const list = Array.from(devices.values());
-                            cleanup();
-                            node.status({
-                                fill: 'green',
-                                shape: 'dot',
-                                text: 'found ' + list.length,
-                            });
-                            const out = Object.assign({}, msg, {
-                                topic: 'gree-discovery',
-                                payload: list,
-                            });
-                            if (send) send(out);
-                            else node.send(out);
-                            if (done) done();
-                        }, windowMs);
-                        if (typeof timer.unref === 'function') {
-                            timer.unref();
-                        }
-                    }
+            const action = msg && msg.action;
+            if (action && action !== 'discover' && action !== 'configureWifi') {
+                const err = new Error(
+                    'Unknown action "' +
+                        action +
+                        '", expected discover or configureWifi'
                 );
+                if (done) done(err);
+                else node.error(err, msg);
+                return;
+            }
+            inFlight = true;
+            (action === 'configureWifi' ? configureWifi : scan)(
+                msg,
+                send,
+                done
+            ).finally(() => {
+                // closed while in flight: nothing replied
+                inFlight = false;
             });
         });
 
         this.on('close', done => {
-            cleanup();
+            closed = true;
             if (done) done();
         });
     }

@@ -26,6 +26,17 @@ async function main() {
         cipherMode: (process.env.GREE_SIM_CIPHER || 'ecb').toLowerCase(),
         verbose: /^(1|true|yes)$/i.test(process.env.GREE_SIM_VERBOSE || ''),
         deviceKey: process.env.GREE_SIM_DEVICE_KEY,
+        // WiFi module version in the scan answer, e.g. V1.1.13
+        version: process.env.GREE_SIM_VERSION,
+        // Firmware id (`hid` status column); set empty for a unit without one
+        hid: process.env.GREE_SIM_HID,
+        // Optional features the unit has: comma-separated friendly names or
+        // vendor codes (outdoorTemperature,humidity / OutEnvTem,DwatSen),
+        // `all` (default) or `none`
+        features: process.env.GREE_SIM_FEATURES,
+        // Multi-split gateway: number of indoor units, or their MACs
+        // (comma-separated); unset = a single unit
+        subUnits: process.env.GREE_SIM_SUB_UNITS,
         faults: {
             dropProbability: num(process.env.GREE_SIM_DROP_PROB, 0),
             dropEvery: num(process.env.GREE_SIM_DROP_EVERY, 0),

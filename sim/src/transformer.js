@@ -18,7 +18,34 @@ const VENDOR_CODES = {
     turbo: 'Tur',
     powerSave: 'SvSt',
     safetyHeating: 'StHt',
+    antiDirectBlow: 'AntiDirectBlow',
+    outdoorTemperature: 'OutEnvTem',
+    humidity: 'DwatSen',
+    errorCode: 'AllErr',
+    targetHumidity: 'Dwet',
+    waterFull: 'DwatFul',
+    cleanFilter: 'Dfltr',
+    humidityMode: 'Dmod',
+    lightSensor: 'LigSen',
 };
+
+/**
+ * Vendor codes only some units have (gree-hvac-client's OPTIONAL_VENDOR_CODES).
+ * A unit without the feature answers a status request for one with an empty
+ * `dat`, so the client probes each once after binding and polls only those
+ * it got a value for.
+ */
+const OPTIONAL_CODES = [
+    'AntiDirectBlow',
+    'OutEnvTem',
+    'DwatSen',
+    'AllErr',
+    'Dwet',
+    'DwatFul',
+    'Dfltr',
+    'Dmod',
+    'LigSen',
+];
 
 const VENDOR_VALUE = {
     power: { off: 0, on: 1 },
@@ -65,6 +92,12 @@ const VENDOR_VALUE = {
     turbo: { off: 0, on: 1 },
     powerSave: { off: 0, on: 1 },
     safetyHeating: { off: 0, on: 1 },
+    antiDirectBlow: { off: 0, on: 1 },
+    waterFull: { off: 0, on: 1 },
+    cleanFilter: { off: 0, on: 1 },
+    humidityMode: { off: 15, target: 0, continuous: 1, smart: 2 },
+    // LigSen is inverted: 0 means the sensor is active
+    lightSensor: { off: 1, on: 0 },
 };
 
 const reverseProps = Object.fromEntries(
@@ -92,8 +125,69 @@ function fromVendor(vendorObj) {
     return out;
 }
 
+/**
+ * Map the configured features (friendly names or vendor codes, `all`/`none`)
+ * to the set of optional vendor codes the simulated unit answers.
+ *
+ * @param {string|string[]|undefined} features
+ * @returns {Set<string>}
+ */
+function parseFeatures(features) {
+    if (features === undefined || features === null || features === '') {
+        return new Set(OPTIONAL_CODES);
+    }
+    const list = Array.isArray(features)
+        ? features
+        : String(features)
+              .split(',')
+              .map(f => f.trim())
+              .filter(Boolean);
+    if (list.length === 1 && /^all$/i.test(list[0])) {
+        return new Set(OPTIONAL_CODES);
+    }
+    const codes = new Set();
+    for (const f of list) {
+        const code = VENDOR_CODES[f] || f;
+        if (OPTIONAL_CODES.includes(code)) codes.add(code);
+    }
+    return codes;
+}
+
+/**
+ * The setpoint as the unit shows it: `SetTem` is always °C on the wire; in
+ * °F the `TemRec` bit tells apart the two °F values that round to one °C
+ * (same formula as gree-hvac-client), in °C `Add0.5` adds a half degree.
+ *
+ * @param {object} raw vendor state
+ * @returns {{value: number|null, unit: string}}
+ */
+function displaySetpoint(raw) {
+    const setTem = raw.SetTem;
+    if (typeof setTem !== 'number') return { value: null, unit: '°C' };
+    if (raw.TemUn === 1) {
+        if (setTem > 40) return { value: setTem, unit: '°F' };
+        const encode = f => {
+            const c = ((f - 32) * 5) / 9;
+            const rounded = Math.round(c);
+            return { SetTem: rounded, TemRec: c - rounded > 0 ? 1 : 0 };
+        };
+        const approx = (setTem * 9) / 5 + 32;
+        for (let f = Math.floor(approx) - 1; f <= Math.ceil(approx) + 1; f++) {
+            const e = encode(f);
+            if (e.SetTem === setTem && e.TemRec === (raw.TemRec ? 1 : 0)) {
+                return { value: f, unit: '°F' };
+            }
+        }
+        return { value: Math.round(approx), unit: '°F' };
+    }
+    return { value: setTem + (raw['Add0.5'] === 1 ? 0.5 : 0), unit: '°C' };
+}
+
 module.exports = {
     VENDOR_CODES,
+    OPTIONAL_CODES,
+    parseFeatures,
+    displaySetpoint,
     VENDOR_VALUE,
     reverseProps,
     reverseValues,

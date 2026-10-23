@@ -234,3 +234,103 @@ test('temSenOffset:0 models a firmware that reports real °C on the wire (#10)',
     state.setCurrentTemperature(31);
     assert.equal(state.all.TemSen, 31);
 });
+
+test('status leaves out unknown codes and features the unit lacks', async () => {
+    const sim = await startEphemeralSim({
+        deviceKey: 'ffffffffffffffff',
+        features: ['OutEnvTem'],
+    });
+    const client = dgram.createSocket('udp4');
+    try {
+        client.bind(0);
+        await new Promise(r => client.once('listening', r));
+        const deviceCipher = new EcbCipher('ffffffffffffffff');
+        const ask = async cols => {
+            const req = deviceCipher.encrypt({
+                t: 'status',
+                mac: sim.cid,
+                cols,
+            });
+            const responsePromise = waitForMessage(client);
+            await sendJson(
+                client,
+                { cid: 'app', i: 0, t: 'pack', uid: 0, pack: req.pack },
+                portOf(sim)
+            );
+            return deviceCipher.decrypt((await responsePromise).pack);
+        };
+        // a probe for a feature the unit lacks is answered empty
+        const probe = await ask(['AntiDirectBlow']);
+        assert.deepEqual(probe.cols, []);
+        assert.deepEqual(probe.dat, []);
+        const mixed = await ask(['Pow', 'Nope', 'OutEnvTem', 'DwatSen', 'hid']);
+        assert.deepEqual(mixed.cols, ['Pow', 'OutEnvTem', 'hid']);
+        assert.deepEqual(mixed.dat, [
+            0,
+            58,
+            '362001000762+U-CS532AE(LT)V3.31.bin',
+        ]);
+    } finally {
+        client.close();
+        await sim.stop();
+    }
+});
+
+test('answers the classic generic-key subList request', async () => {
+    const sim = await startEphemeralSim({
+        cid: '0011223344aa',
+        subUnits: 'c0ffee000001,c0ffee000002',
+    });
+    const client = dgram.createSocket('udp4');
+    try {
+        client.bind(0);
+        await new Promise(r => client.once('listening', r));
+        const generic = new EcbCipher();
+        const req = generic.encrypt({ mac: sim.cid, i: 1 });
+        const responsePromise = waitForMessage(client);
+        await sendJson(
+            client,
+            {
+                cid: 'app',
+                i: 1,
+                t: 'subList',
+                tcid: sim.cid,
+                uid: 0,
+                pack: req.pack,
+            },
+            portOf(sim)
+        );
+        const inner = generic.decrypt((await responsePromise).pack);
+        assert.deepEqual(
+            inner.list.map(u => u.mac),
+            ['c0ffee000001', 'c0ffee000002']
+        );
+        assert.equal(sim.stats.subLists, 1);
+    } finally {
+        client.close();
+        await sim.stop();
+    }
+});
+
+test('setClock/setName validate their input', async () => {
+    const sim = new Simulator({ port: 0 });
+    assert.equal(sim.setClock('yesterday'), false);
+    assert.equal(sim.setClock('2031-05-06 07:08:09'), true);
+    assert.match(sim.clock, /^2031-05-06 07:08:(09|1\d)$/);
+    assert.equal(sim.setName('   '), false);
+    assert.equal(sim.setName('x'.repeat(100)), true);
+    assert.equal(sim.name.length, 64);
+});
+
+test('features: friendly names, vendor codes, all and none', () => {
+    assert.equal(new DeviceState().features.size, 9);
+    assert.equal(new DeviceState({}, { features: 'none' }).features.size, 0);
+    assert.equal(new DeviceState({}, { features: 'all' }).features.size, 9);
+    assert.deepEqual(
+        [
+            ...new DeviceState({}, { features: 'humidity, LigSen, bogus' })
+                .features,
+        ],
+        ['DwatSen', 'LigSen']
+    );
+});

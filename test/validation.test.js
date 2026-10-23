@@ -45,3 +45,43 @@ test('returns an empty result for non-object input', () => {
     assert.deepEqual(properties, {});
     assert.equal(warnings.length, 1);
 });
+
+test('drops read-only properties', () => {
+    const { properties, warnings } = validateProperties({
+        currentTemperature: 20,
+        humidity: 40,
+        errorCode: 0,
+        lights: 'on',
+    });
+    assert.deepEqual(properties, { lights: 'on' });
+    assert.equal(warnings.length, 3);
+    assert.ok(warnings.every(w => /read-only property/.test(w)));
+});
+
+test('accepts the newer properties and their values', () => {
+    const { properties, warnings } = validateProperties({
+        antiDirectBlow: 'on',
+        lightSensor: 'off',
+        humidityMode: 'smart',
+        targetHumidity: '55',
+        temperature: 23.5,
+    });
+    assert.deepEqual(warnings, []);
+    assert.deepEqual(properties, {
+        antiDirectBlow: 'on',
+        lightSensor: 'off',
+        humidityMode: 'smart',
+        targetHumidity: 55,
+        temperature: 23.5,
+    });
+});
+
+test('targetHumidity must be a whole % from 0 to 100', () => {
+    for (const bad of [101, -1, 50.5]) {
+        const { properties, warnings } = validateProperties({
+            targetHumidity: bad,
+        });
+        assert.deepEqual(properties, {}, String(bad));
+        assert.match(warnings[0], /whole %/);
+    }
+});

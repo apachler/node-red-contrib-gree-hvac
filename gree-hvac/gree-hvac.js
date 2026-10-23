@@ -4,6 +4,7 @@ const Gree = require('gree-hvac-client');
 const { ConnectionManager } = require('./lib/connection-manager');
 const { MacResolver } = require('./lib/mac-resolver');
 const { validateProperties } = require('./lib/validation');
+const { ACTIONS, getAction } = require('./lib/actions');
 
 module.exports = function (RED) {
     const num = (value, fallback) => {
@@ -11,9 +12,10 @@ module.exports = function (RED) {
         return Number.isFinite(n) && n > 0 ? n : fallback;
     };
 
+    const pad = n => String(n).padStart(2, '0');
+
     const fmtTime = ts => {
         const d = new Date(ts);
-        const pad = n => String(n).padStart(2, '0');
         return (
             pad(d.getHours()) +
             ':' +
@@ -75,6 +77,22 @@ module.exports = function (RED) {
         const rejectIfOffline = config.rejectIfOffline === true;
         const validate = config.validate !== false; // default on
 
+        // Unit-specific options of the client (see gree-hvac-config)
+        const clientOptions = {
+            halfDegree: device.halfDegree === true,
+            encodedTargetHumidity: device.encodedTargetHumidity === true,
+            statusBatchSize: Math.floor(num(device.statusBatchSize, 20)),
+            silent: config.silent === true,
+        };
+        if (device.subUnit) {
+            clientOptions.subUnit = device.subUnit;
+        }
+        if (resolveByMac) {
+            // bind only to the resolved device, never to another one that
+            // took over its old address
+            clientOptions.mac = device.mac;
+        }
+
         const manager = new ConnectionManager({
             ClientCtor: Gree.Client,
             host: device.host || null,
@@ -91,12 +109,15 @@ module.exports = function (RED) {
             noResponseThreshold,
             maxQueueSize,
             logLevel: config.logLevel || 'error',
+            clientOptions,
         });
 
         const ctx = node.context();
+        let deviceInfo = null;
+        let warnedFirmware = false;
         const writeMetrics = () => {
             try {
-                ctx.set('gree', manager.metrics());
+                ctx.set('gree', { ...manager.metrics(), deviceInfo });
             } catch (_) {
                 /* context backend optional */
             }
@@ -117,7 +138,35 @@ module.exports = function (RED) {
 
         const emitDiagnostic = payload => {
             // 3rd output — structured event for alerting / dashboards
-            node.send([null, null, { topic: 'diagnostic', payload }]);
+            node.send([null, null, { topic: 'diagnostic', payload }, null]);
+        };
+
+        // Once per connection: model, firmware id and, for firmwares whose
+        // later builds dropped local control, a warning not to upgrade.
+        const fetchDeviceInfo = () => {
+            manager
+                .call('getDeviceInfo')
+                .then(info => {
+                    deviceInfo = info;
+                    writeMetrics();
+                    emitDiagnostic({
+                        event: 'device_info',
+                        at: Date.now(),
+                        ...info,
+                    });
+                    if (info && info.upgradeWarning && !warnedFirmware) {
+                        warnedFirmware = true;
+                        node.warn(info.upgradeWarning);
+                    }
+                })
+                .catch(error => {
+                    if (config.debug) {
+                        node.log(
+                            'Device info unavailable: ' +
+                                ((error && error.message) || error)
+                        );
+                    }
+                });
         };
 
         manager.on('state', (state, prev, meta) => {
@@ -132,6 +181,7 @@ module.exports = function (RED) {
                     break;
                 case 'connected':
                     statusConnected();
+                    fetchDeviceInfo();
                     break;
                 case 'no_response':
                     node.status({
@@ -182,6 +232,7 @@ module.exports = function (RED) {
                 { topic: 'updated', payload: updated },
                 { topic: 'properties', payload: properties },
                 null,
+                null,
             ]);
         });
 
@@ -191,6 +242,7 @@ module.exports = function (RED) {
             node.send([
                 { topic: 'acknowledged', payload: updated },
                 { topic: 'properties', payload: properties },
+                null,
                 null,
             ]);
         });
@@ -247,7 +299,56 @@ module.exports = function (RED) {
             }
         }
 
+        // msg.action: a request to the client instead of a property write;
+        // its answer goes to output 4, failures to done(err) / catch nodes.
+        const runAction = (msg, send, done) => {
+            const fail = err => {
+                if (done) done(err);
+                else node.error(err, msg);
+            };
+            const action = getAction(msg.action);
+            if (!action) {
+                fail(
+                    new Error(
+                        'Unknown action "' +
+                            msg.action +
+                            '", expected one of ' +
+                            Object.keys(ACTIONS).join(', ')
+                    )
+                );
+                return;
+            }
+            let args;
+            try {
+                args = action.args(msg);
+            } catch (error) {
+                fail(error);
+                return;
+            }
+            manager
+                .call(msg.action, ...args)
+                .then(result => {
+                    const out = Object.assign({}, msg, {
+                        topic: msg.action,
+                        payload: action.reply ? action.reply(args) : result,
+                    });
+                    (send || node.send.bind(node))([null, null, null, out]);
+                    if (done) done();
+                })
+                .catch(error => {
+                    fail(
+                        error && error.message === 'offline'
+                            ? new Error(msg.action + ' rejected: offline')
+                            : error
+                    );
+                });
+        };
+
         this.on('input', (msg, send, done) => {
+            if (msg && typeof msg.action === 'string' && msg.action) {
+                runAction(msg, send, done);
+                return;
+            }
             try {
                 let raw;
                 if (

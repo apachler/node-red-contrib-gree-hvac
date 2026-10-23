@@ -385,3 +385,104 @@ test('setHost while stopped updates host without rebuilding', async () => {
     await tick(10);
     assert.equal(FakeClient.last, lastBefore); // stopped: no new client
 });
+
+// Same shape as gree-hvac-client's error: the manager recognises it by name.
+class ClientInvalidPropertyError extends Error {
+    constructor(message, props) {
+        super(message);
+        this.props = props;
+    }
+}
+
+test('client options pass through; the client never re-binds on its own', async () => {
+    FakeClient.reset();
+    const mgr = makeManager({
+        clientOptions: { subUnit: 'c0ffee000001', halfDegree: true },
+    });
+    mgr.start();
+    await tick(0);
+    const opts = FakeClient.last.opts;
+    assert.equal(opts.subUnit, 'c0ffee000001');
+    assert.equal(opts.halfDegree, true);
+    assert.equal(opts.maxNoResponse, 0);
+    assert.equal(opts.autoConnect, false);
+    assert.equal(opts.host, '10.0.0.1');
+    await mgr.stop();
+});
+
+test('a property the client refuses is dropped, the rest of the batch sent', async () => {
+    FakeClient.reset();
+    const mgr = makeManager({ commandRateMs: 0 });
+    const failed = [];
+    mgr.on('write_failed', (err, batch) => failed.push({ err, batch }));
+    mgr.start();
+    await tick(0);
+    const client = FakeClient.last;
+    client.simulateConnect();
+    await tick(5);
+    const original = client.setProperties.bind(client);
+    client.setProperties = batch => {
+        if ('temperature' in batch) {
+            throw new ClientInvalidPropertyError('Invalid value 99', {
+                property: 'temperature',
+                value: 99,
+            });
+        }
+        return original(batch);
+    };
+
+    mgr.send({ power: 'on', temperature: 99 });
+    await tick(30);
+    assert.deepEqual(client.setPropertiesCalls, [{ power: 'on' }]);
+    assert.equal(failed.length, 1);
+    assert.deepEqual(failed[0].batch, { temperature: 99 });
+    // no reset: the device never takes it, reconnecting would not help
+    assert.equal(mgr.isConnected(), true);
+    assert.equal(FakeClient.instances.length, 1);
+    await mgr.stop();
+});
+
+test('an asynchronous invalid-property rejection is neither requeued nor a reset', async () => {
+    FakeClient.reset();
+    const mgr = makeManager({ commandRateMs: 0 });
+    const failed = [];
+    mgr.on('write_failed', err => failed.push(err));
+    mgr.start();
+    await tick(0);
+    const client = FakeClient.last;
+    client.simulateConnect();
+    await tick(5);
+    client.setPropertiesReject = new ClientInvalidPropertyError('nope', {
+        property: 'mode',
+    });
+    mgr.send({ mode: 'sideways' });
+    await tick(30);
+    assert.equal(failed.length, 1);
+    assert.equal(mgr.queue.size, 0);
+    assert.equal(mgr.isConnected(), true);
+    await mgr.stop();
+});
+
+test('call() delegates to the bound client and rejects while offline', async () => {
+    FakeClient.reset();
+    const mgr = makeManager();
+    mgr.start();
+    await tick(0);
+    await assert.rejects(mgr.call('getDeviceInfo'), /offline/);
+
+    const client = FakeClient.last;
+    client.getVendorProperties = codes =>
+        Promise.resolve(Object.fromEntries(codes.map(c => [c, 1])));
+    client.simulateConnect();
+    await tick(5);
+    assert.deepEqual(await mgr.call('getVendorProperties', ['Pow']), {
+        Pow: 1,
+    });
+    await assert.rejects(mgr.call('noSuchMethod'), /unsupported/);
+    client.setName = () => {
+        throw new Error('sync boom');
+    };
+    await assert.rejects(mgr.call('setName', 'x'), /sync boom/);
+    await mgr.stop();
+    await assert.rejects(mgr.call('getVendorProperties', ['Pow']), /offline/);
+});

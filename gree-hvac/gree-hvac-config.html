@@ -23,7 +23,17 @@
                 }
             },
             broadcastAddress: { value: "255.255.255.255", required: false },
-            rediscoverInterval: { value: 60, required: false, validate: RED.validators.number() }
+            rediscoverInterval: { value: 60, required: false, validate: RED.validators.number() },
+            subUnit: {
+                value: "",
+                required: false,
+                validate: function (v) {
+                    return !v || /^[0-9a-fA-F:-]{6,}$/.test(String(v).trim());
+                }
+            },
+            halfDegree: { value: false },
+            encodedTargetHumidity: { value: false },
+            statusBatchSize: { value: 20, required: false, validate: RED.validators.number() }
         },
         label: function () {
             return this.name;
@@ -74,4 +84,52 @@
         <label for="node-config-input-rediscoverInterval"><i class="fa fa-clock-o"></i> Rescan (s)</label>
         <input type="number" id="node-config-input-rediscoverInterval" min="5" step="1" placeholder="60" style="width:100px">
     </div>
+    <hr/>
+    <h4>Unit</h4>
+    <div class="form-row">
+        <label for="node-config-input-subUnit"><i class="fa fa-sitemap"></i> Indoor unit</label>
+        <input type="text" id="node-config-input-subUnit" placeholder="multi-split only: indoor unit MAC">
+    </div>
+    <div class="form-tips" style="margin-bottom:8px">
+        Multi-split systems: the IP / MAC above address the outdoor unit's WiFi
+        module; enter the indoor unit's MAC here (list them with the
+        <code>getSubUnits</code> action), one config node per indoor unit.
+        Leave blank for a single unit.
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-halfDegree" style="width:auto">
+            <input type="checkbox" id="node-config-input-halfDegree" style="width:auto; margin-right:6px">
+            Half-degree °C setpoints (firmwares with <code>Add0.5</code>)
+        </label>
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-encodedTargetHumidity" style="width:auto">
+            <input type="checkbox" id="node-config-input-encodedTargetHumidity" style="width:auto; margin-right:6px">
+            Encoded target humidity (ACs with humidity control, e.g. Airy Pro)
+        </label>
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-statusBatchSize"><i class="fa fa-list"></i> Status batch</label>
+        <input type="number" id="node-config-input-statusBatchSize" min="1" max="50" step="1" placeholder="20" style="width:100px">
+        <span style="margin-left:6px">codes per status request</span>
+    </div>
+</script>
+
+<script type="text/x-red" data-help-name="gree-hvac-config">
+    <p>One Gree HVAC unit: its address and the firmware options of the unit.</p>
+    <h3>Properties</h3>
+    <dl class="message-properties">
+        <dt>IP Address / UDP port</dt>
+        <dd>The unit's address (port 7000). Optional when <b>Resolve by MAC</b> is on.</dd>
+        <dt>Resolve by MAC</dt>
+        <dd>Periodically broadcast-discovers the unit by its MAC (<code>cid</code>) and follows it across DHCP address changes. The client also binds only to that MAC.</dd>
+        <dt>Indoor unit</dt>
+        <dd>Multi-split systems only: the indoor unit's MAC. The address above is then the outdoor unit's WiFi module, which relays status and commands. Get the MACs with the <code>getSubUnits</code> action of a <code>gree-hvac</code> node pointed at the outdoor unit.</dd>
+        <dt>Half-degree °C setpoints</dt>
+        <dd>For firmwares that carry the half degree in <code>Add0.5</code>: <code>temperature</code> may then be e.g. <code>23.5</code>. Leave off unless the unit shows half degrees.</dd>
+        <dt>Encoded target humidity</dt>
+        <dd>Air conditioners with humidity control (e.g. Airy Pro) encode <code>targetHumidity</code> as (% − 15) / 5. Leave off for dehumidifiers.</dd>
+        <dt>Status batch</dt>
+        <dd>Most vendor codes per status request (20); some firmwares stop answering above ~29.</dd>
+    </dl>
 </script>

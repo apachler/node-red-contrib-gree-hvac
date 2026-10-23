@@ -57,6 +57,8 @@ class ConnectionManager extends EventEmitter {
      * @param {number}  opts.noResponseThreshold    consecutive missed polls before reset
      * @param {number}  opts.maxQueueSize           hard cap on pending writes
      * @param {string}  opts.logLevel
+     * @param {object}  [opts.clientOptions]       extra gree-hvac-client options
+     *                                             (mac, subUnit, halfDegree, silent, ...)
      */
     constructor(opts) {
         super();
@@ -125,6 +127,31 @@ class ConnectionManager extends EventEmitter {
 
     isConnected() {
         return this.connected;
+    }
+
+    /**
+     * Call one of the client's request methods (getProperties,
+     * getDeviceInfo, getSubUnits, getVendorProperties, setVendorProperties,
+     * getClock, setClock, setName) on the bound client. Unlike `send()`
+     * nothing is queued: offline calls reject at once.
+     *
+     * @param {string} method client method name
+     * @param {...*} args
+     * @returns {Promise<*>} what the client method resolves with
+     */
+    call(method, ...args) {
+        const client = this.client;
+        if (this.stopped || !this.connected || !client) {
+            return Promise.reject(new Error('offline'));
+        }
+        if (typeof client[method] !== 'function') {
+            return Promise.reject(new Error('unsupported: ' + method));
+        }
+        try {
+            return Promise.resolve(client[method](...args));
+        } catch (error) {
+            return Promise.reject(error);
+        }
     }
 
     /**
@@ -266,7 +293,17 @@ class ConnectionManager extends EventEmitter {
         const batch = Object.fromEntries(this.queue);
         this.queue.clear();
         this.lastSendAt = Date.now();
-        this.client.setProperties(batch).catch(error => {
+        const sent = this._setProperties(batch);
+        if (!sent) {
+            this._scheduleDrain();
+            return;
+        }
+        sent.catch(error => {
+            if (isInvalidPropertyError(error)) {
+                // the device will never take it: no requeue, no reset
+                this.emit('write_failed', error, batch);
+                return;
+            }
             // Surface the write failure to listeners so catch-nodes can
             // see it with the originating payload; then requeue keys the
             // caller has not overwritten since.
@@ -281,6 +318,37 @@ class ConnectionManager extends EventEmitter {
         });
         if (this.queue.size > 0) {
             this._scheduleDrain();
+        }
+    }
+
+    /**
+     * setProperties() throws ClientInvalidPropertyError synchronously for a
+     * value the client refuses (out-of-range setpoint, read-only property,
+     * ...). Drop the offending property, report it, and send the rest.
+     *
+     * @param {object} batch property map, modified in place
+     * @returns {Promise|null} the send, or null when nothing was left to send
+     */
+    _setProperties(batch) {
+        for (;;) {
+            try {
+                return this.client.setProperties(batch);
+            } catch (error) {
+                const key = error && error.props && error.props.property;
+                const known = key !== undefined && key in batch;
+                this.emit(
+                    'write_failed',
+                    error,
+                    known ? { [key]: batch[key] } : { ...batch }
+                );
+                if (!known) {
+                    return null;
+                }
+                delete batch[key];
+                if (Object.keys(batch).length === 0) {
+                    return null;
+                }
+            }
         }
     }
 
@@ -300,12 +368,17 @@ class ConnectionManager extends EventEmitter {
         let client;
         try {
             client = new this.opts.ClientCtor({
+                ...this.opts.clientOptions,
                 host: this.opts.host,
                 port: this.opts.port,
                 pollingInterval: this.opts.pollingIntervalMs,
                 pollingTimeout: this.opts.pollingTimeoutMs,
                 connectTimeout: this.opts.connectTimeoutMs,
                 autoConnect: false,
+                // gree-hvac-client >= 4.2 re-binds by itself after a few
+                // no_response events; the manager's noResponseThreshold owns
+                // that decision (and tears down + rebuilds the client).
+                maxNoResponse: 0,
                 logLevel: this.opts.logLevel,
             });
         } catch (error) {
@@ -549,4 +622,16 @@ class ConnectionManager extends EventEmitter {
     }
 }
 
-module.exports = { ConnectionManager };
+/**
+ * @param {*} error
+ * @returns {boolean} the client refused a property or value (it never will take it)
+ */
+function isInvalidPropertyError(error) {
+    return !!(
+        error &&
+        error.constructor &&
+        error.constructor.name === 'ClientInvalidPropertyError'
+    );
+}
+
+module.exports = { ConnectionManager, isInvalidPropertyError };

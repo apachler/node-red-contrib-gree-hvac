@@ -18,12 +18,13 @@
             heartbeatInterval: { value: 60, required: false, validate: RED.validators.number() },
             rejectIfOffline: { value: false },
             validate: { value: true },
+            silent: { value: false },
             logLevel: { value: "error", required: true },
             debug: { value: false }
         },
         inputs: 1,
-        outputs: 3,
-        outputLabels: ["changes", "snapshot", "diagnostics"],
+        outputs: 4,
+        outputLabels: ["changes", "snapshot", "diagnostics", "responses"],
         icon: "gree.png",
         label: function () {
             return this.name || "Gree";
@@ -115,6 +116,13 @@
         </label>
     </div>
 
+    <div class="form-row">
+        <label for="node-input-silent" style="width:auto">
+            <input type="checkbox" id="node-input-silent" style="width:auto; margin-right:6px">
+            Silent: ask the unit not to beep on commands
+        </label>
+    </div>
+
     <hr/>
     <h4>Diagnostics</h4>
 
@@ -151,20 +159,47 @@
         <dt>topic <span class="property-type">string</span></dt>
         <dt>payload <span class="property-type">string | number</span></dt>
         <dd>Alternative form: set a single property where <code>msg.topic</code> is the property name.</dd>
+        <dt>action <span class="property-type">string</span></dt>
+        <dd>Instead of setting properties, make a request; the answer goes to output 4 (see <em>Actions</em>).</dd>
+    </dl>
+
+    <h3>Properties</h3>
+    <p>Writable: <code>power</code>, <code>mode</code>, <code>temperature</code>, <code>temperatureUnit</code>, <code>fanSpeed</code>, <code>air</code>, <code>blow</code>, <code>health</code>, <code>sleep</code>, <code>lights</code>, <code>swingHor</code>, <code>swingVert</code>, <code>quiet</code>, <code>turbo</code>, <code>powerSave</code>, <code>safetyHeating</code>, and on units that have them <code>antiDirectBlow</code>, <code>lightSensor</code>, <code>targetHumidity</code>, <code>humidityMode</code>.</p>
+    <p>Read-only (reported, never sent): <code>currentTemperature</code>, and on units that have them <code>outdoorTemperature</code>, <code>humidity</code>, <code>errorCode</code>, <code>waterFull</code>, <code>cleanFilter</code>. Optional properties appear in the outputs only once the unit answered for them.</p>
+    <p><code>temperature</code> is in the unit's <code>temperatureUnit</code>: whole °F when it is in Fahrenheit, whole °C — or half °C with the config node's <em>half-degree</em> option. The full value list is in <code>docs/PROTOCOL.md</code>.</p>
+
+    <h3>Actions</h3>
+    <p>Send <code>msg.action</code> to call the device; the reply is <code>msg</code> with <code>topic</code> = the action and <code>payload</code> = the answer, on output 4. Actions are not queued: while offline they fail at once.</p>
+    <dl class="message-properties">
+        <dt>getProperties</dt><dd>Poll now: all current properties.</dd>
+        <dt>getDeviceInfo</dt><dd>MAC, name, model, brand, WiFi module version and firmware id (<code>hid</code>, <code>firmwareVersion</code>, ...); <code>upgradeWarning</code> is set for firmwares whose later builds dropped local control.</dd>
+        <dt>getSubUnits</dt><dd>Multi-split: the indoor units (<code>[{mac, mid}]</code>) behind this outdoor unit; empty for a single unit. Optional <code>msg.timeout</code> (ms).</dd>
+        <dt>getVendorProperties</dt><dd><code>payload</code>: a vendor code or an array of them (e.g. <code>["UvcControl","CompressorFqy"]</code>); answers code → raw value.</dd>
+        <dt>setVendorProperties</dt><dd><code>payload</code>: <code>{code: value}</code>, sent raw. Use with care: the unit takes whatever it gets.</dd>
+        <dt>getClock</dt><dd>The unit's clock, <code>YYYY-MM-DD HH:MM:SS</code> (undefined when it has none).</dd>
+        <dt>setClock</dt><dd>Set the clock to <code>payload</code> (Date, timestamp or date string; empty = now), in this host's local time.</dd>
+        <dt>setName</dt><dd>Rename the device to <code>payload</code>.</dd>
     </dl>
 
     <h3>Outputs</h3>
     <ol class="node-ports">
         <li><b>Changes</b> — <code>topic</code> is <code>updated</code> (delta from device) or <code>acknowledged</code> (delta from a write).</li>
         <li><b>Snapshot</b> — <code>topic</code> is <code>properties</code>, the full current property map.</li>
-        <li><b>Diagnostics</b> — structured events (<code>state</code>, <code>error</code>, <code>queue_overflow</code>, <code>heartbeat</code>, <code>update</code>, <code>write_ack</code>) with metrics for alerting and dashboards.</li>
+        <li><b>Diagnostics</b> — structured events (<code>state</code>, <code>error</code>, <code>queue_overflow</code>, <code>heartbeat</code>, <code>update</code>, <code>write_ack</code>, <code>rehome</code>, <code>device_info</code>) with metrics for alerting and dashboards.</li>
+        <li><b>Responses</b> — answers to <code>msg.action</code> requests.</li>
     </ol>
 
     <h3>Catch-node integration</h3>
-    <p>Invalid input messages and rejected writes (when <em>reject if offline</em> is enabled) call <code>node.error(err, msg)</code> so they can be handled by a downstream catch node.</p>
+    <p>Invalid input messages, failed actions and rejected writes (when <em>reject if offline</em> is enabled) call <code>node.error(err, msg)</code> so they can be handled by a downstream catch node.</p>
 
     <h3>Validation</h3>
-    <p>When enabled (default), property names and enum-valued payloads are checked against the upstream <code>PROPERTY</code> / <code>VALUE</code> schema. Unknown keys are dropped with a warning rather than sent to the device, because unknown keys are one of the known triggers for a wedged WiFi module.</p>
+    <p>When enabled (default), property names and enum-valued payloads are checked against the upstream <code>PROPERTY</code> / <code>VALUE</code> schema. Unknown keys and read-only properties are dropped with a warning rather than sent to the device, because unknown keys are one of the known triggers for a wedged WiFi module. A value the client still refuses (e.g. a setpoint out of range) is dropped from the write with a warning; the rest of the write goes through.</p>
+
+    <h3>Firmware warning</h3>
+    <p>After each connect the node reads the unit's firmware id and publishes it as a <code>device_info</code> diagnostic (and under <code>deviceInfo</code> in the runtime context). For WiFi-module firmwares whose later builds are known to be cloud-only it warns once: do not upgrade that module's firmware, or local control may end for good.</p>
+
+    <h3>Silent</h3>
+    <p>Asks the unit not to beep on each command (units without a controllable beeper ignore it).</p>
 
     <h3>Connection handling</h3>
     <p>The node wraps the underlying client with an exponential-backoff reconnect strategy and two watchdogs (one for silence while connected, one for "stuck in connecting"). Defaults are tuned for unattended 24/7 operation over WiFi.</p>
@@ -178,5 +213,5 @@
     </ul>
 
     <h3>Runtime context</h3>
-    <p>The node publishes a live metrics snapshot under <code>context().get('gree')</code> with the current state, uptime, last-contact timestamp, queue size, and reset counters.</p>
+    <p>The node publishes a live metrics snapshot under <code>context().get('gree')</code> with the current state, uptime, last-contact timestamp, queue size, reset counters and the last <code>deviceInfo</code>.</p>
 </script>

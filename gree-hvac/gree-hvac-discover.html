@@ -45,14 +45,19 @@
         <dt class="optional">broadcastAddress <span class="property-type">string</span></dt>
         <dt class="optional">port <span class="property-type">number</span></dt>
         <dt class="optional">windowMs <span class="property-type">number</span></dt>
+        <dt class="optional">action <span class="property-type">string</span></dt>
+        <dd><code>discover</code> (default) or <code>configureWifi</code> (see <em>WiFi setup</em>).</dd>
     </dl>
 
     <h3>Outputs</h3>
     <dl class="message-properties">
         <dt>payload <span class="property-type">array</span></dt>
-        <dd>Array of <code>{ address, port, cid, raw }</code> entries for each device that responded inside the listen window. <code>cid</code> is the device identifier as advertised in the scan reply.</dd>
+        <dd>One entry per device that answered inside the listen window: <code>{ mac, cid, name, address, port, version, subUnits, pack }</code>. <code>mac</code> (also as <code>cid</code>) is the device id for <em>Resolve by MAC</em>, <code>address</code> its IP, <code>version</code> the WiFi module version, <code>subUnits</code> the number of indoor units when it is the outdoor unit of a multi-split system (else 0), and <code>pack</code> the full decrypted scan answer (brand, model, ...).</dd>
     </dl>
 
+    <h3>WiFi setup</h3>
+    <p>With <code>msg.action</code> = <code>"configureWifi"</code> and <code>msg.payload</code> = <code>{ ssid, password }</code> the node joins a unit in AP (setup) mode to your WiFi network instead of scanning. Reset the unit's WiFi first (MODE + WIFI, or MODE + TURBO, on the remote for 5 s) and connect the Node-RED host to the unit's own WiFi network (named after the last digits of its MAC, password usually <code>12345678</code>); the unit is then at <code>192.168.1.1</code> (override with <code>payload.host</code>). Some firmwares take passwords of at most 31 characters. The answer is <code>{ confirmed, mac }</code> with <code>topic</code> <code>gree-wifi-setup</code>; <code>confirmed</code> is false when the unit sent no confirmation, which some firmwares never do. The password is not passed on.</p>
+
     <h3>Notes</h3>
-    <p>The discovery packet is sent unencrypted; the responses are not decrypted by this node, so only the envelope fields (IP, port, cid) are guaranteed to be useful. Use the IP and cid to configure a <code>gree-hvac-config</code> node.</p>
+    <p>Use the <code>address</code> and <code>mac</code> to configure a <code>gree-hvac-config</code> node.</p>
 </script>
