@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/apachler/node-red-contrib-gree-hvac/compare/v1.7.0...v1.8.0) (2026-10-23)
+
+
+### Features
+
+* delegate connection recovery to gree-hvac-client 4.4 ([#77](https://github.com/apachler/node-red-contrib-gree-hvac/issues/77)) ([bceac74](https://github.com/apachler/node-red-contrib-gree-hvac/commit/bceac74445c1251c26e5080b8f76294c0fbe970a)), closes [#56](https://github.com/apachler/node-red-contrib-gree-hvac/issues/56)
+
 # [1.7.0](https://github.com/apachler/node-red-contrib-gree-hvac/compare/v1.6.7...v1.7.0) (2026-10-23)
 
 
