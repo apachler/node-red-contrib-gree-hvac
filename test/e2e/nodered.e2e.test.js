@@ -32,12 +32,34 @@ test('node-red admin api lists deployed flows', async () => {
     assert.equal(gree?.z, 'gree-dev-tab');
 });
 
-test('node-red gree-hvac config node points at gree.lan', async () => {
+test('node-red gree-hvac config nodes point at gree.lan', async () => {
     const r = await get(`${NR}/flows`);
     const flows = JSON.parse(r.body);
-    const cfg = flows.find(n => n.type === 'gree-hvac-config');
-    assert.ok(cfg, 'expected a gree-hvac-config node');
-    assert.equal(cfg.host, 'gree.lan');
+    const cfgs = flows.filter(n => n.type === 'gree-hvac-config');
+    // one per example flow
+    assert.equal(cfgs.length, 2);
+    for (const cfg of cfgs) {
+        assert.equal(cfg.host, 'gree.lan', cfg.name);
+    }
+});
+
+test('the dashboard example is deployed and Dashboard 2.0 serves its page', async () => {
+    const r = await get(`${NR}/flows`);
+    const flows = JSON.parse(r.body);
+    const tab = 'gree-dashboard-thermostat-tab';
+    assert.ok(
+        flows.some(n => n.id === tab),
+        'dashboard tab'
+    );
+    assert.ok(
+        flows.some(n => n.type === 'gree-hvac' && n.z === tab),
+        'gree-hvac node on the dashboard tab'
+    );
+    assert.ok(flows.some(n => n.type === 'ui-page' && n.path === '/gree'));
+
+    const page = await get(`${NR}/dashboard/gree`);
+    assert.equal(page.status, 200);
+    assert.match(page.body, /<html/i);
 });
 
 test('sim state can be forced via its HTTP API', async () => {
