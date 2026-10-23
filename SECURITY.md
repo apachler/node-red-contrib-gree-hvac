@@ -21,8 +21,8 @@ Instead, report them privately through GitHub's
 2. Click **Report a vulnerability**.
 3. Provide a clear description, affected versions, and reproduction steps.
 
-> Maintainer setup: enable *Settings → Code security → Private vulnerability
-> reporting* so the link above is active.
+> Maintainer setup: enable _Settings → Code security → Private vulnerability
+> reporting_ so the link above is active.
 
 You can expect an initial acknowledgement within **5 business days**. Once the
 issue is confirmed and a fix is prepared, we will coordinate a release and credit

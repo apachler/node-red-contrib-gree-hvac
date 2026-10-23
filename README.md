@@ -96,19 +96,9 @@ restart.
   global broadcast is filtered.
 - A re-point is surfaced as a `rehome` diagnostic event on output 3.
 
-<details>
-<summary>Minimal control panel for the classic Node-RED Dashboard (v1)</summary>
+### Example flow
 
-A small standalone flow (power, mode, temperature, fan, swing, and the feature
-toggles) for users who just want basic manual control. It targets the **legacy**
-`node-red-dashboard` (Dashboard 1.0) — install that package separately; it does
-not use the Dashboard 2.0 UI shown above.
-
-```json
-[{"id":"ff9fe48d.da79d8","type":"debug","z":"fcc6883.6f01278","name":"","active":true,"tosidebar":true,"console":false,"tostatus":false,"complete":"true","targetType":"full","x":550,"y":700,"wires":[]},{"id":"3cfb9d5c.2adfc2","type":"gree-hvac","z":"fcc6883.6f01278","name":"AC","device":"","interval":"1","x":280,"y":640,"wires":[["ff9fe48d.da79d8"],["417b67b1.9d77d8","ff9fe48d.da79d8"]]},{"id":"fab8d073.bed76","type":"switch","z":"fcc6883.6f01278","name":"","property":"topic","propertyType":"msg","rules":[{"t":"eq","v":"power","vt":"str"},{"t":"eq","v":"mode","vt":"str"},{"t":"eq","v":"temperature","vt":"str"},{"t":"eq","v":"fanSpeed","vt":"str"},{"t":"eq","v":"swingVert","vt":"str"},{"t":"eq","v":"swingHor","vt":"str"},{"t":"eq","v":"health","vt":"str"},{"t":"eq","v":"blow","vt":"str"},{"t":"eq","v":"lights","vt":"str"},{"t":"eq","v":"powerSave","vt":"str"}],"checkall":"true","repair":false,"outputs":10,"x":430,"y":460,"wires":[["f36ddc6a.6a76d"],["ed7a4d0b.d3c85"],["7f2711eb.f70ff"],["b0f5ed20.f0dc4"],["bb2fd30d.6faed"],["426d8937.d2e9a8"],["58310de9.08b1c4"],["5be9ffdd.e9e11"],["429db373.92628c"],["29e1bfb7.c963c"]]},{"id":"f36ddc6a.6a76d","type":"ui_switch","z":"fcc6883.6f01278","name":"","label":"Power","tooltip":"","group":"5c569ec8.d608f","order":1,"width":"0","height":"0","passthru":false,"decouple":"true","topic":"power","style":"","onvalue":"on","onvalueType":"str","onicon":"","oncolor":"","offvalue":"off","offvalueType":"str","officon":"","offcolor":"","x":610,"y":80,"wires":[["62c89d4e.1db264"]]},{"id":"429db373.92628c","type":"ui_switch","z":"fcc6883.6f01278","name":"","label":"Lights","tooltip":"","group":"5c569ec8.d608f","order":9,"width":"3","height":"1","passthru":false,"decouple":"true","topic":"lights","style":"","onvalue":"on","onvalueType":"str","onicon":"","oncolor":"","offvalue":"off","offvalueType":"str","officon":"","offcolor":"","x":610,"y":560,"wires":[["62c89d4e.1db264"]]},{"id":"7f2711eb.f70ff","type":"ui_numeric","z":"fcc6883.6f01278","name":"","label":"Temperature","tooltip":"","group":"5c569ec8.d608f","order":2,"width":0,"height":0,"passthru":false,"topic":"temperature","format":"{{value}}","min":"23","max":"25","step":1,"x":630,"y":200,"wires":[["62c89d4e.1db264"]]},{"id":"bb2fd30d.6faed","type":"ui_dropdown","z":"fcc6883.6f01278","name":"","label":"Vertical swing ","tooltip":"","place":"Select option","group":"5c569ec8.d608f","order":6,"width":0,"height":0,"passthru":false,"options":[{"label":"Default","value":"default","type":"str"},{"label":"Swing in full range","value":"full","type":"str"},{"label":"Fixed top","value":"fixedTop","type":"str"},{"label":"Fixed mid-top","value":"fixedMidTop","type":"str"},{"label":"Fixed mid","value":"fixedMid","type":"str"},{"label":"Fixed mid-bottom","value":"fixedMidBottom","type":"str"},{"label":"Fixed bottom","value":"fixedBottom","type":"str"},{"label":"Swing bottom","value":"swingBottom","type":"str"},{"label":"Swing mid-bottom","value":"swingMidBottom","type":"str"},{"label":"Swing mid","value":"swingMid","type":"str"},{"label":"Swing mid top","value":"swingMidTop","type":"str"},{"label":"Swing top","value":"swingTop","type":"str"}],"payload":"","topic":"swingVert","x":640,"y":320,"wires":[["62c89d4e.1db264"]]},{"id":"62c89d4e.1db264","type":"rbe","z":"fcc6883.6f01278","name":"","func":"rbe","gap":"","start":"","inout":"out","property":"payload","x":830,"y":700,"wires":[["3cfb9d5c.2adfc2","ff9fe48d.da79d8"]]},{"id":"426d8937.d2e9a8","type":"ui_dropdown","z":"fcc6883.6f01278","name":"","label":"Horizontal swing ","tooltip":"","place":"Select option","group":"5c569ec8.d608f","order":5,"width":0,"height":0,"passthru":false,"options":[{"label":"Default","value":"default","type":"str"},{"label":"Full","value":"full","type":"str"},{"label":"Fixed left","value":"fixedLeft","type":"str"},{"label":"Fixed mid-left","value":"fixedMidLeft","type":"str"},{"label":"Fixed mid","value":"fixedMid","type":"str"},{"label":"Fixed mid-right","value":"fixedMidRight","type":"str"},{"label":"Fixed right","value":"fixedRight","type":"str"},{"label":"Full alt","value":"fullAlt","type":"str"}],"payload":"","topic":"swingHor","x":640,"y":380,"wires":[["62c89d4e.1db264"]],"info":"Controls the swing mode of the horizontal air blades (not available on all units)"},{"id":"b0f5ed20.f0dc4","type":"ui_dropdown","z":"fcc6883.6f01278","name":"","label":"Fan speed","tooltip":"","place":"Select option","group":"5c569ec8.d608f","order":4,"width":0,"height":0,"passthru":false,"options":[{"label":"Auto","value":"auto","type":"str"},{"label":"Low","value":"low","type":"str"},{"label":"Medium low","value":"mediumLow","type":"str"},{"label":"Medium","value":"medium","type":"str"},{"label":"Medium high","value":"mediumHigh","type":"str"},{"label":"High","value":"high","type":"str"}],"payload":"","topic":"fanSpeed","x":630,"y":260,"wires":[["62c89d4e.1db264"]]},{"id":"29e1bfb7.c963c","type":"ui_switch","z":"fcc6883.6f01278","name":"","label":"Power save","tooltip":"","group":"5c569ec8.d608f","order":10,"width":"3","height":"1","passthru":false,"decouple":"true","topic":"powerSave","style":"","onvalue":"on","onvalueType":"str","onicon":"","oncolor":"","offvalue":"off","offvalueType":"str","officon":"","offcolor":"","x":630,"y":620,"wires":[["62c89d4e.1db264"]]},{"id":"417b67b1.9d77d8","type":"split","z":"fcc6883.6f01278","name":"","splt":"\\n","spltType":"str","arraySplt":1,"arraySpltType":"len","stream":false,"addname":"topic","x":290,"y":460,"wires":[["fab8d073.bed76"]]},{"id":"ed7a4d0b.d3c85","type":"ui_dropdown","z":"fcc6883.6f01278","name":"","label":"Mode","tooltip":"","place":"Select option","group":"5c569ec8.d608f","order":3,"width":"0","height":"0","passthru":false,"options":[{"label":"Auto","value":"auto","type":"str"},{"label":"Cool","value":"cool","type":"str"},{"label":"Dry","value":"dry","type":"str"},{"label":"Fan only","value":"fan_only","type":"str"},{"label":"Heat","value":"heat","type":"str"}],"payload":"","topic":"mode","x":610,"y":140,"wires":[["62c89d4e.1db264"]]},{"id":"58310de9.08b1c4","type":"ui_switch","z":"fcc6883.6f01278","name":"","label":"Cold plasma","tooltip":"","group":"5c569ec8.d608f","order":7,"width":"3","height":"1","passthru":false,"decouple":"true","topic":"health","style":"","onvalue":"on","onvalueType":"str","onicon":"","oncolor":"","offvalue":"off","offvalueType":"str","officon":"","offcolor":"","x":630,"y":440,"wires":[["62c89d4e.1db264"]]},{"id":"5be9ffdd.e9e11","type":"ui_switch","z":"fcc6883.6f01278","name":"","label":"X-Fan","tooltip":"","group":"5c569ec8.d608f","order":8,"width":"3","height":"1","passthru":false,"decouple":"true","topic":"blow","style":"","onvalue":"on","onvalueType":"str","onicon":"","oncolor":"","offvalue":"off","offvalueType":"str","officon":"","offcolor":"","x":610,"y":500,"wires":[["62c89d4e.1db264"]]},{"id":"5c569ec8.d608f","type":"ui_group","z":"","name":"AC","tab":"168c092a.469d97","disp":true,"width":"6","collapse":false},{"id":"168c092a.469d97","type":"ui_tab","z":"","name":"Home","icon":"dashboard","disabled":false,"hidden":false}]
-```
-
-</details>
+A minimal flow ships with the package: in the Node-RED editor, open **Import → Examples → node-red-contrib-gree-hvac → basic-control**. It uses only core nodes — three inject buttons (on + cool to 24 °C, fan speed, off) into a `gree-hvac` node, with a debug node on each of its three outputs. Set the `Gree AC` config node's host to your AC's IP (or turn on resolve by MAC) and deploy.
 
 Protocol
 --------
@@ -159,11 +149,11 @@ npm run sim:up      # docker compose up -d --build
 
 This starts two services:
 
-| Service        | URL                                | What it is                                            |
-| -------------- | ---------------------------------- | ----------------------------------------------------- |
-| `gree-sim`     | http://localhost:8080              | Simulator dashboard (live AC state, direct controls, fault injection, protocol stats) |
-| `gree-sim`     | udp://localhost:7000               | Gree protocol endpoint (also reachable in-cluster as `gree.lan`) |
-| `node-red`     | http://localhost:1880              | Node-RED with the contrib nodes + the example flow pre-loaded |
+| Service    | URL                   | What it is                                                                            |
+| ---------- | --------------------- | ------------------------------------------------------------------------------------- |
+| `gree-sim` | http://localhost:8080 | Simulator dashboard (live AC state, direct controls, fault injection, protocol stats) |
+| `gree-sim` | udp://localhost:7000  | Gree protocol endpoint (also reachable in-cluster as `gree.lan`)                      |
+| `node-red` | http://localhost:1880 | Node-RED with the contrib nodes + the example flow pre-loaded                         |
 
 The sim container is aliased as `gree.lan` on the docker network, so the example flow's `gree-hvac-config` (which targets `gree.lan`) works without modification.
 
@@ -193,11 +183,11 @@ Node-RED does not hot-reload nodes in place — `nodemon` restarts the whole run
 
 The flow source lives in two files — [`docker/nodered/flows.user.json`](docker/nodered/flows.user.json) (production) and `flows.mocks.json` (sim-only mocks tab) — that are concatenated by `merge-flows.js` and baked into the image at **build time**. Three scripts move between those source files and the running editor so you don't have to rebuild for every flow tweak:
 
-| Command | Direction | What it does |
-| ------- | --------- | ------------ |
-| `npm run flow:push` | sources → running editor | Merges both source files and full-deploys them to the running Node-RED over its admin API. Loads instantly and persists to `/data` — **no rebuild**. |
+| Command             | Direction                | What it does                                                                                                                                                                                                                                           |
+| ------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `npm run flow:push` | sources → running editor | Merges both source files and full-deploys them to the running Node-RED over its admin API. Loads instantly and persists to `/data` — **no rebuild**.                                                                                                   |
 | `npm run flow:pull` | running editor → sources | Captures the deployed flow and splits it back into the two source files (mock nodes detected by tab membership; shared dashboard config stays with the production flow so the files never collide). Order-preserving, so a small edit is a small diff. |
-| `merge-flows.js` | sources → image | Build step only; runs in the Dockerfile. |
+| `merge-flows.js`    | sources → image          | Build step only; runs in the Dockerfile.                                                                                                                                                                                                               |
 
 ```bash
 # Editing the source files on the host:
@@ -234,21 +224,22 @@ Useful env vars while iterating:
 
 ### What's actually being tested
 
-| Test file                                  | What it covers                                                                                                   |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
-| `test/connection-manager.test.js`          | Reconnect/backoff, watchdogs, write queue and diagnostics of the 24/7 connection manager (stubbed client)          |
-| `test/mac-resolver.test.js`                | Resolve-by-MAC: MAC normalisation, discovery sweep, `resolved` on first find / IP change, `miss`, scan-failure handling |
-| `test/validation.test.js`                  | Unknown/invalid properties are dropped before a write                                                            |
-| `test/gree-hvac-node.test.js`              | The three nodes on a fake Node-RED runtime, over real UDP to the in-process sim: outputs, input forms, validation, offline rejection, heartbeat, resolve-by-MAC, discovery |
-| `test/flow-logic/flow-logic.test.js`       | The production flow's function-node code (extracted from `flows.user.json`) driven with a fake clock — debounces, thresholds, manual mode |
-| `sim/test/simulator.test.js`               | Wire-level: discovery, bind, status, cmd, fault injection — without involving the contrib nodes                  |
-| `sim/test/client-roundtrip.test.js`        | Real `gree-hvac-client` connecting to the in-process simulator over loopback                                     |
-| `sim/test/dashboard.test.js`               | The sim's HTTP API and SSE stream: state, set, temperature, faults, stats, mock sensors, body limits             |
-| `sim/test/cipher-faults.test.js`           | ECB/GCM ciphers, fault injector, and a real client binding over AES-GCM                                          |
-| `test/e2e/sim.e2e.test.js`                 | Dashboard HTTP API + client round-trip against the dockerized sim                                                |
-| `test/e2e/nodered.e2e.test.js`             | Node-RED admin API: flow deployed, `gree-hvac-config` host wired to `gree.lan`, manual switch + button flow drives the sim's AC state |
-| `test/e2e/flow-logic.e2e.test.js`          | The real decision path: mock sensors (`POST /api/sensors`) → Collect Data → Main Logic → `gree-hvac` node → UDP → sim |
-| `test/e2e/fault-recovery.e2e.test.js`      | Sets `dropEvery: 3` on the sim and verifies a real state change still gets through                               |
+| Test file                             | What it covers                                                                                                                                                             |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `test/connection-manager.test.js`     | Reconnect/backoff, watchdogs, write queue and diagnostics of the 24/7 connection manager (stubbed client)                                                                  |
+| `test/mac-resolver.test.js`           | Resolve-by-MAC: MAC normalisation, discovery sweep, `resolved` on first find / IP change, `miss`, scan-failure handling                                                    |
+| `test/validation.test.js`             | Unknown/invalid properties are dropped before a write                                                                                                                      |
+| `test/examples.test.js`               | The shipped `examples/` flows: core node types only, wires resolve, every editor default set, inject payloads pass validation                                              |
+| `test/gree-hvac-node.test.js`         | The three nodes on a fake Node-RED runtime, over real UDP to the in-process sim: outputs, input forms, validation, offline rejection, heartbeat, resolve-by-MAC, discovery |
+| `test/flow-logic/flow-logic.test.js`  | The production flow's function-node code (extracted from `flows.user.json`) driven with a fake clock — debounces, thresholds, manual mode                                  |
+| `sim/test/simulator.test.js`          | Wire-level: discovery, bind, status, cmd, fault injection — without involving the contrib nodes                                                                            |
+| `sim/test/client-roundtrip.test.js`   | Real `gree-hvac-client` connecting to the in-process simulator over loopback                                                                                               |
+| `sim/test/dashboard.test.js`          | The sim's HTTP API and SSE stream: state, set, temperature, faults, stats, mock sensors, body limits                                                                       |
+| `sim/test/cipher-faults.test.js`      | ECB/GCM ciphers, fault injector, and a real client binding over AES-GCM                                                                                                    |
+| `test/e2e/sim.e2e.test.js`            | Dashboard HTTP API + client round-trip against the dockerized sim                                                                                                          |
+| `test/e2e/nodered.e2e.test.js`        | Node-RED admin API: flow deployed, `gree-hvac-config` host wired to `gree.lan`, manual switch + button flow drives the sim's AC state                                      |
+| `test/e2e/flow-logic.e2e.test.js`     | The real decision path: mock sensors (`POST /api/sensors`) → Collect Data → Main Logic → `gree-hvac` node → UDP → sim                                                      |
+| `test/e2e/fault-recovery.e2e.test.js` | Sets `dropEvery: 3` on the sim and verifies a real state change still gets through                                                                                         |
 
 Contributing
 ------------

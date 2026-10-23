@@ -44,6 +44,7 @@ npm run lint          # ESLint + Prettier
 npm run lint:fix      # auto-fix
 npm run lint:lockfile # every lockfile entry from registry.npmjs.org over HTTPS
 npm run audit         # npm audit on production deps, fails on HIGH/CRITICAL
+npm run format:check  # Prettier on Markdown/YAML/JSON (npm run format to fix)
 npm test              # unit tests for the contrib nodes (node:test)
 npm run test:sim      # unit tests for the simulator (in-process)
 npm run test:e2e      # full docker-compose stack e2e suite
@@ -61,15 +62,15 @@ simulator** section of the [README](README.md).
 
 ### Project layout
 
-| Path                      | What it is                                            |
-| ------------------------- | ----------------------------------------------------- |
-| `gree-hvac/`              | the published Node-RED nodes                          |
-| `gree-hvac/lib/`          | connection manager (24/7 reconnect) + validation      |
-| `sim/`                    | standalone Gree simulator (UDP server + dashboard)    |
-| `test/`, `sim/test/`      | unit tests (live next to what they cover)             |
-| `test/e2e/`               | end-to-end tests driving the docker-compose stack     |
-| `docker/`                 | Node-RED service image + sample/mocks flows           |
-| `docs/PROTOCOL.md`        | the full Gree UDP/AES protocol & property reference   |
+| Path                 | What it is                                          |
+| -------------------- | --------------------------------------------------- |
+| `gree-hvac/`         | the published Node-RED nodes                        |
+| `gree-hvac/lib/`     | connection manager (24/7 reconnect) + validation    |
+| `sim/`               | standalone Gree simulator (UDP server + dashboard)  |
+| `test/`, `sim/test/` | unit tests (live next to what they cover)           |
+| `test/e2e/`          | end-to-end tests driving the docker-compose stack   |
+| `docker/`            | Node-RED service image + sample/mocks flows         |
+| `docs/PROTOCOL.md`   | the full Gree UDP/AES protocol & property reference |
 
 > **Note:** `docker/nodered/flows.user.json` is the production flow. Mock
 > sensor data belongs in `flows.mocks.json` (merged at image build time), **not**

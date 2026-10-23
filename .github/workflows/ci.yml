@@ -38,6 +38,8 @@ jobs:
         run: npm run lint:lockfile
       - name: Linters
         run: npm run lint
+      - name: Formatting (Markdown, YAML, JSON)
+        run: npm run format:check
 
   test:
     name: Test (Node ${{ matrix.node-version }})

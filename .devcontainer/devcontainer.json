@@ -6,10 +6,7 @@
   },
   "customizations": {
     "vscode": {
-      "extensions": [
-        "GitHub.vscode-github-actions",
-        "dbaeumer.vscode-eslint"
-      ]
+      "extensions": ["GitHub.vscode-github-actions", "dbaeumer.vscode-eslint"]
     }
   },
   "postCreateCommand": ".devcontainer/setup.sh"
