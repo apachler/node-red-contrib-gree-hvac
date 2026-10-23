@@ -44,7 +44,9 @@ jobs:
             echo "::error::RELEASE_TOKEN secret is missing from the 'release' environment"
             exit 1
           fi
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Credentials stay persisted on purpose: semantic-release pushes the
+      # release commit + tag through this checkout.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 # zizmor: ignore[artipacked]
         with:
           fetch-depth: 0
           token: ${{ secrets.RELEASE_TOKEN }}

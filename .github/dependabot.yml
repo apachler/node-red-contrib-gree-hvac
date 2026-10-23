@@ -5,6 +5,10 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    # Let new releases age a few days before proposing them (security
+    # updates skip this), so a compromised publish is likely pulled first.
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
     groups:
       npm:
@@ -16,6 +20,10 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    # Let new releases age a few days before proposing them (security
+    # updates skip this), so a compromised publish is likely pulled first.
+    cooldown:
+      default-days: 7
     groups:
       github-actions:
         patterns:
@@ -29,6 +37,10 @@ updates:
       - "/docker/nodered"
     schedule:
       interval: "weekly"
+    # Let new releases age a few days before proposing them (security
+    # updates skip this), so a compromised publish is likely pulled first.
+    cooldown:
+      default-days: 7
     groups:
       docker-images:
         patterns:

@@ -167,6 +167,8 @@ This starts two services:
 
 The sim container is aliased as `gree.lan` on the docker network, so the example flow's `gree-hvac-config` (which targets `gree.lan`) works without modification.
 
+The ports are published on `127.0.0.1` only, because neither the sim dashboard nor the Node-RED editor has authentication. To open them to other machines on a trusted network, start the stack with `GREE_BIND=0.0.0.0 npm run sim:up`.
+
 Tail logs and tear down:
 
 ```bash
