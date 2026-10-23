@@ -5,11 +5,11 @@ reproducible — the committed `.svg` is hand-authored; the `.gif` and
 `.png` are rendered by the tooling below (locally or in CI via
 `.github/workflows/docs-media.yml`).
 
-| Asset                | How it's made                                  |
-| -------------------- | ---------------------------------------------- |
-| `logo.svg`           | Hand-authored vector (also the sim favicon).   |
-| `demo.gif`           | `vhs docs/demo.tape` — terminal demo of the stack. |
-| `sim-dashboard.png`  | `node docs/screenshot.mjs` — Playwright shot of `:8080`. |
+| Asset               | How it's made                                            |
+| ------------------- | -------------------------------------------------------- |
+| `logo.svg`          | Hand-authored vector (also the sim favicon).             |
+| `demo.gif`          | `vhs docs/demo.tape` — terminal demo of the stack.       |
+| `sim-dashboard.png` | `node docs/screenshot.mjs` — Playwright shot of `:8080`. |
 
 ## Terminal demo GIF (VHS)
 

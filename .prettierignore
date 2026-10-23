@@ -1,0 +1,8 @@
+# Written by tools, not by hand: semantic-release, npm, the Node-RED editor
+# (flow:pull), and coverage/pack output.
+CHANGELOG.md
+package-lock.json
+docker/nodered/flows.*.json
+coverage/
+pack/
+sandbox/
