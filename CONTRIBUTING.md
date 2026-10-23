@@ -13,7 +13,8 @@ participating you agree to uphold it.
 
 Requirements:
 
-- **Node.js 18+** (matches `engines.node` and the Dockerfiles)
+- **Node.js 22 LTS** for development (`.nvmrc`; the lint toolchain needs 22+).
+  The published package still runs on Node 18+, and CI tests 18/20/22.
 - **Docker + Docker Compose v2** (only for the e2e / simulator stack)
 
 ```bash
@@ -85,24 +86,26 @@ simulator** section of the [README](README.md).
 
 PR titles **must** follow [Conventional Commits](https://www.conventionalcommits.org/),
 e.g. `feat: add quiet mode toggle` or `fix(connection): clear stuck watchdog`.
-The `labeler` workflow maps the prefix to a label, which drives the
-auto-generated release notes. Recognised prefixes:
+PRs are squash-merged, and semantic-release derives the next version and the
+release notes from that title (`fix:` → patch, `feat:` → minor). The `labeler`
+workflow also maps the prefix to a label for triage. Recognised prefixes:
 
 `feat:` `fix:` `docs:` `test:` `chore:` `refactor:` `perf:` `ci:` `build:` `style:`
 
 Before opening a PR:
 
-1. `npm run lint && npm test && npm run test:sim` all pass.
+1. `npm run lint && npm test && npm run test:flow && npm run test:sim` all pass
+   (`npm run coverage:check` enforces the coverage thresholds CI uses).
 2. For protocol/connection changes, run `npm run test:e2e` locally.
-3. Update `CHANGELOG.md` under the `Unreleased` section.
-4. Update docs (`README.md` / `docs/PROTOCOL.md`) when behaviour changes.
+3. Update docs (`README.md` / `docs/PROTOCOL.md`) when behaviour changes.
 
 ## Releasing
 
-Releases are version-driven. Bump `version` in `package.json` on `master`; the
-`auto-tag` workflow creates the matching `v<version>` tag, which triggers the
-release workflow. See [CLAUDE.md](CLAUDE.md) and the release notes config in
-`.github/release.yml` for details.
+Fully automated by semantic-release: merging a PR to `master` with a `fix:` or
+`feat:` title bumps `package.json` + `CHANGELOG.md`, tags the release, and
+publishes a GitHub Release with the `.tgz`, its signed build provenance and a
+CycloneDX SBOM. Don't bump versions, edit the changelog or push tags by hand.
+`master` is ruleset-protected (PR, squash only, required checks).
 
 ## Reporting bugs & asking questions
 

@@ -18,9 +18,12 @@ services:
       GREE_SIM_BATT_STATE: "1"
       GREE_SIM_INSIDE_C: "24.5"
       GREE_SIM_OUTSIDE_C: "22.0"
+    # Published on loopback only: the sim dashboard and the Node-RED editor
+    # have no authentication. Set GREE_BIND=0.0.0.0 to reach them from other
+    # machines on a trusted network.
     ports:
-      - "7000:7000/udp"
-      - "8080:8080/tcp"
+      - "${GREE_BIND:-127.0.0.1}:7000:7000/udp"
+      - "${GREE_BIND:-127.0.0.1}:8080:8080/tcp"
     networks:
       sim-net:
         # The Node-RED flow points at host "gree.lan" for the AC; this alias
@@ -29,6 +32,11 @@ services:
         aliases:
           - gree.lan
     restart: unless-stopped
+    # The sim only reads its own files and binds ports > 1024.
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
 
   node-red:
     build:
@@ -40,12 +48,17 @@ services:
       gree-sim:
         condition: service_healthy
     ports:
-      - "1880:1880"
+      - "${GREE_BIND:-127.0.0.1}:1880:1880"
     networks:
       - sim-net
     environment:
       TZ: "Europe/Vienna"
     restart: unless-stopped
+    # Runs as the unprivileged node-red user on port 1880; /data stays
+    # writable (flows, context store), so no read_only here.
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
 
 networks:
   sim-net:

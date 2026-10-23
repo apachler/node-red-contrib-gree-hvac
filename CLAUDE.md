@@ -66,6 +66,7 @@ Automated via **semantic-release** (`release.yml` on `push` to `master`). Mergin
 
 ## Gotchas
 
+- **Ports bind to `127.0.0.1`** (`GREE_BIND` overrides) and both containers run with `cap_drop: [ALL]` + `no-new-privileges` (the sim also `read_only`); keep that when adding services.
 - **`gree.lan`** is hard-coded in the example flow's config node; docker-compose aliases the sim container as `gree.lan` so it resolves without editing the flow.
 - The **sim dashboard at :8080** is a standalone Gree-device simulator (drives the simulated AC + fault injection) with no dependency on the example flow. Mock Victron/Ruuvi values come from the Node-RED "Sim Sensors" page (POST `/api/sensors`).
 - **Workflow triggers**: only tag pushes (release.yml) and PR/push-to-master (ci.yml + e2e.yml) run Actions; pushes to feature branches don't.

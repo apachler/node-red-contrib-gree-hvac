@@ -38,9 +38,30 @@ Things worth keeping in mind when assessing reports:
   AES-ECB, `{yxAHAY_Lm6pbC/<` for AES-GCM) for discovery/bind. These are part of
   the documented protocol, **not** secrets — see [`docs/PROTOCOL.md`](docs/PROTOCOL.md).
 - The simulator dashboard (`:8080`) and the docker-compose stack are **not**
-  hardened for production exposure. Do not deploy them to untrusted networks.
+  hardened for production exposure. The compose file publishes their ports on
+  `127.0.0.1` only; widen that with `GREE_BIND=0.0.0.0` only on a trusted
+  network, and never deploy the stack to an untrusted one.
 - Run the nodes on a trusted LAN segment; the Gree protocol has no transport
   authentication beyond the bind key exchange.
+
+## Hardening a production deployment
+
+Anyone who can reach the AC on the LAN can control it (the bind keys are
+public), and anyone who can reach the Node-RED editor can change what the
+nodes send. For a real installation (e.g. Node-RED on Victron Venus OS):
+
+- **Isolate the AC.** Put the Gree WiFi module on its own VLAN / IoT network
+  that only the Node-RED host can reach, and block its internet access unless
+  you need the vendor cloud app.
+- **Lock down Node-RED.** Enable `adminAuth` (editor + admin API) and, if you
+  use Dashboard 2.0 or HTTP-in nodes, `httpNodeAuth`; serve it over HTTPS or
+  keep it off untrusted networks. See the Node-RED
+  [security guide](https://nodered.org/docs/user-guide/runtime/securing-node-red).
+- **Set a real `credentialSecret`** in `settings.js` — the docker stack's
+  `gree-sim-dev` value is for local development only.
+- **Keep it patched.** Watch this repo's releases (each `.tgz` has signed
+  build provenance — verify with `gh attestation verify`) and keep Node-RED
+  and Node.js on supported versions.
 
 Reports about the fixed generic keys, or about the unauthenticated simulator
 dashboard intended for local development, are considered **out of scope**.

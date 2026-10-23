@@ -1,16 +1,20 @@
 name: Auto-label PRs
 
+# pull_request_target (not pull_request) so PRs from forks can be labelled.
+# Safe here: no checkout of PR code, and the title is only read inside the
+# script via context, never interpolated into a shell or expression.
 on:
-  pull_request_target:
+  pull_request_target: # zizmor: ignore[dangerous-triggers]
     types: [opened, edited, synchronize, reopened]
 
 permissions:
   contents: read
   pull-requests: write
 
-# Maps Conventional Commit prefixes in the PR title to a label, so the
-# release-notes categorization in .github/release.yml has something to
-# group by. Labels are created on first use if they don't already exist.
+# Maps Conventional Commit prefixes in the PR title to a label for triage and
+# filtering (feat/fix/docs/...). Release notes themselves come from
+# semantic-release, so this is purely for PR organization. Labels are created
+# on first use if they don't already exist.
 jobs:
   label:
     runs-on: ubuntu-latest

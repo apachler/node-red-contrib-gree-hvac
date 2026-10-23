@@ -62,7 +62,7 @@
     "flow:pull:user": "node docker/nodered/pull-flows.js user",
     "flow:pull:mocks": "node docker/nodered/pull-flows.js mocks",
     "nd": "node-red -u sandbox",
-    "watch": "npm-watch nd"
+    "watch": "node --watch-path=gree-hvac \"$(npm root -g)/node-red/red.js\" -u sandbox"
   },
   "dependencies": {
     "gree-hvac-client": "https://github.com/apachler/gree-hvac-client/releases/download/v4.1.0/gree-hvac-client-4.1.0.tgz"
@@ -75,15 +75,11 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-jsdoc": "^65.0.0",
     "eslint-plugin-prettier": "^5.5.6",
-    "npm-watch": "^0.13.0",
     "prettier": "^3.8.3",
     "semantic-release": "^25.0.3"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/apachler/node-red-contrib-gree-hvac.git"
-  },
-  "watch": {
-    "nd": "gree-hvac/**/*.*"
   }
 }
