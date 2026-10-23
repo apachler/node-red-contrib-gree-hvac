@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/apachler/node-red-contrib-gree-hvac/compare/v1.6.7...v1.7.0) (2026-10-23)
+
+
+### Features
+
+* support everything in gree-hvac-client 4.3 ([#76](https://github.com/apachler/node-red-contrib-gree-hvac/issues/76)) ([6119416](https://github.com/apachler/node-red-contrib-gree-hvac/commit/6119416e5817148ebeb371d88b3c3ffe3190b73b))
+
 ## [1.6.7](https://github.com/apachler/node-red-contrib-gree-hvac/compare/v1.6.6...v1.6.7) (2026-10-23)
 
 
