@@ -1,3 +1,10 @@
+## [1.6.6](https://github.com/apachler/node-red-contrib-gree-hvac/compare/v1.6.5...v1.6.6) (2026-10-23)
+
+
+### Bug Fixes
+
+* **deps:** resolve open Dependabot and Trivy alerts ([#58](https://github.com/apachler/node-red-contrib-gree-hvac/issues/58)) ([3164f15](https://github.com/apachler/node-red-contrib-gree-hvac/commit/3164f15f0ac2ebdbff18f0aea9b73f55e9773661)), closes [#91](https://github.com/apachler/node-red-contrib-gree-hvac/issues/91) [#102](https://github.com/apachler/node-red-contrib-gree-hvac/issues/102) [#104](https://github.com/apachler/node-red-contrib-gree-hvac/issues/104) [#105](https://github.com/apachler/node-red-contrib-gree-hvac/issues/105) [#106](https://github.com/apachler/node-red-contrib-gree-hvac/issues/106) [#110](https://github.com/apachler/node-red-contrib-gree-hvac/issues/110) [#114](https://github.com/apachler/node-red-contrib-gree-hvac/issues/114)
+
 ## [1.6.5](https://github.com/apachler/node-red-contrib-gree-hvac/compare/v1.6.4...v1.6.5) (2026-09-23)
 
 
