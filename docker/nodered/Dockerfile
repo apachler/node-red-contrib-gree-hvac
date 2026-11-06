@@ -1,6 +1,6 @@
 # Pinned to an immutable digest for reproducible builds (Dependabot docker
 # ecosystem keeps it current). Sim/dev image only — never shipped to users.
-FROM nodered/node-red:5.0.9-24@sha256:e085d4a06591fd0aca2ea2a91364d27f1a0e31e885675f77935e10f95412a963
+FROM nodered/node-red:5.0.9-24@sha256:2ccd38b4066648bd5e17430c50a2f8102c566a82fd4f2fc5c342e61664d6896f
 
 USER root
 
