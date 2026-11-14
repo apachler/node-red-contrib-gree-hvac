@@ -4,12 +4,14 @@ FROM nodered/node-red:5.0.9-24@sha256:e085d4a06591fd0aca2ea2a91364d27f1a0e31e885
 
 # Node-RED 5.0.9 pins exact versions with fixed HIGH CVEs in its own tree
 # (/usr/src/node-red): body-parser 1.20.8 (CVE-2026-111181), multer 2.4.0
-# (CVE-2026-113872) and npm 11.21.1, whose bundled undici 6.29.0 has
-# CVE-2026-109383/-109869/-87018. Override them until a nodered/node-red
-# release picks the fixes up, then drop this step. Runs as the base image's
-# node-red user so the tree keeps its ownership.
+# (CVE-2026-113872), follow-redirects 1.16.1 (CVE-2026-116689) and npm
+# 11.21.1, whose bundled undici 6.29.0 has CVE-2026-109383/-109869/-87018.
+# Override them until a nodered/node-red release picks the fixes up, then
+# drop this step. Runs as the base image's node-red user so the tree keeps
+# its ownership.
 WORKDIR /usr/src/node-red
-RUN npm pkg set overrides.body-parser='~1.20.9' overrides.multer='^2.5.0' overrides.npm='^11.21.2' \
+RUN npm pkg set overrides.body-parser='~1.20.9' overrides.multer='^2.5.0' \
+        overrides.follow-redirects='^1.16.2' overrides.npm='^11.21.2' \
     && npm install --omit=dev --no-audit --no-fund \
     && npm cache clean --force \
     && rm -rf "$(npm config get cache)/_logs"
