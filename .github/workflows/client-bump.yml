@@ -1,0 +1,119 @@
+name: client bump
+
+# Opens a PR when apachler/gree-hvac-client has a newer release than the
+# pinned tarball (Dependabot can't track a release-tarball URL). It bumps
+# both pins (dependencies + the lint:lockfile --allowed-urls), refreshes the
+# lockfile and runs the unit tests.
+#
+# - patch release: a ready `fix:` PR (nothing but the pin should change).
+# - minor/major: a draft `build(deps):` PR. Walk the bump-gree-hvac-client
+#   skill (.claude/skills/) to adopt the new features, then retitle it
+#   (`feat:` / `fix:`) before merging.
+#
+# The branch and PR are created with RELEASE_TOKEN (fine-grained PAT,
+# `release` environment): a PR opened by GITHUB_TOKEN would start no CI, and
+# the ruleset needs the required checks.
+on:
+  schedule:
+    - cron: "23 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: client-bump
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    environment: release
+    timeout-minutes: 15
+    steps:
+      - name: Harden the runner (audit outbound connections)
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22.x"
+          cache: "npm"
+      - name: Compare the pinned client with its latest release
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          current=$(node -p "require('./package.json').dependencies['gree-hvac-client'].match(/gree-hvac-client-(\d+\.\d+\.\d+)\.tgz$/)[1]")
+          latest=$(gh release view -R apachler/gree-hvac-client --json tagName --jq '.tagName | ltrimstr("v")')
+          newest=$(printf '%s\n%s\n' "$current" "$latest" | sort -V | tail -n1)
+          branch="deps/gree-hvac-client-$latest"
+          echo "current=$current latest=$latest"
+          if [ "$latest" = "$current" ] || [ "$newest" != "$latest" ]; then
+            echo "up to date"; echo "bump=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if git ls-remote --exit-code --heads "https://github.com/$REPO.git" "$branch" >/dev/null; then
+            echo "branch $branch already exists"; echo "bump=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          # same major.minor → patch release
+          if [ "${current%.*}" = "${latest%.*}" ]; then kind=patch; else kind=feature; fi
+          {
+            echo "bump=true"
+            echo "current=$current"
+            echo "latest=$latest"
+            echo "branch=$branch"
+            echo "kind=$kind"
+          } >> "$GITHUB_OUTPUT"
+      - name: Bump both pins, refresh the lockfile, test
+        if: steps.check.outputs.bump == 'true'
+        env:
+          CURRENT: ${{ steps.check.outputs.current }}
+          LATEST: ${{ steps.check.outputs.latest }}
+        run: |
+          sed -i "s#v$CURRENT/gree-hvac-client-$CURRENT.tgz#v$LATEST/gree-hvac-client-$LATEST.tgz#g" package.json
+          test "$(grep -c "gree-hvac-client-$LATEST.tgz" package.json)" -eq 2
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run lint:lockfile
+          npm test
+      - name: Push the branch and open the PR
+        if: steps.check.outputs.bump == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          REPO: ${{ github.repository }}
+          CURRENT: ${{ steps.check.outputs.current }}
+          LATEST: ${{ steps.check.outputs.latest }}
+          BRANCH: ${{ steps.check.outputs.branch }}
+          KIND: ${{ steps.check.outputs.kind }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$BRANCH"
+          git commit -qam "build(deps): bump gree-hvac-client to $LATEST"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" "$BRANCH"
+          notes=$(gh release view "v$LATEST" -R apachler/gree-hvac-client --json body --jq .body)
+          if [ "$KIND" = "patch" ]; then
+            title="fix: bump gree-hvac-client to $LATEST"
+            draft=""
+            todo="Patch release: only the pin should change. Check the notes below for anything this repo mirrors."
+          else
+            title="build(deps): bump gree-hvac-client to $LATEST"
+            draft="--draft"
+            todo="Minor/major release: walk the \`bump-gree-hvac-client\` skill (.claude/skills/) to adopt it across validation, actions, manager, simulator, example flows and docs, then retitle this PR (\`feat:\` / \`fix:\`, plus a \`BREAKING CHANGE:\` footer in the body if users are affected) and mark it ready."
+          fi
+          {
+            echo "Automated bump of the pinned client tarball: $CURRENT → [$LATEST](https://github.com/apachler/gree-hvac-client/releases/tag/v$LATEST) (dependencies + \`lint:lockfile --allowed-urls\`). \`npm test\` and \`lint:lockfile\` passed in the workflow."
+            echo
+            echo "$todo"
+            echo
+            echo "## Client release notes"
+            echo
+            # quoted: the squash commit message is this body, and an unquoted
+            # "BREAKING CHANGE:" line from the client would make a major here
+            printf '%s\n' "$notes" | sed 's/^/> /'
+          } > body.md
+          # shellcheck disable=SC2086
+          gh pr create -R "$REPO" --base master --head "$BRANCH" --title "$title" --body-file body.md $draft
