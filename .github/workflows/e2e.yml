@@ -103,7 +103,10 @@ jobs:
           case "$EVENT" in
             schedule|workflow_dispatch) enforce=true ;;
             pull_request)
-              if gh pr diff "$PR_NUMBER" -R "$REPO" --name-only                   | grep -qE '^(docker/|sim/|docker-compose[^/]*\.ya?ml$|\.dockerignore$)'; then
+              # a failing API call fails the step rather than skipping the gate
+              files=$(gh pr diff "$PR_NUMBER" -R "$REPO" --name-only)
+              if printf '%s
+' "$files"                   | grep -qE '^(docker/|sim/|docker-compose[^/]*\.ya?ml$|\.dockerignore$)'; then
                 enforce=true
               else
                 enforce=false
