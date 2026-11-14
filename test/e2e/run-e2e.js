@@ -77,7 +77,7 @@ async function main() {
         // that would break the other files' assertions if they ran in
         // parallel against the same container.
         // `node --test` does not expand globs before Node 21, so pass explicit
-        // file paths (works on the Node 18 e2e floor too). No --test-timeout
+        // file paths (works on the Node 20 floor too). No --test-timeout
         // either: it's Node 20+ only; the test files carry their own waits and
         // the e2e CI job has a timeout-minutes cap as the safety net.
         const e2eFiles = fs

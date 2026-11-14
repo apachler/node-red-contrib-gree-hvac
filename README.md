@@ -88,7 +88,7 @@ Or upload the `.tgz` in the editor as above. The UDP traffic to the AC must reac
 - **Update:** install the newer release's `.tgz` the same way (it replaces the old one), then restart Node-RED.
 - **Remove:** **Manage palette → Nodes → remove**, or `npm uninstall node-red-contrib-gree-hvac` in the user directory and restart. Remove the nodes from your flows first.
 
-Requires Node-RED 3.0 or newer on Node.js 18 or newer.
+Requires Node-RED 3.0 or newer on Node.js 20 or newer.
 
 ### From npm
 

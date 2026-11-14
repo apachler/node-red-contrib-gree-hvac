@@ -51,7 +51,7 @@ Single test: `node --test --test-name-pattern="<regex>" test/gree-hvac-node.test
 
 ## Conventions
 
-- Node 22 LTS for development (`.nvmrc`, CI, docker images). Published runtime supports Node 18+ (`engines.node`), Node-RED 3+; CI runs the tests on 18/20/22/24.
+- Node 22 LTS for development (`.nvmrc`, CI, docker images). Published runtime supports Node 20+ (`engines.node`), Node-RED 3+; CI runs the tests on 20/22/24.
 - Tests: `node --test` (no jest/mocha), beside what they cover.
 - Style: ESLint + Prettier. Single quotes, 4-space JS, 2-space JSON/YAML; `.prettierignore` skips CHANGELOG and the lockfile.
 - Git hooks (`.githooks/`, installed by `prepare`): **commit-msg** enforces a Conventional-Commit subject (merge/revert/fixup pass through), **pre-push** runs `eslint --fix`. Both honor `GREE_SKIP_LINT=1`.
