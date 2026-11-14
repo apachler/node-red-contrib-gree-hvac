@@ -3,6 +3,10 @@
 # alongside the digest for human readability.
 FROM node:26.12-alpine@sha256:40cd011b55415bc894e45b02fdd5a5dfde056921b7d23a64c74f80497af48797
 
+# Pick up Alpine security patches (zlib, musl, ...) released after the base
+# image was built, as the Node-RED dev image does.
+RUN apk upgrade --no-cache
+
 # The base image's global npm bundles vulnerable undici/brace-expansion that
 # Trivy flags; the sim never uses npm at runtime, but upgrade it anyway.
 # Range, not a pin: Dependabot does not track RUN lines.
