@@ -5,6 +5,11 @@ on:
   push:
     branches:
       - master
+  # Nightly: the Trivy gate (image-scan) runs here for real and files an
+  # issue, so upstream base-image CVEs don't block unrelated PRs.
+  schedule:
+    - cron: "41 4 * * *"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -72,6 +77,8 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      pull-requests: read
+      issues: write
     steps:
       - name: Harden the runner (audit outbound connections)
         uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
@@ -80,6 +87,31 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # Where the HIGH/CRITICAL gate may fail the job: on PRs that change the
+      # images (Dockerfiles, sim, compose), and on the nightly/manual run.
+      # Elsewhere it only reports: findings in the upstream base images must
+      # not block unrelated PRs or turn master red. Dependency CVEs in the
+      # package itself are gated by the CI "Dependency audit" job.
+      - name: Decide whether the gate is enforced
+        id: scope
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          case "$EVENT" in
+            schedule|workflow_dispatch) enforce=true ;;
+            pull_request)
+              if gh pr diff "$PR_NUMBER" -R "$REPO" --name-only                   | grep -qE '^(docker/|sim/|docker-compose[^/]*\.ya?ml$|\.dockerignore$)'; then
+                enforce=true
+              else
+                enforce=false
+              fi ;;
+            *) enforce=false ;;
+          esac
+          echo "enforce=$enforce" >> "$GITHUB_OUTPUT"
+          echo "event=$EVENT enforce=$enforce"
       - name: Build images
         run: docker compose build
       # Report pass: every severity goes to code scanning (the action ignores
@@ -113,9 +145,12 @@ jobs:
         with:
           sarif_file: trivy-nodered.sarif
           category: trivy-nodered
-      # Gate pass: fail on fixable HIGH/CRITICAL findings. Runs after the
-      # uploads so code scanning is updated even when the gate trips.
+      # Gate pass: fixable HIGH/CRITICAL findings. Runs after the uploads so
+      # code scanning is updated even when the gate trips; fails the job only
+      # where steps.scope enforces it.
       - name: Gate gree-hvac-sim image (HIGH/CRITICAL)
+        id: gate-sim
+        continue-on-error: ${{ steps.scope.outputs.enforce != 'true' }}
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: gree-hvac-sim:dev
@@ -124,7 +159,9 @@ jobs:
           ignore-unfixed: true
           exit-code: "1"
       - name: Gate gree-hvac-nodered image (HIGH/CRITICAL)
+        id: gate-nodered
         if: always()
+        continue-on-error: ${{ steps.scope.outputs.enforce != 'true' }}
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: gree-hvac-nodered:dev
@@ -132,3 +169,37 @@ jobs:
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: "1"
+      # Nightly/manual: keep one tracking issue in sync with the gate result.
+      - name: Open, update or close the Trivy tracking issue
+        if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SIM: ${{ steps.gate-sim.outcome }}
+          NODERED: ${{ steps.gate-nodered.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="Trivy: fixable HIGH/CRITICAL findings in the dev images"
+          existing=$(gh issue list -R "$REPO" --state open --search "in:title \"$title\"" --json number --jq '.[0].number')
+          if [ "$SIM" = "failure" ] || [ "$NODERED" = "failure" ]; then
+            {
+              echo "The nightly image scan found fixable HIGH/CRITICAL vulnerabilities: $RUN_URL"
+              echo
+              for f in trivy-sim.sarif trivy-nodered.sarif; do
+                [ -f "$f" ] || continue
+                echo "**$f**"
+                jq -r '.runs[].tool.driver.rules[]
+                  | select((.properties["security-severity"] // "0" | tonumber) >= 7)
+                  | "- \(.id): \(.shortDescription.text)"' "$f" | sort -u
+                echo
+              done
+              echo "Usually a base-image dependency: bump the image (Dependabot docker PR) or add an override in docker/nodered/Dockerfile."
+            } > body.md
+            if [ -n "$existing" ]; then
+              gh issue comment "$existing" -R "$REPO" --body-file body.md
+            else
+              gh issue create -R "$REPO" --title "$title" --body-file body.md
+            fi
+          elif [ -n "$existing" ]; then
+            gh issue close "$existing" -R "$REPO" --comment "Nightly scan is clean again: $RUN_URL"
+          fi
