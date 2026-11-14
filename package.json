@@ -86,8 +86,5 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/apachler/node-red-contrib-gree-hvac.git"
-  },
-  "overrides": {
-    "npm": "^11.21.2"
   }
 }
