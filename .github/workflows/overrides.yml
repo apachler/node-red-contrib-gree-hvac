@@ -1,0 +1,75 @@
+name: override check
+
+# Weekly: is the dependency-override step in docker/nodered/Dockerfile still
+# needed? Builds the Node-RED dev image with that step stripped and runs the
+# same Trivy gate as e2e.yml (fixable HIGH/CRITICAL). If the image is clean
+# without it, the base image has caught up, and the tracking issue gets one
+# comment saying the step can be removed.
+on:
+  schedule:
+    - cron: "53 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Tracking issue for the override step (#95). Update if it changes.
+  TRACKING_ISSUE: "95"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Harden the runner (audit outbound connections)
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The step runs from the first `WORKDIR /usr/src/node-red` up to the
+      # first `USER root` (see the Dockerfile comment above it).
+      - name: Build the image without the override step
+        id: strip
+        run: |
+          awk 'BEGIN{skip=0;done=0}
+               !done && /^WORKDIR \/usr\/src\/node-red$/ {skip=1}
+               skip && /^USER root$/ {skip=0;done=1}
+               !skip' docker/nodered/Dockerfile > Dockerfile.no-overrides
+          if cmp -s docker/nodered/Dockerfile Dockerfile.no-overrides; then
+            echo "no override step left"; echo "present=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          echo "present=true" >> "$GITHUB_OUTPUT"
+          diff docker/nodered/Dockerfile Dockerfile.no-overrides || true
+          docker build -f Dockerfile.no-overrides -t gree-hvac-nodered:no-overrides .
+      - name: Trivy gate on the stripped image
+        id: gate
+        if: steps.strip.outputs.present == 'true'
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: gree-hvac-nodered:no-overrides
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Tell the tracking issue (once)
+        if: steps.strip.outputs.present == 'true' && steps.gate.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          marker='<!-- override-check -->'
+          state=$(gh issue view "$TRACKING_ISSUE" -R "$REPO" --json state --jq .state)
+          if [ "$state" != "OPEN" ]; then echo "issue is $state"; exit 0; fi
+          if gh issue view "$TRACKING_ISSUE" -R "$REPO" --json comments --jq '.comments[].body' | grep -qF "$marker"; then
+            echo "already reported"; exit 0
+          fi
+          gh issue comment "$TRACKING_ISSUE" -R "$REPO" --body "$marker
+          The Node-RED dev image passes the Trivy gate without the override step in \`docker/nodered/Dockerfile\` ($RUN_URL): the base image has caught up. Remove the step (the \`WORKDIR /usr/src/node-red\` + \`npm pkg set overrides…\` block and its comment), and close this issue."
