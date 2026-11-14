@@ -37,12 +37,17 @@ Nodes
 
 The node also publishes a live metrics snapshot under `context().get('gree')` (state, uptime, last contact, no-response streak, reconnect attempt and reason, queue size, device info).
 
-Built on [`gree-hvac-client`](https://github.com/apachler/gree-hvac-client) 4.4, so it covers everything the client does: self-recovering connections, all 26 properties (incl. outdoor temperature, humidity, fault code, target humidity / humidity mode, anti-direct-blow, light sensor and the dehumidifier tank/filter flags on units that have them), Fahrenheit and half-degree setpoints, silent (no-beep) commands, multi-split systems, firmware info with a warning for cloud-only firmwares, raw vendor codes, the unit's clock and name, discovery and WiFi setup.
+Built on [`gree-hvac-client`](https://github.com/apachler/gree-hvac-client) 5.0, so it covers everything the client does: self-recovering connections, all 26 properties (incl. outdoor temperature, humidity, fault code, target humidity / humidity mode, anti-direct-blow, light sensor and the dehumidifier tank/filter flags on units that have them), Fahrenheit and half-degree setpoints, silent (no-beep) commands, multi-split systems, firmware info with a warning for cloud-only firmwares, raw vendor codes, the unit's clock and name, discovery and WiFi setup.
 
 Install
 -------
 
 > **Heads-up:** this is a maintained fork. The `node-red-contrib-gree-hvac` package on the npm registry is still the original upstream **0.3.0** — this fork is **not published to npm yet**. Until it is, install from a GitHub Release tarball (below).
+
+### Requirements
+
+- **Node.js 20 or newer** (check with `node --version`) and **Node-RED 3.0 or newer**.
+- **Victron Venus OS large:** v3.60 or newer, which runs Node-RED on Node.js 20. On an older Venus OS (Node.js 18), update the GX device first or stay on [v1.9.1](https://github.com/apachler/node-red-contrib-gree-hvac/releases/tag/v1.9.1), the last release that supports Node.js 18. On Venus OS, install through the editor (see [From the Node-RED editor](#from-the-node-red-editor-no-shell)).
 
 ### From a GitHub Release tarball (recommended)
 
@@ -50,22 +55,22 @@ Each GitHub Release ships a packaged `.tgz` you can install directly. Run this i
 
 ```
 cd ~/.node-red
-npm install https://github.com/apachler/node-red-contrib-gree-hvac/releases/download/v<version>/node-red-contrib-gree-hvac-<version>.tgz
+npm install https://github.com/apachler/node-red-contrib-gree-hvac/releases/download/v2.0.0/node-red-contrib-gree-hvac-2.0.0.tgz
 ```
 
-Or download the `.tgz` from the [Releases page](https://github.com/apachler/node-red-contrib-gree-hvac/releases) and run `npm install ./node-red-contrib-gree-hvac-<version>.tgz` from your `~/.node-red` directory. Restart Node-RED after installation. This also pins a specific release.
+For a newer release, replace both `2.0.0`s with its version (the [Releases page](https://github.com/apachler/node-red-contrib-gree-hvac/releases) lists them). Or download the `.tgz` from there and run `npm install ./node-red-contrib-gree-hvac-2.0.0.tgz` from your `~/.node-red` directory. Restart Node-RED after installation. This also pins a specific release.
 
 Installing needs network access: the package pulls its dependency [`gree-hvac-client`](https://github.com/apachler/gree-hvac-client) from that project's GitHub Release, and the client's own dependencies from the npm registry. For an offline instance, install on a connected machine with the same Node.js major version and copy the resulting `node_modules` over.
 
 Each release also carries a signed build-provenance attestation for the `.tgz` and a CycloneDX SBOM (`*.cdx.json`) of its runtime dependencies. To check that a downloaded tarball was built by this repo's release workflow:
 
 ```
-gh attestation verify node-red-contrib-gree-hvac-<version>.tgz -R apachler/node-red-contrib-gree-hvac
+gh attestation verify node-red-contrib-gree-hvac-2.0.0.tgz -R apachler/node-red-contrib-gree-hvac
 ```
 
 ### From the Node-RED editor (no shell)
 
-1. Download `node-red-contrib-gree-hvac-<version>.tgz` from the [Releases page](https://github.com/apachler/node-red-contrib-gree-hvac/releases).
+1. Download `node-red-contrib-gree-hvac-2.0.0.tgz` (or a newer one) from the [Releases page](https://github.com/apachler/node-red-contrib-gree-hvac/releases).
 2. In the editor open **☰ Menu → Manage palette → Install**, click the **upload** button next to the search box, and pick the `.tgz`.
 3. Confirm; Node-RED installs it and adds the nodes without a restart.
 
@@ -76,7 +81,7 @@ The upload button is missing when the instance disables it (`editorTheme.palette
 With the official `nodered/node-red` image the user directory is `/data` (keep it on a volume, or the install is lost when the container is recreated):
 
 ```
-docker exec -it <container> bash -c "cd /data && npm install https://github.com/apachler/node-red-contrib-gree-hvac/releases/download/v<version>/node-red-contrib-gree-hvac-<version>.tgz"
+docker exec -it <container> bash -c "cd /data && npm install https://github.com/apachler/node-red-contrib-gree-hvac/releases/download/v2.0.0/node-red-contrib-gree-hvac-2.0.0.tgz"
 docker restart <container>
 ```
 
@@ -88,7 +93,9 @@ Or upload the `.tgz` in the editor as above. The UDP traffic to the AC must reac
 - **Update:** install the newer release's `.tgz` the same way (it replaces the old one), then restart Node-RED.
 - **Remove:** **Manage palette → Nodes → remove**, or `npm uninstall node-red-contrib-gree-hvac` in the user directory and restart. Remove the nodes from your flows first.
 
-Requires Node-RED 3.0 or newer on Node.js 20 or newer.
+### Upgrading from 1.x
+
+2.0.0 drops Node.js 18 (end-of-life since April 2025); nothing else changes. The nodes, their settings and your flows work as before, so no flow edits are needed. Check `node --version` first: on Node.js 20 or newer, install 2.0.0 as above and restart Node-RED. On Node.js 18, stay on [v1.9.1](https://github.com/apachler/node-red-contrib-gree-hvac/releases/tag/v1.9.1) until you can update Node.js (on Venus OS: update to v3.60 or newer).
 
 ### From npm
 
