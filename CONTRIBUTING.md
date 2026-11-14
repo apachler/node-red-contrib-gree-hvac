@@ -14,7 +14,7 @@ participating you agree to uphold it.
 Requirements:
 
 - **Node.js 22 LTS** for development (`.nvmrc`; the lint toolchain needs 22+).
-  The published package still runs on Node 18+, and CI tests 18/20/22/24.
+  The published package still runs on Node 20+, and CI tests 20/22/24.
 - **Docker + Docker Compose v2** (only for the e2e / simulator stack)
 
 ```bash
@@ -80,7 +80,7 @@ simulator** section of the [README](README.md).
 - **Tests:** use the native `node --test` runner. Add tests next to the code
   they cover. New behaviour should come with a test; the simulator is your
   friend for protocol-level coverage.
-- **Node version:** keep changes compatible with Node 18+.
+- **Node version:** keep changes compatible with Node 20+.
 
 ## Commit & PR conventions
 

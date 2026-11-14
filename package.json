@@ -35,7 +35,7 @@
     "NOTICE"
   ],
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "node-red": {
     "version": ">=3.0.0",
