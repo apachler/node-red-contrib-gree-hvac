@@ -1,3 +1,15 @@
+# [2.0.0](https://github.com/apachler/node-red-contrib-gree-hvac/compare/v1.9.1...v2.0.0) (2026-11-14)
+
+
+### Features
+
+* require Node.js 20 or later ([#96](https://github.com/apachler/node-red-contrib-gree-hvac/issues/96)) ([6eb7b71](https://github.com/apachler/node-red-contrib-gree-hvac/commit/6eb7b7196308843fd9e1051e15ddcc45bf38c497)), closes [#97](https://github.com/apachler/node-red-contrib-gree-hvac/issues/97)
+
+
+### BREAKING CHANGES
+
+* Node.js 18 is no longer supported; node-red-contrib-gree-hvac now requires Node.js 20 or later.
+
 ## [1.9.1](https://github.com/apachler/node-red-contrib-gree-hvac/compare/v1.9.0...v1.9.1) (2026-11-14)
 
 
