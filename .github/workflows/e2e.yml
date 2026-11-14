@@ -105,8 +105,8 @@ jobs:
             pull_request)
               # a failing API call fails the step rather than skipping the gate
               files=$(gh pr diff "$PR_NUMBER" -R "$REPO" --name-only)
-              if printf '%s
-' "$files"                   | grep -qE '^(docker/|sim/|docker-compose[^/]*\.ya?ml$|\.dockerignore$)'; then
+              if printf '%s\n' "$files" \
+                  | grep -qE '^(docker/|sim/|docker-compose[^/]*\.ya?ml$|\.dockerignore$)'; then
                 enforce=true
               else
                 enforce=false
